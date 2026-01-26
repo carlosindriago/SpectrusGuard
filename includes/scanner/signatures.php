@@ -28,39 +28,56 @@ function gs_get_malware_signatures()
 
         // ================================
         // BACKDOORS & SHELLS
+        // More specific patterns to avoid false positives
         // ================================
 
         'FilesMan Backdoor' => array(
-            'FilesMan',
-            'Filesman',
+            '/FilesMan\s*\(/i',                    // FilesMan function call
+            '/class\s+FilesMan\b/i',               // FilesMan class definition
+            '/$filesMan\s*=/i',                    // FilesMan variable
         ),
 
         'WSO Shell' => array(
-            "WSO",
-            '/WSO\s*\d+\.\d+/',
-            'Web Shell by oRb',
+            '/WSO\s+\d+\.\d+\s+Shell/i',           // "WSO 2.5 Shell" etc
+            '/Web\s*Shell\s*by\s*oRb/i',           // Full attribution string
+            '/\$auth_pass\s*=\s*["\'][a-f0-9]{32}["\']/i', // MD5 password hash (common in WSO)
+            '/\$default_action\s*=\s*["\']FilesMan["\']/i', // WSO config
+            '/@\s*ini_set\s*\(\s*["\']error_log["\']\s*,\s*NULL\s*\)/i', // WSO stealth
         ),
 
         'C99 Shell' => array(
-            'c99shell',
-            'c99madshell',
-            '/c99_sess_put/',
+            '/c99shell/i',
+            '/c99madshell/i',
+            '/c99_sess_put/i',
+            '/\$c99sh_/i',                         // C99 shell variables
         ),
 
         'R57 Shell' => array(
-            'r57shell',
-            '/r57_get_php_version/',
+            '/r57shell/i',
+            '/r57_get_php_version/i',
+            '/\$r57_/i',                           // R57 shell variables
         ),
 
         'B374K Shell' => array(
-            'b374k',
-            'B374K',
+            '/b374k\s*shell/i',                    // "b374k shell" with context
+            '/b374k\s*\d+\.\d+/i',                 // Version number "b374k 2.8"
         ),
 
         'P0wny Shell' => array(
-            'p0wny',
-            '/p0wnyshell/',
+            '/p0wny\s*shell/i',
+            '/p0wnyshell/i',
         ),
+
+        'Alfa Shell' => array(
+            '/Alfa\s*Shell/i',
+            '/AlfaTeam\s*Shell/i',
+        ),
+
+        'Weevely Backdoor' => array(
+            '/weevely/i',
+            '/\$k\s*=\s*["\'][a-f0-9]{8}["\']/i',  // Weevely key pattern
+        ),
+
 
         // ================================
         // OBFUSCATION PATTERNS
@@ -200,34 +217,34 @@ function gs_get_malware_signatures()
             '/eval\s*\(\s*unescape/i',
         ),
 
-        'SEO Spam Injection' => array(
-            '/viagra|cialis|levitra/i',
-            '/casino.*jackpot/i',
-        ),
+        // Removed SEO Spam - too many false positives
+        // 'SEO Spam Injection' commented out to avoid flagging content sites
 
         // ================================
         // SUSPICIOUS FUNCTIONS
+        // Only flag when combined with user input
         // ================================
 
-        'Passthru' => array(
-            '/passthru\s*\(/i',
+        'Passthru Backdoor' => array(
+            '/passthru\s*\(\s*\$_(GET|POST|REQUEST|COOKIE)/i',
         ),
 
-        'Shell Exec' => array(
-            '/shell_exec\s*\(/i',
+        'Shell Exec Backdoor' => array(
+            '/shell_exec\s*\(\s*\$_(GET|POST|REQUEST|COOKIE)/i',
             '/`\s*\$_(GET|POST|REQUEST)/i',
         ),
 
-        'Proc Open' => array(
-            '/proc_open\s*\(/i',
+        'Proc Open Backdoor' => array(
+            '/proc_open\s*\(.*\$_(GET|POST|REQUEST)/is',
         ),
 
-        'Popen' => array(
-            '/popen\s*\(\s*\$_/i',
+        'Popen Backdoor' => array(
+            '/popen\s*\(\s*\$_(GET|POST|REQUEST)/i',
         ),
 
-        'System Call' => array(
+        'System Backdoor' => array(
             '/\bsystem\s*\(\s*\$_(GET|POST|REQUEST)/i',
+            '/\bexec\s*\(\s*\$_(GET|POST|REQUEST)/i',
         ),
 
         // ================================
