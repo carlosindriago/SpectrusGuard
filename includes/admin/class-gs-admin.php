@@ -48,6 +48,7 @@ class GS_Admin {
         add_action( 'wp_ajax_gs_get_stats', array( $this, 'ajax_get_stats' ) );
         add_action( 'wp_ajax_gs_clear_logs', array( $this, 'ajax_clear_logs' ) );
         add_action( 'wp_ajax_gs_whitelist_ip', array( $this, 'ajax_whitelist_ip' ) );
+        add_action( 'wp_ajax_gs_run_scan', array( $this, 'ajax_run_scan' ) );
     }
 
     /**
@@ -89,6 +90,15 @@ class GS_Admin {
             'manage_options',
             'ghost-shield-settings',
             array( $this, 'render_settings_page' )
+        );
+
+        add_submenu_page(
+            'ghost-shield',
+            __( 'Security Scanner', 'ghost-shield' ),
+            __( 'Scanner', 'ghost-shield' ),
+            'manage_options',
+            'ghost-shield-scanner',
+            array( $this, 'render_scanner_page' )
         );
     }
 
@@ -682,5 +692,208 @@ class GS_Admin {
         }
 
         wp_send_json_error( array( 'message' => __( 'Could not whitelist IP.', 'ghost-shield' ) ) );
+    }
+
+    /**
+     * AJAX: Run security scan
+     */
+    public function ajax_run_scan() {
+        check_ajax_referer( 'ghost_shield_nonce', 'nonce' );
+
+        if ( ! current_user_can( 'manage_options' ) ) {
+            wp_send_json_error( array( 'message' => 'Unauthorized' ) );
+        }
+
+        $scanner = $this->loader->get_scanner();
+        if ( ! $scanner ) {
+            wp_send_json_error( array( 'message' => __( 'Scanner not available.', 'ghost-shield' ) ) );
+        }
+
+        // Run fresh scan
+        $results = $scanner->run_full_scan( true );
+
+        wp_send_json_success( array(
+            'message' => __( 'Scan completed successfully.', 'ghost-shield' ),
+            'results' => $scanner->get_display_results(),
+        ) );
+    }
+
+    /**
+     * Render the scanner page
+     */
+    public function render_scanner_page() {
+        $scanner = $this->loader->get_scanner();
+        $results = $scanner ? $scanner->get_display_results() : null;
+        $last_scan = $scanner ? $scanner->get_last_scan_time() : null;
+        ?>
+        <div class="wrap gs-scanner-page">
+            <h1>
+                <span class="gs-logo">🛡️</span>
+                <?php esc_html_e( 'Security Scanner', 'ghost-shield' ); ?>
+            </h1>
+
+            <div class="gs-scanner-header">
+                <div class="gs-scan-info">
+                    <?php if ( $last_scan ) : ?>
+                        <p><?php printf( esc_html__( 'Last scan: %s', 'ghost-shield' ), esc_html( $last_scan ) ); ?></p>
+                    <?php else : ?>
+                        <p><?php esc_html_e( 'No scans performed yet.', 'ghost-shield' ); ?></p>
+                    <?php endif; ?>
+                </div>
+                <button type="button" class="button button-primary button-hero" id="gs-run-scan">
+                    <span class="dashicons dashicons-search"></span>
+                    <?php esc_html_e( 'Run Security Scan', 'ghost-shield' ); ?>
+                </button>
+            </div>
+
+            <div id="gs-scan-progress" style="display: none;">
+                <div class="gs-progress-bar">
+                    <div class="gs-progress-fill"></div>
+                </div>
+                <p class="gs-progress-text"><?php esc_html_e( 'Scanning...', 'ghost-shield' ); ?></p>
+            </div>
+
+            <?php if ( $results && $results['has_results'] ) : ?>
+            <div class="gs-scanner-summary">
+                <div class="gs-summary-card <?php echo $results['summary']['critical'] > 0 ? 'critical' : ( $results['summary']['high'] > 0 ? 'warning' : 'success' ); ?>">
+                    <div class="gs-summary-icon">
+                        <?php if ( $results['summary']['total_issues'] === 0 ) : ?>
+                            ✅
+                        <?php elseif ( $results['summary']['critical'] > 0 ) : ?>
+                            🚨
+                        <?php else : ?>
+                            ⚠️
+                        <?php endif; ?>
+                    </div>
+                    <div class="gs-summary-content">
+                        <h2>
+                            <?php if ( $results['summary']['total_issues'] === 0 ) : ?>
+                                <?php esc_html_e( 'All Clear!', 'ghost-shield' ); ?>
+                            <?php else : ?>
+                                <?php printf(
+                                    /* translators: %d: number of issues */
+                                    esc_html( _n( '%d Issue Found', '%d Issues Found', $results['summary']['total_issues'], 'ghost-shield' ) ),
+                                    $results['summary']['total_issues']
+                                ); ?>
+                            <?php endif; ?>
+                        </h2>
+                        <div class="gs-severity-counts">
+                            <?php if ( $results['summary']['critical'] > 0 ) : ?>
+                                <span class="gs-count critical"><?php echo esc_html( $results['summary']['critical'] ); ?> Critical</span>
+                            <?php endif; ?>
+                            <?php if ( $results['summary']['high'] > 0 ) : ?>
+                                <span class="gs-count high"><?php echo esc_html( $results['summary']['high'] ); ?> High</span>
+                            <?php endif; ?>
+                            <?php if ( $results['summary']['medium'] > 0 ) : ?>
+                                <span class="gs-count medium"><?php echo esc_html( $results['summary']['medium'] ); ?> Medium</span>
+                            <?php endif; ?>
+                            <?php if ( $results['summary']['low'] > 0 ) : ?>
+                                <span class="gs-count low"><?php echo esc_html( $results['summary']['low'] ); ?> Low</span>
+                            <?php endif; ?>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <?php if ( ! empty( $results['issues'] ) ) : ?>
+            <table class="wp-list-table widefat fixed striped gs-scanner-table">
+                <thead>
+                    <tr>
+                        <th style="width: 100px;"><?php esc_html_e( 'Severity', 'ghost-shield' ); ?></th>
+                        <th style="width: 100px;"><?php esc_html_e( 'Category', 'ghost-shield' ); ?></th>
+                        <th><?php esc_html_e( 'File', 'ghost-shield' ); ?></th>
+                        <th><?php esc_html_e( 'Issue', 'ghost-shield' ); ?></th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <?php foreach ( $results['issues'] as $issue ) : ?>
+                    <tr>
+                        <td>
+                            <span class="gs-badge gs-badge-<?php echo esc_attr( $issue['severity'] ); ?>">
+                                <?php echo esc_html( ucfirst( $issue['severity'] ) ); ?>
+                            </span>
+                        </td>
+                        <td><?php echo esc_html( ucfirst( $issue['category'] ) ); ?></td>
+                        <td><code><?php echo esc_html( $issue['file'] ); ?></code></td>
+                        <td><?php echo esc_html( $issue['message'] ); ?></td>
+                    </tr>
+                    <?php endforeach; ?>
+                </tbody>
+            </table>
+            <?php endif; ?>
+            <?php else : ?>
+            <div class="gs-no-results">
+                <p><?php esc_html_e( 'Click "Run Security Scan" to check your site for vulnerabilities.', 'ghost-shield' ); ?></p>
+            </div>
+            <?php endif; ?>
+        </div>
+
+        <script>
+        jQuery(document).ready(function($) {
+            $('#gs-run-scan').on('click', function() {
+                var $btn = $(this);
+                $btn.prop('disabled', true).find('.dashicons').addClass('spin');
+                $('#gs-scan-progress').show();
+
+                $.ajax({
+                    url: ajaxurl,
+                    type: 'POST',
+                    data: {
+                        action: 'gs_run_scan',
+                        nonce: GhostShield.nonce
+                    },
+                    success: function(response) {
+                        if (response.success) {
+                            location.reload();
+                        } else {
+                            alert(response.data.message || 'Scan failed');
+                            $btn.prop('disabled', false).find('.dashicons').removeClass('spin');
+                            $('#gs-scan-progress').hide();
+                        }
+                    },
+                    error: function() {
+                        alert('<?php esc_html_e( 'An error occurred during the scan.', 'ghost-shield' ); ?>');
+                        $btn.prop('disabled', false).find('.dashicons').removeClass('spin');
+                        $('#gs-scan-progress').hide();
+                    }
+                });
+            });
+        });
+        </script>
+
+        <style>
+        .gs-scanner-page { background: #1a1a2e; margin-left: -20px; padding: 20px; min-height: calc(100vh - 32px); }
+        .gs-scanner-page h1 { color: #e2e8f0; display: flex; align-items: center; gap: 12px; margin-bottom: 24px; }
+        .gs-scanner-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 24px; }
+        .gs-scan-info p { color: #a0aec0; margin: 0; }
+        .gs-scanner-summary { margin-bottom: 24px; }
+        .gs-summary-card { display: flex; align-items: center; gap: 20px; padding: 24px; border-radius: 12px; background: #16213e; border: 1px solid rgba(255,255,255,0.1); }
+        .gs-summary-card.success { border-left: 4px solid #48bb78; }
+        .gs-summary-card.warning { border-left: 4px solid #ed8936; }
+        .gs-summary-card.critical { border-left: 4px solid #f56565; }
+        .gs-summary-icon { font-size: 48px; }
+        .gs-summary-content h2 { color: #e2e8f0; margin: 0 0 8px 0; }
+        .gs-severity-counts { display: flex; gap: 12px; flex-wrap: wrap; }
+        .gs-count { padding: 4px 12px; border-radius: 4px; font-size: 12px; font-weight: 600; }
+        .gs-count.critical { background: rgba(245, 101, 101, 0.2); color: #f56565; }
+        .gs-count.high { background: rgba(237, 137, 54, 0.2); color: #ed8936; }
+        .gs-count.medium { background: rgba(236, 201, 75, 0.2); color: #ecc94b; }
+        .gs-count.low { background: rgba(72, 187, 120, 0.2); color: #48bb78; }
+        .gs-scanner-table { background: #16213e !important; border: 1px solid rgba(255,255,255,0.1) !important; }
+        .gs-scanner-table thead th { background: #1f2a48 !important; color: #e2e8f0 !important; }
+        .gs-scanner-table tbody td { color: #a0aec0 !important; border-color: rgba(255,255,255,0.1) !important; }
+        .gs-scanner-table code { background: rgba(0,0,0,0.3); padding: 2px 6px; border-radius: 4px; color: #ffd700; }
+        .gs-badge-critical { background: rgba(245, 101, 101, 0.2); color: #f56565; }
+        .gs-badge-high { background: rgba(237, 137, 54, 0.2); color: #ed8936; }
+        .gs-badge-medium { background: rgba(236, 201, 75, 0.2); color: #ecc94b; }
+        .gs-no-results { text-align: center; padding: 48px; color: #a0aec0; }
+        .gs-progress-bar { height: 4px; background: #16213e; border-radius: 2px; overflow: hidden; margin-bottom: 12px; }
+        .gs-progress-fill { height: 100%; width: 30%; background: linear-gradient(90deg, #667eea, #764ba2); animation: progress 1.5s ease-in-out infinite; }
+        @keyframes progress { 0% { width: 10%; } 50% { width: 70%; } 100% { width: 10%; } }
+        .gs-progress-text { color: #a0aec0; text-align: center; }
+        .spin { animation: spin 1s linear infinite; }
+        @keyframes spin { 100% { transform: rotate(360deg); } }
+        </style>
+        <?php
     }
 }

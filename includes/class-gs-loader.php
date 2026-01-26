@@ -51,6 +51,13 @@ class GS_Loader
     private $firewall = null;
 
     /**
+     * Scanner instance
+     *
+     * @var GS_Scanner|null
+     */
+    private $scanner = null;
+
+    /**
      * Get the singleton instance
      *
      * @return GS_Loader
@@ -135,9 +142,9 @@ class GS_Loader
         }
 
         // Scanner Module (Sprint 3 - load if exists)
-        $checksum_file = GS_PLUGIN_DIR . 'includes/scanner/class-gs-checksum.php';
-        if (file_exists($checksum_file)) {
-            require_once $checksum_file;
+        $scanner_file = GS_PLUGIN_DIR . 'includes/scanner/class-gs-scanner.php';
+        if (file_exists($scanner_file)) {
+            require_once $scanner_file;
         }
 
         // Admin (load only in admin context)
@@ -169,6 +176,11 @@ class GS_Loader
 
         if (class_exists('GS_Stealth') && $this->get_setting('hide_wp_version')) {
             new GS_Stealth($this->settings);
+        }
+
+        // Initialize Scanner (Sprint 3)
+        if (class_exists('GS_Scanner')) {
+            $this->scanner = new GS_Scanner();
         }
 
         // Initialize Admin (if in admin context)
@@ -333,5 +345,15 @@ class GS_Loader
     public function get_firewall()
     {
         return $this->firewall;
+    }
+
+    /**
+     * Get the scanner instance
+     *
+     * @return GS_Scanner|null
+     */
+    public function get_scanner()
+    {
+        return $this->scanner;
     }
 }
