@@ -862,36 +862,167 @@ class GS_Admin {
         </script>
 
         <style>
-        .gs-scanner-page { background: #1a1a2e; margin-left: -20px; padding: 20px; min-height: calc(100vh - 32px); }
-        .gs-scanner-page h1 { color: #e2e8f0; display: flex; align-items: center; gap: 12px; margin-bottom: 24px; }
-        .gs-scanner-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 24px; }
-        .gs-scan-info p { color: #a0aec0; margin: 0; }
+        /* Scanner Page - Full Dark Theme Override */
+        .gs-scanner-page { 
+            background: #1a1a2e; 
+            margin-left: -20px; 
+            padding: 20px 40px; 
+            min-height: calc(100vh - 32px); 
+        }
+        .gs-scanner-page * { box-sizing: border-box; }
+        .gs-scanner-page h1 { 
+            color: #e2e8f0 !important; 
+            display: flex; 
+            align-items: center; 
+            gap: 12px; 
+            margin-bottom: 24px; 
+            font-size: 28px;
+        }
+        .gs-scanner-page h1 .gs-logo { font-size: 32px; }
+        
+        /* Header with button */
+        .gs-scanner-header { 
+            display: flex; 
+            justify-content: space-between; 
+            align-items: center; 
+            margin-bottom: 24px; 
+            flex-wrap: wrap;
+            gap: 16px;
+        }
+        .gs-scan-info p { color: #a0aec0 !important; margin: 0; font-size: 14px; }
+        
+        /* Scan Button - Fixed */
+        #gs-run-scan {
+            display: inline-flex !important;
+            align-items: center !important;
+            gap: 8px !important;
+            padding: 12px 24px !important;
+            font-size: 15px !important;
+            font-weight: 600 !important;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%) !important;
+            border: none !important;
+            border-radius: 8px !important;
+            color: #fff !important;
+            cursor: pointer;
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+        #gs-run-scan:hover { 
+            transform: translateY(-2px); 
+            box-shadow: 0 8px 25px rgba(102, 126, 234, 0.4); 
+        }
+        #gs-run-scan .dashicons {
+            font-size: 18px !important;
+            width: 18px !important;
+            height: 18px !important;
+            line-height: 1 !important;
+            vertical-align: middle !important;
+        }
+        #gs-run-scan:disabled { opacity: 0.7; cursor: wait; }
+        
+        /* Summary Card */
         .gs-scanner-summary { margin-bottom: 24px; }
-        .gs-summary-card { display: flex; align-items: center; gap: 20px; padding: 24px; border-radius: 12px; background: #16213e; border: 1px solid rgba(255,255,255,0.1); }
+        .gs-summary-card { 
+            display: flex; 
+            align-items: center; 
+            gap: 20px; 
+            padding: 24px; 
+            border-radius: 12px; 
+            background: #16213e; 
+            border: 1px solid rgba(255,255,255,0.1); 
+        }
         .gs-summary-card.success { border-left: 4px solid #48bb78; }
         .gs-summary-card.warning { border-left: 4px solid #ed8936; }
         .gs-summary-card.critical { border-left: 4px solid #f56565; }
-        .gs-summary-icon { font-size: 48px; }
-        .gs-summary-content h2 { color: #e2e8f0; margin: 0 0 8px 0; }
+        .gs-summary-icon { font-size: 48px; line-height: 1; }
+        .gs-summary-content h2 { color: #e2e8f0 !important; margin: 0 0 8px 0 !important; font-size: 20px; }
         .gs-severity-counts { display: flex; gap: 12px; flex-wrap: wrap; }
         .gs-count { padding: 4px 12px; border-radius: 4px; font-size: 12px; font-weight: 600; }
         .gs-count.critical { background: rgba(245, 101, 101, 0.2); color: #f56565; }
         .gs-count.high { background: rgba(237, 137, 54, 0.2); color: #ed8936; }
         .gs-count.medium { background: rgba(236, 201, 75, 0.2); color: #ecc94b; }
         .gs-count.low { background: rgba(72, 187, 120, 0.2); color: #48bb78; }
-        .gs-scanner-table { background: #16213e !important; border: 1px solid rgba(255,255,255,0.1) !important; }
-        .gs-scanner-table thead th { background: #1f2a48 !important; color: #e2e8f0 !important; }
-        .gs-scanner-table tbody td { color: #a0aec0 !important; border-color: rgba(255,255,255,0.1) !important; }
-        .gs-scanner-table code { background: rgba(0,0,0,0.3); padding: 2px 6px; border-radius: 4px; color: #ffd700; }
-        .gs-badge-critical { background: rgba(245, 101, 101, 0.2); color: #f56565; }
-        .gs-badge-high { background: rgba(237, 137, 54, 0.2); color: #ed8936; }
-        .gs-badge-medium { background: rgba(236, 201, 75, 0.2); color: #ecc94b; }
-        .gs-no-results { text-align: center; padding: 48px; color: #a0aec0; }
-        .gs-progress-bar { height: 4px; background: #16213e; border-radius: 2px; overflow: hidden; margin-bottom: 12px; }
-        .gs-progress-fill { height: 100%; width: 30%; background: linear-gradient(90deg, #667eea, #764ba2); animation: progress 1.5s ease-in-out infinite; }
+        
+        /* Scanner Table - Full Dark Override */
+        .gs-scanner-page .gs-scanner-table { 
+            background: #16213e !important; 
+            border: 1px solid rgba(255,255,255,0.1) !important; 
+            border-collapse: collapse !important;
+            width: 100% !important;
+        }
+        .gs-scanner-page .gs-scanner-table thead th { 
+            background: #1f2a48 !important; 
+            color: #e2e8f0 !important; 
+            padding: 12px 16px !important;
+            text-align: left !important;
+            border-bottom: 1px solid rgba(255,255,255,0.1) !important;
+        }
+        .gs-scanner-page .gs-scanner-table tbody tr { 
+            background: #16213e !important; 
+        }
+        .gs-scanner-page .gs-scanner-table tbody tr:nth-child(odd) { 
+            background: #1a2342 !important; 
+        }
+        .gs-scanner-page .gs-scanner-table tbody tr:hover { 
+            background: #1f2a48 !important; 
+        }
+        .gs-scanner-page .gs-scanner-table tbody td { 
+            color: #c9d1d9 !important; 
+            padding: 12px 16px !important;
+            border-bottom: 1px solid rgba(255,255,255,0.05) !important;
+            background: transparent !important;
+        }
+        .gs-scanner-page .gs-scanner-table code { 
+            background: rgba(0,0,0,0.4) !important; 
+            padding: 4px 8px !important; 
+            border-radius: 4px !important; 
+            color: #fbbf24 !important;
+            font-size: 12px !important;
+            word-break: break-all !important;
+        }
+        
+        /* Badges */
+        .gs-scanner-page .gs-badge {
+            display: inline-block;
+            padding: 4px 10px;
+            border-radius: 4px;
+            font-size: 11px;
+            font-weight: 700;
+            text-transform: uppercase;
+        }
+        .gs-badge-critical { background: rgba(245, 101, 101, 0.25) !important; color: #f56565 !important; }
+        .gs-badge-high { background: rgba(237, 137, 54, 0.25) !important; color: #ed8936 !important; }
+        .gs-badge-medium { background: rgba(236, 201, 75, 0.25) !important; color: #ecc94b !important; }
+        .gs-badge-low { background: rgba(72, 187, 120, 0.25) !important; color: #48bb78 !important; }
+        
+        /* No Results */
+        .gs-no-results { 
+            text-align: center; 
+            padding: 60px 20px; 
+            color: #a0aec0 !important; 
+            background: #16213e;
+            border-radius: 12px;
+            border: 1px solid rgba(255,255,255,0.1);
+        }
+        
+        /* Progress */
+        .gs-progress-bar { 
+            height: 4px; 
+            background: #16213e; 
+            border-radius: 2px; 
+            overflow: hidden; 
+            margin-bottom: 12px; 
+        }
+        .gs-progress-fill { 
+            height: 100%; 
+            width: 30%; 
+            background: linear-gradient(90deg, #667eea, #764ba2); 
+            animation: progress 1.5s ease-in-out infinite; 
+        }
         @keyframes progress { 0% { width: 10%; } 50% { width: 70%; } 100% { width: 10%; } }
-        .gs-progress-text { color: #a0aec0; text-align: center; }
-        .spin { animation: spin 1s linear infinite; }
+        .gs-progress-text { color: #a0aec0 !important; text-align: center; }
+        
+        /* Spin Animation */
+        .spin { animation: spin 1s linear infinite !important; }
         @keyframes spin { 100% { transform: rotate(360deg); } }
         </style>
         <?php
