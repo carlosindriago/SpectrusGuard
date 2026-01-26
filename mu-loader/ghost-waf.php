@@ -1,0 +1,763 @@
+<?php
+/**
+ * GhostShield WAF - Must-Use Plugin (DROP-IN)
+ *
+ * ⚠️ CRITICAL FILE: This file executes BEFORE WordPress loads!
+ *
+ * This file is automatically copied to wp-content/mu-plugins/ when the
+ * GhostShield plugin is activated. It intercepts malicious requests
+ * before they can reach WordPress core or any other plugins.
+ *
+ * @package GhostShield
+ * @since   1.0.0
+ */
+
+// Prevent direct web access to this file
+if (!defined('ABSPATH')) {
+    // If we're being loaded directly (not by WordPress), we need to set up our own path
+    // This should never happen, but just in case...
+    exit('Direct access not allowed.');
+}
+
+/**
+ * GhostShield MU-Plugin Guard
+ *
+ * Early execution firewall that runs before WordPress initializes.
+ */
+class GhostShield_MU_Guard
+{
+
+    /**
+     * Path to the main GhostShield plugin
+     *
+     * @var string
+     */
+    private $plugin_dir;
+
+    /**
+     * Path to the rules file
+     *
+     * @var string
+     */
+    private $rules_file;
+
+    /**
+     * Loaded rules
+     *
+     * @var array
+     */
+    private $rules = array();
+
+    /**
+     * Settings from options (cached)
+     *
+     * @var array|null
+     */
+    private $settings = null;
+
+    /**
+     * Constructor - Initialize and run the guard
+     */
+    public function __construct()
+    {
+        // Define paths
+        $this->plugin_dir = WP_CONTENT_DIR . '/plugins/GhostShield/';
+        $this->rules_file = $this->plugin_dir . 'includes/waf/rules.json';
+
+        // Early exit conditions
+        if ($this->should_skip()) {
+            return;
+        }
+
+        // Check rescue mode FIRST (fail-safe)
+        if ($this->is_rescue_mode()) {
+            return;
+        }
+
+        // Load and check
+        if ($this->load_rules()) {
+            $this->analyze_and_block();
+        }
+    }
+
+    /**
+     * Check if we should skip the firewall entirely
+     *
+     * @return bool
+     */
+    private function should_skip()
+    {
+        // Skip for WP-CLI
+        if (defined('WP_CLI') && WP_CLI) {
+            return true;
+        }
+
+        // Skip for WP Cron
+        if (defined('DOING_CRON') && DOING_CRON) {
+            return true;
+        }
+
+        // Skip if main plugin doesn't exist
+        if (!file_exists($this->plugin_dir . 'ghost-shield.php')) {
+            return true;
+        }
+
+        // Skip if rules file doesn't exist
+        if (!file_exists($this->rules_file)) {
+            return true;
+        }
+
+        return false;
+    }
+
+    /**
+     * Check if rescue mode is active
+     *
+     * Rescue mode allows bypassing the WAF in case of false positives.
+     * This is the fail-safe mechanism.
+     *
+     * @return bool
+     */
+    private function is_rescue_mode()
+    {
+        // 1. Check for rescue key in URL
+        $settings = $this->get_settings();
+        $rescue_key = isset($settings['rescue_key']) ? $settings['rescue_key'] : '';
+
+        if (!empty($rescue_key) && isset($_GET['ghost_rescue'])) {
+            if ($_GET['ghost_rescue'] === $rescue_key) {
+                // Set a cookie to maintain rescue mode for 1 hour
+                setcookie('gs_rescue_mode', md5($rescue_key), time() + 3600, '/');
+                return true;
+            }
+        }
+
+        // 2. Check for rescue cookie
+        if (isset($_COOKIE['gs_rescue_mode']) && !empty($rescue_key)) {
+            if ($_COOKIE['gs_rescue_mode'] === md5($rescue_key)) {
+                return true;
+            }
+        }
+
+        // 3. Check for whitelisted IP
+        $whitelist_ips = isset($settings['whitelist_ips']) ? (array) $settings['whitelist_ips'] : array();
+        $client_ip = $this->get_client_ip();
+
+        if (in_array($client_ip, $whitelist_ips, true)) {
+            return true;
+        }
+
+        return false;
+    }
+
+    /**
+     * Get settings from WordPress options
+     *
+     * Note: At this point, WordPress options API is available since ABSPATH is defined.
+     *
+     * @return array
+     */
+    private function get_settings()
+    {
+        if ($this->settings !== null) {
+            return $this->settings;
+        }
+
+        // Try to get settings from options
+        // Note: This requires the database to be available
+        global $wpdb;
+
+        if (!isset($wpdb) || !$wpdb) {
+            $this->settings = array();
+            return $this->settings;
+        }
+
+        $option_name = 'ghost_shield_settings';
+        $table_name = $wpdb->options;
+
+        // Direct query since we're early in the load process
+        $row = $wpdb->get_row(
+            $wpdb->prepare(
+                "SELECT option_value FROM {$table_name} WHERE option_name = %s LIMIT 1",
+                $option_name
+            )
+        );
+
+        if ($row && !empty($row->option_value)) {
+            $this->settings = maybe_unserialize($row->option_value);
+        } else {
+            $this->settings = array();
+        }
+
+        return $this->settings;
+    }
+
+    /**
+     * Load firewall rules from JSON file
+     *
+     * @return bool True if rules loaded successfully
+     */
+    private function load_rules()
+    {
+        if (!file_exists($this->rules_file)) {
+            return false;
+        }
+
+        $json = file_get_contents($this->rules_file);
+        $rules = json_decode($json, true);
+
+        if (json_last_error() !== JSON_ERROR_NONE) {
+            return false;
+        }
+
+        $this->rules = $rules;
+        return true;
+    }
+
+    /**
+     * Main analysis and blocking logic
+     */
+    private function analyze_and_block()
+    {
+        // Check if WAF is enabled
+        $settings = $this->get_settings();
+        if (isset($settings['waf_enabled']) && $settings['waf_enabled'] === false) {
+            return;
+        }
+
+        // Collect request data
+        $request_data = $this->collect_request_data();
+
+        // Check each attack type
+        $attack_types = array('sqli', 'xss', 'traversal', 'rce', 'lfi');
+
+        foreach ($attack_types as $type) {
+            if (empty($this->rules[$type])) {
+                continue;
+            }
+
+            $matched = $this->check_patterns($request_data, $this->rules[$type]);
+            if ($matched !== false) {
+                $this->block_request($type, $matched);
+            }
+        }
+    }
+
+    /**
+     * Collect all request data for analysis
+     *
+     * @return array
+     */
+    private function collect_request_data()
+    {
+        $data = array();
+
+        // GET parameters
+        if (!empty($_GET)) {
+            foreach ($_GET as $key => $value) {
+                $data[] = $this->decode_value($key);
+                if (is_array($value)) {
+                    $data = array_merge($data, $this->flatten_values($value));
+                } else {
+                    $data[] = $this->decode_value($value);
+                }
+            }
+        }
+
+        // POST parameters
+        if (!empty($_POST)) {
+            foreach ($_POST as $key => $value) {
+                $data[] = $this->decode_value($key);
+                if (is_array($value)) {
+                    $data = array_merge($data, $this->flatten_values($value));
+                } else {
+                    $data[] = $this->decode_value($value);
+                }
+            }
+        }
+
+        // Request URI
+        if (isset($_SERVER['REQUEST_URI'])) {
+            $data[] = $this->decode_value($_SERVER['REQUEST_URI']);
+        }
+
+        // Query string
+        if (isset($_SERVER['QUERY_STRING'])) {
+            $data[] = $this->decode_value($_SERVER['QUERY_STRING']);
+        }
+
+        // User Agent (for scanner detection)
+        if (isset($_SERVER['HTTP_USER_AGENT'])) {
+            $data[] = $_SERVER['HTTP_USER_AGENT'];
+        }
+
+        // Raw body for JSON/XML APIs
+        $raw_input = file_get_contents('php://input');
+        if (!empty($raw_input) && strlen($raw_input) < 100000) {
+            $data[] = $this->decode_value($raw_input);
+        }
+
+        return $data;
+    }
+
+    /**
+     * Flatten nested array values
+     *
+     * @param array $array Array to flatten.
+     * @return array
+     */
+    private function flatten_values($array)
+    {
+        $result = array();
+        foreach ($array as $value) {
+            if (is_array($value)) {
+                $result = array_merge($result, $this->flatten_values($value));
+            } else {
+                $result[] = $this->decode_value($value);
+            }
+        }
+        return $result;
+    }
+
+    /**
+     * Decode value to catch encoding evasion
+     *
+     * @param string $value Value to decode.
+     * @return string
+     */
+    private function decode_value($value)
+    {
+        if (!is_string($value)) {
+            return '';
+        }
+
+        // URL decode multiple times
+        $decoded = $value;
+        for ($i = 0; $i < 3; $i++) {
+            $new = urldecode($decoded);
+            if ($new === $decoded) {
+                break;
+            }
+            $decoded = $new;
+        }
+
+        // HTML entity decode
+        $decoded = html_entity_decode($decoded, ENT_QUOTES, 'UTF-8');
+
+        // Remove null bytes
+        $decoded = str_replace(chr(0), '', $decoded);
+
+        return $decoded;
+    }
+
+    /**
+     * Check patterns against data
+     *
+     * @param array $data     Data to check.
+     * @param array $patterns Regex patterns.
+     * @return string|false   Matched content or false.
+     */
+    private function check_patterns($data, $patterns)
+    {
+        foreach ($data as $value) {
+            if (empty($value) || !is_string($value)) {
+                continue;
+            }
+
+            foreach ($patterns as $pattern) {
+                // Suppress warnings for invalid patterns
+                if (@preg_match($pattern, $value)) {
+                    return $value;
+                }
+            }
+        }
+
+        return false;
+    }
+
+    /**
+     * Block the malicious request
+     *
+     * @param string $type    Attack type.
+     * @param string $payload Matched payload.
+     */
+    private function block_request($type, $payload)
+    {
+        // Log the attack
+        $this->log_attack($type, $payload);
+
+        // Update stats
+        $this->update_stats($type);
+
+        // Set headers
+        if (!headers_sent()) {
+            header('HTTP/1.1 403 Forbidden');
+            header('X-GhostShield-Blocked: ' . strtoupper($type));
+            header('Connection: close');
+        }
+
+        // Display block page
+        $this->display_block_page($type);
+
+        exit;
+    }
+
+    /**
+     * Log attack to file
+     *
+     * @param string $type    Attack type.
+     * @param string $payload Matched payload.
+     */
+    private function log_attack($type, $payload)
+    {
+        $log_dir = WP_CONTENT_DIR . '/ghost-shield-logs';
+        $log_file = $log_dir . '/attacks.log';
+
+        // Create log directory if needed
+        if (!file_exists($log_dir)) {
+            wp_mkdir_p($log_dir);
+            file_put_contents($log_dir . '/.htaccess', "Order deny,allow\nDeny from all");
+            file_put_contents($log_dir . '/index.php', '<?php // Silence is golden');
+        }
+
+        // Prepare log entry
+        $timestamp = date('Y-m-d H:i:s');
+        $ip = $this->get_client_ip();
+        $uri = isset($_SERVER['REQUEST_URI']) ? $_SERVER['REQUEST_URI'] : '';
+        $user_agent = isset($_SERVER['HTTP_USER_AGENT']) ? substr($_SERVER['HTTP_USER_AGENT'], 0, 200) : '';
+        $payload = substr(str_replace(array("\n", "\r", "\t"), ' ', $payload), 0, 500);
+
+        $log_line = sprintf(
+            "[%s] [%s] IP: %s | URI: %s | Payload: %s | UA: %s\n",
+            $timestamp,
+            strtoupper($type),
+            $ip,
+            $uri,
+            addslashes($payload),
+            $user_agent
+        );
+
+        // Rotate log if too large (5MB)
+        if (file_exists($log_file) && filesize($log_file) > 5242880) {
+            rename($log_file, $log_file . '.' . date('Y-m-d-His') . '.bak');
+        }
+
+        file_put_contents($log_file, $log_line, FILE_APPEND | LOCK_EX);
+    }
+
+    /**
+     * Update attack statistics
+     *
+     * @param string $type Attack type.
+     */
+    private function update_stats($type)
+    {
+        global $wpdb;
+
+        if (!isset($wpdb) || !$wpdb) {
+            return;
+        }
+
+        $option_name = 'ghost_shield_attack_stats';
+        $table_name = $wpdb->options;
+
+        // Get current stats
+        $row = $wpdb->get_row(
+            $wpdb->prepare(
+                "SELECT option_value FROM {$table_name} WHERE option_name = %s LIMIT 1",
+                $option_name
+            )
+        );
+
+        $stats = array(
+            'total_blocked' => 0,
+            'sqli_blocked' => 0,
+            'xss_blocked' => 0,
+            'rce_blocked' => 0,
+            'traversal_blocked' => 0,
+            'lfi_blocked' => 0,
+            'last_attack' => null,
+            'daily_stats' => array(),
+        );
+
+        if ($row && !empty($row->option_value)) {
+            $stats = array_merge($stats, maybe_unserialize($row->option_value));
+        }
+
+        // Update counters
+        $stats['total_blocked']++;
+        $type_key = strtolower($type) . '_blocked';
+        if (isset($stats[$type_key])) {
+            $stats[$type_key]++;
+        }
+        $stats['last_attack'] = date('Y-m-d H:i:s');
+
+        // Update daily stats
+        $today = date('Y-m-d');
+        if (!isset($stats['daily_stats'][$today])) {
+            $stats['daily_stats'][$today] = 0;
+        }
+        $stats['daily_stats'][$today]++;
+
+        // Prune old stats (keep 30 days)
+        $cutoff = date('Y-m-d', strtotime('-30 days'));
+        foreach ($stats['daily_stats'] as $date => $count) {
+            if ($date < $cutoff) {
+                unset($stats['daily_stats'][$date]);
+            }
+        }
+
+        // Save stats
+        $serialized = maybe_serialize($stats);
+        if ($row) {
+            $wpdb->update(
+                $table_name,
+                array('option_value' => $serialized),
+                array('option_name' => $option_name)
+            );
+        } else {
+            $wpdb->insert(
+                $table_name,
+                array(
+                    'option_name' => $option_name,
+                    'option_value' => $serialized,
+                    'autoload' => 'no',
+                )
+            );
+        }
+    }
+
+    /**
+     * Get client IP address (handling proxies)
+     *
+     * @return string
+     */
+    private function get_client_ip()
+    {
+        $headers = array(
+            'HTTP_CF_CONNECTING_IP',
+            'HTTP_X_FORWARDED_FOR',
+            'HTTP_X_REAL_IP',
+            'HTTP_CLIENT_IP',
+            'REMOTE_ADDR',
+        );
+
+        foreach ($headers as $header) {
+            if (!empty($_SERVER[$header])) {
+                $ip = $_SERVER[$header];
+                if (strpos($ip, ',') !== false) {
+                    $ips = explode(',', $ip);
+                    $ip = trim($ips[0]);
+                }
+                if (filter_var($ip, FILTER_VALIDATE_IP)) {
+                    return $ip;
+                }
+            }
+        }
+
+        return '0.0.0.0';
+    }
+
+    /**
+     * Display the block page
+     *
+     * @param string $type Attack type.
+     */
+    private function display_block_page($type)
+    {
+        $incident_id = substr(md5(uniqid('', true)), 0, 12);
+        ?>
+        <!DOCTYPE html>
+        <html lang="en">
+
+        <head>
+            <meta charset="UTF-8">
+            <meta name="viewport" content="width=device-width, initial-scale=1.0">
+            <meta name="robots" content="noindex, nofollow">
+            <title>Access Denied | GhostShield Security</title>
+            <style>
+                * {
+                    margin: 0;
+                    padding: 0;
+                    box-sizing: border-box;
+                }
+
+                body {
+                    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+                    background: linear-gradient(135deg, #0f0f23 0%, #1a1a3e 50%, #0d1f3c 100%);
+                    min-height: 100vh;
+                    display: flex;
+                    align-items: center;
+                    justify-content: center;
+                    color: #fff;
+                    overflow: hidden;
+                }
+
+                .container {
+                    text-align: center;
+                    padding: 2rem;
+                    max-width: 600px;
+                    position: relative;
+                    z-index: 1;
+                }
+
+                .shield-icon {
+                    width: 120px;
+                    height: 120px;
+                    margin: 0 auto 1.5rem;
+                    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+                    border-radius: 50%;
+                    display: flex;
+                    align-items: center;
+                    justify-content: center;
+                    font-size: 3.5rem;
+                    box-shadow: 0 20px 60px rgba(102, 126, 234, 0.4);
+                    animation: float 3s ease-in-out infinite;
+                }
+
+                @keyframes float {
+
+                    0%,
+                    100% {
+                        transform: translateY(0);
+                    }
+
+                    50% {
+                        transform: translateY(-10px);
+                    }
+                }
+
+                h1 {
+                    font-size: 2.2rem;
+                    margin-bottom: 0.75rem;
+                    background: linear-gradient(135deg, #ff6b6b, #ff8e53);
+                    -webkit-background-clip: text;
+                    -webkit-text-fill-color: transparent;
+                    background-clip: text;
+                }
+
+                .subtitle {
+                    font-size: 1.1rem;
+                    color: #a8a8b3;
+                    margin-bottom: 1.5rem;
+                    line-height: 1.6;
+                }
+
+                .details {
+                    background: rgba(255, 255, 255, 0.05);
+                    backdrop-filter: blur(10px);
+                    border-radius: 12px;
+                    padding: 1.25rem;
+                    margin-bottom: 1.5rem;
+                    border: 1px solid rgba(255, 255, 255, 0.1);
+                }
+
+                .details p {
+                    color: #8888a8;
+                    font-size: 0.9rem;
+                    line-height: 1.6;
+                }
+
+                .incident-box {
+                    background: rgba(255, 215, 0, 0.1);
+                    border: 1px solid rgba(255, 215, 0, 0.3);
+                    border-radius: 8px;
+                    padding: 1rem;
+                    font-family: 'Monaco', 'Consolas', monospace;
+                    font-size: 0.85rem;
+                    color: #ffd700;
+                    margin-bottom: 1.5rem;
+                }
+
+                .back-btn {
+                    display: inline-block;
+                    padding: 14px 32px;
+                    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+                    color: #fff;
+                    text-decoration: none;
+                    border-radius: 30px;
+                    font-weight: 600;
+                    font-size: 1rem;
+                    transition: all 0.3s ease;
+                    box-shadow: 0 10px 40px rgba(102, 126, 234, 0.3);
+                }
+
+                .back-btn:hover {
+                    transform: translateY(-3px);
+                    box-shadow: 0 15px 50px rgba(102, 126, 234, 0.5);
+                }
+
+                .bg-grid {
+                    position: fixed;
+                    top: 0;
+                    left: 0;
+                    right: 0;
+                    bottom: 0;
+                    background-image:
+                        linear-gradient(rgba(255, 255, 255, 0.03) 1px, transparent 1px),
+                        linear-gradient(90deg, rgba(255, 255, 255, 0.03) 1px, transparent 1px);
+                    background-size: 50px 50px;
+                    pointer-events: none;
+                }
+
+                .glow-orb {
+                    position: fixed;
+                    width: 400px;
+                    height: 400px;
+                    border-radius: 50%;
+                    background: radial-gradient(circle, rgba(102, 126, 234, 0.15) 0%, transparent 70%);
+                    pointer-events: none;
+                }
+
+                .glow-orb.top {
+                    top: -200px;
+                    right: -100px;
+                }
+
+                .glow-orb.bottom {
+                    bottom: -200px;
+                    left: -100px;
+                    background: radial-gradient(circle, rgba(118, 75, 162, 0.15) 0%, transparent 70%);
+                }
+            </style>
+        </head>
+
+        <body>
+            <div class="bg-grid"></div>
+            <div class="glow-orb top"></div>
+            <div class="glow-orb bottom"></div>
+
+            <div class="container">
+                <div class="shield-icon">🛡️</div>
+                <h1>Access Blocked</h1>
+                <p class="subtitle">
+                    GhostShield has detected potentially malicious activity in your request
+                    and blocked it to protect this website.
+                </p>
+
+                <div class="details">
+                    <p>
+                        If you believe this is an error, please contact the website administrator
+                        and provide the incident ID below. This helps us investigate and resolve
+                        any false positives.
+                    </p>
+                </div>
+
+                <div class="incident-box">
+                    Incident ID:
+                    <?php echo esc_html($incident_id); ?><br>
+                    Threat Type:
+                    <?php echo esc_html(strtoupper($type)); ?>
+                </div>
+
+                <a href="javascript:history.back()" class="back-btn">← Return to Safety</a>
+            </div>
+        </body>
+
+        </html>
+        <?php
+    }
+}
+
+// Initialize the MU Guard
+new GhostShield_MU_Guard();

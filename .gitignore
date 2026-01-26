@@ -1,0 +1,56 @@
+# GhostShield Git Ignore
+# =======================
+
+# Dependencies
+/vendor/
+/node_modules/
+
+# IDE & Editors
+.idea/
+.vscode/
+*.sublime-project
+*.sublime-workspace
+*.code-workspace
+
+# OS Files
+.DS_Store
+Thumbs.db
+Desktop.ini
+
+# Logs
+*.log
+/logs/
+
+# Environment
+.env
+.env.local
+.env.*.local
+
+# Build artifacts
+/dist/
+/build/
+
+# PHP
+*.phar
+
+# Composer
+composer.lock
+
+# npm/yarn
+package-lock.json
+yarn.lock
+
+# Testing
+/coverage/
+/.phpunit.result.cache
+/phpunit.xml
+
+# WordPress specific
+wp-config.php
+/wp-content/uploads/
+/wp-content/upgrade/
+/wp-content/cache/
+/wp-content/debug.log
+
+# Plugin specific
+/languages/*.mo
