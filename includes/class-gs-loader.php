@@ -268,10 +268,19 @@ class GS_Loader
             GS_VERSION
         );
 
+        // Enqueue Chart.js
+        wp_enqueue_script(
+            'chart-js',
+            'https://cdn.jsdelivr.net/npm/chart.js',
+            array(),
+            '3.9.1',
+            true
+        );
+
         wp_enqueue_script(
             'ghost-shield-admin',
             GS_PLUGIN_URL . 'assets/js/admin.js',
-            array('jquery'),
+            array('jquery', 'chart-js'),
             GS_VERSION,
             true
         );

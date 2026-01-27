@@ -29,12 +29,12 @@
 - ⏱️ Limitación de intentos de login
 - 📝 Logging de bots y ataques
 
-### Dashboard Premium
-- 📈 Gráfico de actividad (últimos 30 días)
-- 🎯 Contador de amenazas por tipo
-- 📋 Tabla de logs con filtros
-- ⚙️ Panel de configuración completo
-- 🌙 Tema oscuro premium
+### Dashboard Enterprise
+- 🖥️ **Hero Section Unificado**: Estado de seguridad visual y escáner en un solo panel.
+- 📊 **Threat Intel Grid**: Métricas de ataques con sparklines y colores semánticos.
+- 🌙 **Professional Dark Mode**: Tema oscuro estilo SaaS (Slate/Blue).
+- 🖱️ **Sidebar Inteligente**: Acceso rápido y modo rescate compacto.
+- 📈 Gráfico de actividad interactivo con gradientes.
 
 ## 📦 Instalación
 
@@ -68,7 +68,7 @@ ghost-shield/
 ├── ghost-shield.php            # Bootstrapper principal
 ├── uninstall.php               # Limpieza al desinstalar
 ├── assets/
-│   ├── css/admin.css           # Estilos del dashboard
+│   ├── css/admin.css           # Estilos del dashboard (Dark Mode)
 │   └── js/admin.js             # JavaScript admin
 ├── includes/
 │   ├── class-gs-loader.php     # Orquestador Singleton
@@ -79,8 +79,10 @@ ghost-shield/
 │   ├── hardening/
 │   │   ├── class-gs-stealth.php   # Anti-fingerprinting
 │   │   └── class-gs-api-guard.php # Protección REST API
+│   ├── scanner/
+│   │   └── class-gs-scanner.php   # Motor de escaneo
 │   └── admin/
-│       └── class-gs-admin.php  # Dashboard
+│       └── class-gs-admin.php  # Dashboard Enterprise
 ├── mu-loader/
 │   └── ghost-waf.php           # DROP-IN para mu-plugins
 └── languages/                  # Traducciones
@@ -105,10 +107,10 @@ El código sigue las mejores prácticas de WordPress:
 ## 📋 Roadmap
 
 - [x] **Sprint 1**: WAF & MU-Plugin Core
-- [x] **Sprint 2**: Hardening & Stealth (Completado junto con Sprint 1)
-- [ ] **Sprint 3**: Scanner de Integridad del Core
-- [ ] **Sprint 4**: Scanner Heurístico con AJAX Batching
-- [ ] **Sprint 5**: UI/UX Avanzado & Release
+- [x] **Sprint 2**: Hardening & Stealth
+- [x] **Sprint 3**: Scanner de Integridad & Malware
+- [x] **Sprint 4**: URL Cloaking & Advanced Features
+- [x] **Sprint 5**: Enterprise UI/UX Overhaul (Dashboard Redesign)
 
 ## 📄 Licencia
 
