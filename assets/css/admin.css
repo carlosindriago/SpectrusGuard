@@ -1,3 +1,143 @@
+/* =========================================
+   SPECTRUS GUARD: GLOBAL WORDPRESS OVERRIDES
+   Targets: All plugin pages (Dashboard, Scanner, Logs, Settings)
+   ========================================= */
+
+/* Common Selector List for all Plugin Pages */
+.toplevel_page_spectrus-guard,
+.spectrusguard_page_spectrus-guard-scanner,
+.spectrusguard_page_spectrus-guard-logs,
+.spectrusguard_page_spectrus-guard-settings,
+.spectrus-guard_page_spectrus-guard-scanner,
+.spectrus-guard_page_spectrus-guard-logs,
+.spectrus-guard_page_spectrus-guard-settings {
+    /* Shared Variables or Scope */
+}
+
+/* 1. ELIMINATE WORDPRESS MARGINS & PADDING */
+.toplevel_page_spectrus-guard #wpcontent,
+.spectrusguard_page_spectrus-guard-scanner #wpcontent,
+.spectrusguard_page_spectrus-guard-logs #wpcontent,
+.spectrusguard_page_spectrus-guard-settings #wpcontent,
+.spectrus-guard_page_spectrus-guard-scanner #wpcontent,
+.spectrus-guard_page_spectrus-guard-logs #wpcontent,
+.spectrus-guard_page_spectrus-guard-settings #wpcontent {
+    padding-left: 0;
+}
+
+.toplevel_page_spectrus-guard #wpbody-content,
+.spectrusguard_page_spectrus-guard-scanner #wpbody-content,
+.spectrusguard_page_spectrus-guard-logs #wpbody-content,
+.spectrusguard_page_spectrus-guard-settings #wpbody-content,
+.spectrus-guard_page_spectrus-guard-scanner #wpbody-content,
+.spectrus-guard_page_spectrus-guard-logs #wpbody-content,
+.spectrus-guard_page_spectrus-guard-settings #wpbody-content {
+    padding-bottom: 0;
+}
+
+.toplevel_page_spectrus-guard .wrap,
+.spectrusguard_page_spectrus-guard-scanner .wrap,
+.spectrusguard_page_spectrus-guard-logs .wrap,
+.spectrusguard_page_spectrus-guard-settings .wrap,
+.spectrus-guard_page_spectrus-guard-scanner .wrap,
+.spectrus-guard_page_spectrus-guard-logs .wrap,
+.spectrus-guard_page_spectrus-guard-settings .wrap {
+    margin: 0;
+    max-width: 100%;
+}
+
+.toplevel_page_spectrus-guard .auto-fold #wpcontent,
+.spectrusguard_page_spectrus-guard-scanner .auto-fold #wpcontent,
+.spectrusguard_page_spectrus-guard-logs .auto-fold #wpcontent,
+.spectrusguard_page_spectrus-guard-settings .auto-fold #wpcontent,
+.spectrus-guard_page_spectrus-guard-scanner .auto-fold #wpcontent,
+.spectrus-guard_page_spectrus-guard-logs .auto-fold #wpcontent,
+.spectrus-guard_page_spectrus-guard-settings .auto-fold #wpcontent {
+    padding-left: 0;
+}
+
+/* 2. FORCE FULL DARK BACKGROUND */
+.toplevel_page_spectrus-guard #wpcontent,
+.toplevel_page_spectrus-guard #wpbody,
+.toplevel_page_spectrus-guard .sg-dashboard,
+/* Scanner */
+.spectrusguard_page_spectrus-guard-scanner #wpcontent,
+.spectrusguard_page_spectrus-guard-scanner #wpbody,
+.spectrusguard_page_spectrus-guard-scanner .sg-dashboard,
+.spectrus-guard_page_spectrus-guard-scanner #wpcontent,
+.spectrus-guard_page_spectrus-guard-scanner #wpbody,
+.spectrus-guard_page_spectrus-guard-scanner .sg-dashboard,
+/* Logs */
+.spectrusguard_page_spectrus-guard-logs #wpcontent,
+.spectrusguard_page_spectrus-guard-logs #wpbody,
+.spectrusguard_page_spectrus-guard-logs .sg-dashboard,
+.spectrus-guard_page_spectrus-guard-logs #wpcontent,
+.spectrus-guard_page_spectrus-guard-logs #wpbody,
+.spectrus-guard_page_spectrus-guard-logs .sg-dashboard,
+/* Settings */
+.spectrusguard_page_spectrus-guard-settings #wpcontent,
+.spectrusguard_page_spectrus-guard-settings #wpbody,
+.spectrusguard_page_spectrus-guard-settings .sg-dashboard,
+.spectrus-guard_page_spectrus-guard-settings #wpcontent,
+.spectrus-guard_page_spectrus-guard-settings #wpbody,
+.spectrus-guard_page_spectrus-guard-settings .sg-dashboard {
+    background-color: #0f172a !important;
+    /* Slate 900 */
+}
+
+/* 3. INTEGRATE WORDPRESS FOOTER */
+.toplevel_page_spectrus-guard #wpfooter,
+.spectrusguard_page_spectrus-guard-scanner #wpfooter,
+.spectrusguard_page_spectrus-guard-logs #wpfooter,
+.spectrusguard_page_spectrus-guard-settings #wpfooter,
+.spectrus-guard_page_spectrus-guard-scanner #wpfooter,
+.spectrus-guard_page_spectrus-guard-logs #wpfooter,
+.spectrus-guard_page_spectrus-guard-settings #wpfooter {
+    background-color: #0f172a !important;
+    color: #64748b !important;
+    border-top: 1px solid #1e293b;
+    position: relative;
+    right: 0;
+    bottom: 0;
+    left: 0;
+    margin-right: 0;
+    padding: 10px 20px;
+}
+
+.toplevel_page_spectrus-guard #wpfooter a,
+.spectrus-guard_page_spectrus-guard-settings #wpfooter a {
+    /* Generic shorthand cover matches mostly */
+    color: #94a3b8;
+}
+
+.toplevel_page_spectrus-guard #wpfooter #footer-upgrade,
+.spectrusguard_page_spectrus-guard-scanner #wpfooter #footer-upgrade,
+.spectrusguard_page_spectrus-guard-logs #wpfooter #footer-upgrade,
+.spectrusguard_page_spectrus-guard-settings #wpfooter #footer-upgrade,
+.spectrus-guard_page_spectrus-guard-scanner #wpfooter #footer-upgrade,
+.spectrus-guard_page_spectrus-guard-logs #wpfooter #footer-upgrade,
+.spectrus-guard_page_spectrus-guard-settings #wpfooter #footer-upgrade {
+    display: none;
+}
+
+/* 4. ADMIN BAR INTEGRATION */
+.toplevel_page_spectrus-guard #wpadminbar,
+.spectrusguard_page_spectrus-guard-scanner #wpadminbar,
+.spectrusguard_page_spectrus-guard-logs #wpadminbar,
+.spectrusguard_page_spectrus-guard-settings #wpadminbar,
+.spectrus-guard_page_spectrus-guard-scanner #wpadminbar,
+.spectrus-guard_page_spectrus-guard-logs #wpadminbar,
+.spectrus-guard_page_spectrus-guard-settings #wpadminbar {
+    background-color: #0f172a !important;
+    border-bottom: 1px solid #1e293b;
+}
+
+/* Main Dashboard Height Correction */
+.sg-dashboard {
+    min-height: calc(100vh - 32px);
+    box-sizing: border-box;
+}
+
 :root {
     /* Enterprise Dark Palette (Slate/Indigo) */
     --sg-bg-app: #0f172a;
@@ -726,4 +866,133 @@
     .sg-threat-intel-grid {
         grid-template-columns: 1fr;
     }
+}
+
+/* =========================================
+   SETTINGS PAGE COMPONENTS
+   ========================================= */
+
+/* Form Actions */
+.sg-form-actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: 16px;
+    margin-top: 32px;
+}
+
+/* Switches */
+.sg-switch {
+    position: relative;
+    display: inline-block;
+    width: 48px;
+    height: 26px;
+}
+
+.sg-switch input {
+    opacity: 0;
+    width: 0;
+    height: 0;
+}
+
+.sg-slider {
+    position: absolute;
+    cursor: pointer;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background-color: var(--sg-bg-hover);
+    /* Inactive */
+    transition: .4s;
+    border-radius: 26px;
+    border: 1px solid var(--sg-border);
+}
+
+.sg-slider:before {
+    position: absolute;
+    content: "";
+    height: 18px;
+    width: 18px;
+    left: 4px;
+    bottom: 3px;
+    background-color: white;
+    transition: .4s;
+    border-radius: 50%;
+}
+
+input:checked+.sg-slider {
+    background-color: var(--sg-success);
+    border-color: var(--sg-success);
+}
+
+input:focus+.sg-slider {
+    box-shadow: 0 0 1px var(--sg-success);
+}
+
+input:checked+.sg-slider:before {
+    transform: translateX(22px);
+}
+
+/* Form Groups in Cards */
+.sg-settings-card-body {
+    padding: 24px;
+    display: flex;
+    flex-direction: column;
+    gap: 24px;
+}
+
+.sg-control-group {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    padding-bottom: 20px;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.sg-control-group:last-child {
+    border-bottom: none;
+    padding-bottom: 0;
+}
+
+.sg-control-info {
+    flex: 1;
+    padding-right: 20px;
+}
+
+.sg-control-label {
+    display: block;
+    font-size: 15px;
+    font-weight: 600;
+    color: var(--sg-text-primary);
+    margin-bottom: 4px;
+}
+
+.sg-control-desc {
+    font-size: 13px;
+    color: var(--sg-text-secondary);
+    line-height: 1.5;
+    margin: 0;
+}
+
+.sg-control-input {
+    flex-shrink: 0;
+}
+
+/* Text Inputs */
+.sg-input-text,
+.sg-textarea {
+    background: var(--sg-bg-app) !important;
+    border: 1px solid var(--sg-border) !important;
+    color: var(--sg-text-primary) !important;
+    border-radius: var(--sg-radius-md) !important;
+    padding: 8px 12px !important;
+    font-size: 14px !important;
+    width: 100%;
+}
+
+.sg-input-text:focus,
+.sg-textarea:focus {
+    border-color: var(--sg-primary) !important;
+    box-shadow: 0 0 0 1px var(--sg-primary) !important;
+    outline: none;
 }
