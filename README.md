@@ -5,121 +5,121 @@
 ![PHP](https://img.shields.io/badge/PHP-7.4%2B-purple.svg)
 ![License](https://img.shields.io/badge/license-GPL--2.0%2B-orange.svg)
 
-**Sistema de seguridad integral** que intercepta ataques antes de que toquen tu web y camufla tu sitio para que los hackers ni siquiera sepan que usas WordPress.
+**A comprehensive security system** designed to intercept attacks before they reach your site and camouflage your WordPress instance, making it invisible to automated scanners and hackers.
 
-## 🛡️ Características
+## 🛡️ Key Features
 
 ### Web Application Firewall (WAF)
-- ⚡ **MU-Plugin DROP-IN**: Se ejecuta ANTES de cargar WordPress
-- 🔒 Protección contra **SQL Injection**, **XSS**, **RCE**, **Path Traversal**, **LFI**
-- 📋 Reglas Regex actualizables en `rules.json`
-- 🔄 Decodificación multi-capa para detectar evasión de filtros
-- 📊 Logging detallado con rotación automática
+- ⚡ **MU-Plugin DROP-IN**: Executes BEFORE WordPress loads for maximum efficiency.
+- 🔒 **Defense Vector**: Proactive protection against **SQL Injection**, **XSS**, **RCE**, **Path Traversal**, and **LFI**.
+- 📋 **Extensible Ruleset**: Regex-based rules defined in `rules.json`.
+- 🔄 **Multi-Layer Decoding**: Handles encoded payloads to prevent filter evasion.
+- 📊 **Detailed Logging**: Comprehensive attack logging with automatic rotation.
 
 ### Ghost Stealth (Anti-Fingerprinting)
-- 🕵️ Elimina meta tags reveladores (`<meta name="generator">`)
-- 🔇 Limpia cabeceras HTTP (`X-Powered-By`, `Server`)
-- 🎭 Oculta versiones en CSS/JS (`?ver=X.X`)
-- 🚫 Bloquea XML-RPC y pingbacks
-- 🔐 Opción de ocultar `/wp-login.php` con slug personalizado
+- 🕵️ **Metadata Scrubbing**: Removes revealing meta tags (e.g., `<meta name="generator">`).
+- 🔇 **Header Sanitization**: Strips HTTP headers like `X-Powered-By` and `Server`.
+- 🎭 **Asset Obfuscation**: Hides version strings in CSS/JS files (`?ver=X.X`).
+- 🚫 **Protocol Hardening**: Blocks XML-RPC and pingbacks to reduce attack surface.
+- 🔐 **Login Cloaking**: Conceals `/wp-login.php` with a custom slug.
 
 ### API Guard
-- 🛑 Bloquea enumeración de usuarios vía REST API
-- 🍯 **Honeypot** en el formulario de login
-- ⏱️ Limitación de intentos de login
-- 📝 Logging de bots y ataques
+- 🛑 **Enumeration Blocking**: Prevents user enumeration via REST API endpoints.
+- 🍯 **Honeypot Mechanism**: Trap for bots in the login form.
+- ⏱️ **Rate Limiting**: Mitigates brute-force attempts on sensitive endpoints.
+- 📝 **Intrusion Detection**: Logs suspicious bot activity.
 
-### Dashboard Enterprise
-- 🖥️ **Hero Section Unificado**: Estado de seguridad visual y escáner en un solo panel.
-- 📊 **Threat Intel Grid**: Métricas de ataques con sparklines y colores semánticos.
-- 🌙 **Professional Dark Mode**: Tema oscuro estilo SaaS (Slate/Blue).
-- 🖱️ **Sidebar Inteligente**: Acceso rápido y modo rescate compacto.
-- 📈 Gráfico de actividad interactivo con gradientes.
+### Enterprise Dashboard
+- 🖥️ **Unified Hero Section**: Central command center displaying real-time security status and scan results.
+- 📊 **Threat Intel Grid**: Visual metrics for attack vectors with sparklines and semantic status indicators.
+- 🌙 **Professional Dark Mode**: Modern, high-contrast dark theme (Slate/Blue palette) optimized for readability.
+- 🖱️ **Smart Sidebar**: Quick access to critical actions and a compact Rescue Mode panel.
+- 📈 **Interactive Analytics**: Dynamic activity chart visualizing attack trends over the last 30 days.
 
-## 📦 Instalación
+## 📦 Installation
 
-1. Sube la carpeta `GhostShield` a `/wp-content/plugins/`
-2. Activa el plugin en **Plugins > Installed Plugins**
-3. El MU-Plugin se instala automáticamente en `wp-content/mu-plugins/`
-4. Configura en **GhostShield > Settings**
+1. Upload the `GhostShield` directory to `/wp-content/plugins/`.
+2. Activate the plugin via **Plugins > Installed Plugins**.
+3. The MU-Plugin (Must-Use) component automatically installs to `wp-content/mu-plugins/`.
+4. Configure settings via **GhostShield > Settings**.
 
-## ⚙️ Configuración
+## ⚙️ Configuration
 
 ### Rescue Mode (Fail-Safe)
-Si te bloqueas a ti mismo, usa la URL de rescate:
+If you accidentally lock yourself out, use the designated rescue URL:
 ```
-https://tusitio.com/?ghost_rescue=TU_CLAVE_SECRETA
+https://yoursite.com/?ghost_rescue=YOUR_SECRET_KEY
 ```
 
-La clave se genera automáticamente y está disponible en **GhostShield > Dashboard**.
+The secret key is automatically generated and can be found in **GhostShield > Dashboard**.
 
-### Whitelist de IPs
-Agrega IPs que nunca serán bloqueadas en **Settings > IP Whitelist**.
+### IP Whitelist
+add trusted IP addresses that should never be blocked in **Settings > IP Whitelist**.
 
-### Ocultar Login
-1. Activa "Hide Login Page" en Settings
-2. Define tu slug personalizado (ej: `mi-acceso-secreto`)
-3. Accede a tu login en `https://tusitio.com/mi-acceso-secreto`
+### Login Cloaking
+1. Enable "Hide Login Page" in Settings.
+2. Define your custom slug (e.g., `my-secret-access`).
+3. Access your administration panel via `https://yoursite.com/my-secret-access`.
 
-## 📂 Estructura del Proyecto
+## 📂 Project Structure
 
 ```
 ghost-shield/
-├── ghost-shield.php            # Bootstrapper principal
-├── uninstall.php               # Limpieza al desinstalar
+├── ghost-shield.php            # Main Bootstrapper
+├── uninstall.php               # Cleanup Routine
 ├── assets/
-│   ├── css/admin.css           # Estilos del dashboard (Dark Mode)
-│   └── js/admin.js             # JavaScript admin
+│   ├── css/admin.css           # Dashboard Styles (Enterprise Dark Theme)
+│   └── js/admin.js             # Admin Interactions
 ├── includes/
-│   ├── class-gs-loader.php     # Orquestador Singleton
-│   ├── class-gs-logger.php     # Sistema de logging
+│   ├── class-gs-loader.php     # Singleton Orchestrator
+│   ├── class-gs-logger.php     # Logging System
 │   ├── waf/
-│   │   ├── class-gs-firewall.php  # Motor WAF
-│   │   └── rules.json          # Reglas Regex
+│   │   ├── class-gs-firewall.php  # WAF Engine
+│   │   └── rules.json          # Regex Ruleset
 │   ├── hardening/
-│   │   ├── class-gs-stealth.php   # Anti-fingerprinting
-│   │   └── class-gs-api-guard.php # Protección REST API
+│   │   ├── class-gs-stealth.php   # Anti-fingerprinting Module
+│   │   └── class-gs-api-guard.php # REST API Protection
 │   ├── scanner/
-│   │   └── class-gs-scanner.php   # Motor de escaneo
+│   │   └── class-gs-scanner.php   # Integrity Scanner Engine
 │   └── admin/
-│       └── class-gs-admin.php  # Dashboard Enterprise
+│       └── class-gs-admin.php  # Enterprise Dashboard Controller
 ├── mu-loader/
-│   └── ghost-waf.php           # DROP-IN para mu-plugins
-└── languages/                  # Traducciones
+│   └── ghost-waf.php           # MU-Plugin DROP-IN
+└── languages/                  # Localization Files
 ```
 
-## 🔧 Patrones de Diseño
+## 🔧 Design Patterns
 
-- **Singleton**: `GS_Loader` - Única instancia del orquestador
-- **Factory**: `GS_Firewall` - Crea matchers según tipo de ataque
-- **Observer**: Hooks para alertas y notificaciones
+- **Singleton**: `GS_Loader` - Ensures a single instance of the main orchestrator.
+- **Factory**: `GS_Firewall` - Instantiates specific matchers based on attack vectors.
+- **Observer**: Hooks into WordPress actions for alerts and notifications.
 
-## 🔐 Mejores Prácticas de Seguridad
+## 🔐 Security Best Practices
 
-El código sigue las mejores prácticas de WordPress:
+The codebase adheres to strict WordPress security standards:
 
-- ✅ `esc_html()`, `esc_attr()` para escape de output
-- ✅ `sanitize_text_field()` para sanitización de input
-- ✅ `wp_verify_nonce()` en todas las llamadas AJAX
-- ✅ `current_user_can('manage_options')` para capability checks
-- ✅ Prepared statements para consultas DB
+- ✅ `esc_html()`, `esc_attr()` for output escaping.
+- ✅ `sanitize_text_field()` for input sanitization.
+- ✅ `wp_verify_nonce()` for CSRF protection on all AJAX calls.
+- ✅ `current_user_can('manage_options')` for capability checks.
+- ✅ Prepared statements for all database queries.
 
 ## 📋 Roadmap
 
-- [x] **Sprint 1**: WAF & MU-Plugin Core
-- [x] **Sprint 2**: Hardening & Stealth
-- [x] **Sprint 3**: Scanner de Integridad & Malware
+- [x] **Sprint 1**: WAF Core & MU-Plugin Implementation
+- [x] **Sprint 2**: Hardening & Stealth Module
+- [x] **Sprint 3**: Integrity & Malware Scanner
 - [x] **Sprint 4**: URL Cloaking & Advanced Features
 - [x] **Sprint 5**: Enterprise UI/UX Overhaul (Dashboard Redesign)
 
-## 📄 Licencia
+## 📄 License
 
-GPL v2 o posterior. Consulta [LICENSE](LICENSE) para más detalles.
+GPL v2 or later. See [LICENSE](LICENSE) for details.
 
-## 👨‍💻 Autor
+## 👨‍💻 Author
 
-Desarrollado por Carlos Developer
+Developed by Carlos Developer
 
 ---
 
-**⚠️ Nota**: Este plugin está diseñado para sitios en producción. Siempre mantén un backup y prueba en staging primero.
+**⚠️ Note**: This plugin is designed for production environments. Always maintain a backup and test in a staging environment before deployment.
