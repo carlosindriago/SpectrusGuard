@@ -50,7 +50,55 @@ class SG_Admin
         add_action('wp_ajax_sg_get_stats', array($this, 'ajax_get_stats'));
         add_action('wp_ajax_sg_clear_logs', array($this, 'ajax_clear_logs'));
         add_action('wp_ajax_sg_whitelist_ip', array($this, 'ajax_whitelist_ip'));
+        add_action('wp_ajax_sg_whitelist_ip', array($this, 'ajax_whitelist_ip'));
         add_action('wp_ajax_sg_run_scan', array($this, 'ajax_run_scan'));
+        add_action('wp_ajax_sg_write_htaccess', array($this, 'ajax_write_htaccess'));
+
+        // 2FA User Settings Save Hook
+        add_action('admin_init', array($this, 'save_user_security_settings'));
+    }
+
+    /**
+     * Save 2FA settings for the current user
+     */
+    public function save_user_security_settings()
+    {
+        if (isset($_POST['spectrus_2fa_method']) && isset($_POST['spectrus_security_nonce'])) {
+            if (!wp_verify_nonce($_POST['spectrus_security_nonce'], 'spectrus_save_security')) {
+                return;
+            }
+
+            $user_id = get_current_user_id();
+            $method = sanitize_text_field($_POST['spectrus_2fa_method']);
+
+            // Validate App Setup if selected
+            if ($method === 'app') {
+                $code = isset($_POST['spectrus_2fa_verify_code']) ? sanitize_text_field($_POST['spectrus_2fa_verify_code']) : '';
+                $secret = isset($_POST['spectrus_2fa_secret']) ? sanitize_text_field($_POST['spectrus_2fa_secret']) : '';
+
+                if (empty($code)) {
+                    $redirect = add_query_arg(array('page' => 'spectrus-guard-settings', 'tab' => 'security', 'error' => 'missing_code'), admin_url('admin.php'));
+                    wp_redirect($redirect);
+                    exit;
+                }
+
+                if (class_exists('Spectrus_TOTP_Engine') && !Spectrus_TOTP_Engine::verify_code($secret, $code)) {
+                    $redirect = add_query_arg(array('page' => 'spectrus-guard-settings', 'tab' => 'security', 'error' => 'invalid_code'), admin_url('admin.php'));
+                    wp_redirect($redirect);
+                    exit;
+                }
+
+                // If valid, save the secret
+                update_user_meta($user_id, 'spectrus_2fa_secret', $secret);
+            }
+
+            update_user_meta($user_id, 'spectrus_2fa_method', $method);
+
+            // Redirect to avoid resubmission
+            $redirect = add_query_arg(array('page' => 'spectrus-guard-settings', 'tab' => 'security', 'updated' => 'true'), admin_url('admin.php'));
+            wp_redirect($redirect);
+            exit;
+        }
     }
 
     /**
@@ -115,6 +163,7 @@ class SG_Admin
             'spectrus_shield_settings',
             array($this, 'sanitize_settings')
         );
+        register_setting('spectrus_cloak_settings', 'sg_cloak_active', 'absint');
     }
 
     /**
@@ -125,64 +174,68 @@ class SG_Admin
      */
     public function sanitize_settings($input)
     {
-        $sanitized = array();
+        // 1. Get existing settings to act as base (preserve values from other tabs)
+        $current_settings = get_option('spectrus_shield_settings', array());
+        $sanitized = $current_settings;
 
-        // Boolean fields
-        $boolean_fields = array(
-            'waf_enabled',
-            'log_attacks',
-            'block_xmlrpc',
-            'hide_wp_version',
-            'protect_api',
-            'hide_login',
-            'block_author_pages',
-            'url_cloaking_enabled',
-        );
+        // 2. Determine Context
+        $context = isset($input['form_context']) ? $input['form_context'] : 'general';
 
-        foreach ($boolean_fields as $field) {
-            $sanitized[$field] = !empty($input[$field]);
-        }
+        // 3. Define Fields per Context
+        if ($context === 'cloak') {
+            // --- CLOAK TAB ---
+            $sanitized['url_cloaking_enabled'] = !empty($input['url_cloaking_enabled']);
 
-        // Text fields
-        if (isset($input['rescue_key'])) {
-            $sanitized['rescue_key'] = sanitize_text_field($input['rescue_key']);
-        }
-
-        if (isset($input['login_slug'])) {
-            $sanitized['login_slug'] = sanitize_title($input['login_slug']);
-        }
-
-        // IP Whitelist (text area to array)
-        if (isset($input['whitelist_ips_text'])) {
-            $lines = explode("\n", $input['whitelist_ips_text']);
-            $ips = array();
-            foreach ($lines as $line) {
-                $ip = trim($line);
-                if (filter_var($ip, FILTER_VALIDATE_IP)) {
-                    $ips[] = $ip;
-                }
+            // Rescue key is generated/read-only in UI, but if we ever decide to make it editable:
+            if (isset($input['rescue_key'])) {
+                $sanitized['rescue_key'] = sanitize_text_field($input['rescue_key']);
             }
-            $sanitized['whitelist_ips'] = $ips;
-        }
 
-        // Numeric fields
-        if (isset($input['max_login_attempts'])) {
-            $sanitized['max_login_attempts'] = absint($input['max_login_attempts']);
-        }
+        } else {
+            // --- GENERAL TAB (Default) ---
 
-        if (isset($input['login_lockout_time'])) {
-            // User inputs minutes, we store seconds
-            $sanitized['login_lockout_time'] = max(1, absint($input['login_lockout_time'])) * 60;
-        }
+            // Boolean fields (Checkboxes)
+            $general_bools = array(
+                'waf_enabled',
+                'log_attacks',
+                'block_xmlrpc',
+                'hide_wp_version',
+                'protect_api',
+                'hide_login',
+                'block_author_pages',
+            );
 
-        // Handle URL Cloaking .htaccess rules
-        if (class_exists('SG_URL_Cloaker')) {
-            if (!empty($sanitized['url_cloaking_enabled'])) {
-                // Add .htaccess rules if cloaking is enabled
-                SG_URL_Cloaker::add_htaccess_rules();
-            } else {
-                // Remove .htaccess rules if cloaking is disabled
-                SG_URL_Cloaker::remove_htaccess_rules();
+            foreach ($general_bools as $field) {
+                // If the form was submitted, presence = true, absence = false
+                $sanitized[$field] = !empty($input[$field]);
+            }
+
+            // Text fields
+            if (isset($input['login_slug'])) {
+                $sanitized['login_slug'] = sanitize_title($input['login_slug']);
+            }
+
+            // IP Whitelist (text area to array)
+            if (isset($input['whitelist_ips_text'])) {
+                $lines = explode("\n", $input['whitelist_ips_text']);
+                $ips = array();
+                foreach ($lines as $line) {
+                    $ip = trim($line);
+                    if (filter_var($ip, FILTER_VALIDATE_IP)) {
+                        $ips[] = $ip;
+                    }
+                }
+                $sanitized['whitelist_ips'] = $ips;
+            }
+
+            // Numeric fields
+            if (isset($input['max_login_attempts'])) {
+                $sanitized['max_login_attempts'] = absint($input['max_login_attempts']);
+            }
+
+            if (isset($input['login_lockout_time'])) {
+                // User inputs minutes, we store seconds
+                $sanitized['login_lockout_time'] = max(1, absint($input['login_lockout_time'])) * 60;
             }
         }
 
@@ -559,7 +612,7 @@ class SG_Admin
                 // ... Actually I used a link to settings tab=whitelist in Quick Actions, so this might be obsolete or valid for another button?
                 // Let's keep it if I restore the button or for other pages.
             });
-                                                });
+                                                                                                                                                                                });
         </script>
         <?php
     }
@@ -681,6 +734,7 @@ class SG_Admin
     public function render_settings_page()
     {
         $settings = $this->loader->get_settings();
+        $active_tab = isset($_GET['tab']) ? $_GET['tab'] : 'general';
         ?>
         <div class="wrap sg-dashboard">
             <div class="sg-dashboard-header">
@@ -689,264 +743,292 @@ class SG_Admin
                     <?php esc_html_e('SpectrusGuard Configuration', 'spectrus-guard'); ?>
                 </h1>
                 <div class="sg-header-actions">
-                    <button type="submit" form="sg-settings-form" class="sg-btn sg-btn-primary">
-                        <span class="dashicons dashicons-saved"></span>
-                        <?php esc_html_e('Save Changes', 'spectrus-guard'); ?>
-                    </button>
+                    <?php if ($active_tab === 'general'): ?>
+                        <button type="submit" form="sg-settings-form" class="sg-btn sg-btn-primary">
+                            <span class="dashicons dashicons-saved"></span>
+                            <?php esc_html_e('Save Changes', 'spectrus-guard'); ?>
+                        </button>
+                    <?php elseif ($active_tab === 'cloak'): ?>
+                        <button type="submit" form="sg-cloak-form" class="sg-btn sg-btn-primary">
+                            <span class="dashicons dashicons-saved"></span>
+                            <?php esc_html_e('Save Configuration', 'spectrus-guard'); ?>
+                        </button>
+                    <?php else: ?>
+                        <button type="submit" form="sg-security-form" class="sg-btn sg-btn-primary">
+                            <span class="dashicons dashicons-saved"></span>
+                            <?php esc_html_e('Save Security', 'spectrus-guard'); ?>
+                        </button>
+                    <?php endif; ?>
                 </div>
             </div>
 
-            <form method="post" action="options.php" id="sg-settings-form">
-                <?php settings_fields('spectrus_shield_settings_group'); ?>
+            <!-- Tabs Navigation -->
+            <?php
+            if (isset($_GET['error'])) {
+                $error_message = '';
+                if ($_GET['error'] === 'invalid_code') {
+                    $error_message = __('Invalid verification code. Please scan the QR code and try again.', 'spectrus-guard');
+                } elseif ($_GET['error'] === 'missing_code') {
+                    $error_message = __('Please enter the verification code from your authenticator app.', 'spectrus-guard');
+                }
 
-                <div class="sg-main-layout">
-                    <!-- Column 1: Core Security -->
-                    <div class="sg-content-column"
-                        style="grid-column: span 12; display: grid; grid-template-columns: 1fr 1fr; gap: 24px;">
+                if ($error_message) {
+                    echo '<div class="notice notice-error is-dismissible" style="margin: 20px 0 10px;"><p>' . esc_html($error_message) . '</p></div>';
+                }
+            }
+            if (isset($_GET['updated']) && $_GET['updated'] === 'true') {
+                echo '<div class="notice notice-success is-dismissible" style="margin: 20px 0 10px;"><p>' . esc_html__('Settings saved successfully.', 'spectrus-guard') . '</p></div>';
+            }
+            ?>
+            <h2 class="nav-tab-wrapper" style="margin-bottom: 20px; border-bottom: 1px solid #334155;">
+                <a href="?page=spectrus-guard-settings&tab=general"
+                    class="nav-tab <?php echo $active_tab == 'general' ? 'nav-tab-active' : ''; ?>"
+                    style="background: transparent; color: #f8fafc; border-color: #334155; margin-left: 0;">
+                    <?php esc_html_e('General Settings', 'spectrus-guard'); ?>
+                </a>
+                <a href="?page=spectrus-guard-settings&tab=security"
+                    class="nav-tab <?php echo $active_tab == 'security' ? 'nav-tab-active' : ''; ?>"
+                    style="background: transparent; color: #f8fafc; border-color: #334155;">
+                    <?php esc_html_e('My Security (2FA)', 'spectrus-guard'); ?>
+                </a>
+                <a href="?page=spectrus-guard-settings&tab=cloak"
+                    class="nav-tab <?php echo $active_tab == 'cloak' ? 'nav-tab-active' : ''; ?>"
+                    style="background: transparent; color: #f8fafc; border-color: #334155;">
+                    👻 <?php esc_html_e('Ghost Cloak', 'spectrus-guard'); ?>
+                </a>
+            </h2>
 
-                        <!-- WAF Settings -->
-                        <div class="sg-card">
-                            <div class="sg-card-header">
-                                <h2><?php esc_html_e('Firewall Core', 'spectrus-guard'); ?></h2>
-                            </div>
-                            <div class="sg-settings-card-body">
+            <?php if ($active_tab === 'general'): ?>
+                <form method="post" action="options.php" id="sg-settings-form">
+                    <?php settings_fields('spectrus_shield_settings_group'); ?>
+                    <input type="hidden" name="spectrus_shield_settings[form_context]" value="general">
 
-                                <div class="sg-control-group">
-                                    <div class="sg-control-info">
-                                        <label
-                                            class="sg-control-label"><?php esc_html_e('Web Application Firewall', 'spectrus-guard'); ?></label>
-                                        <p class="sg-control-desc">
-                                            <?php esc_html_e('Active protection against SQLi, XSS, and RCE attacks.', 'spectrus-guard'); ?>
-                                        </p>
-                                    </div>
-                                    <div class="sg-control-input">
-                                        <label class="sg-switch">
-                                            <input type="checkbox" name="spectrus_shield_settings[waf_enabled]" value="1" <?php checked($settings['waf_enabled'] ?? true); ?>>
-                                            <span class="sg-slider"></span>
-                                        </label>
-                                    </div>
+                    <div class="sg-main-layout">
+                        <!-- Column 1: Core Security -->
+                        <div class="sg-content-column"
+                            style="grid-column: span 12; display: grid; grid-template-columns: 1fr 1fr; gap: 24px;">
+
+                            <!-- WAF Settings -->
+                            <div class="sg-card">
+                                <div class="sg-card-header">
+                                    <h2><?php esc_html_e('Firewall Core', 'spectrus-guard'); ?></h2>
                                 </div>
+                                <div class="sg-settings-card-body">
 
-                                <div class="sg-control-group">
-                                    <div class="sg-control-info">
-                                        <label
-                                            class="sg-control-label"><?php esc_html_e('Attack Logging', 'spectrus-guard'); ?></label>
-                                        <p class="sg-control-desc">
-                                            <?php esc_html_e('Keep a record of all blocked malicious attempts.', 'spectrus-guard'); ?>
-                                        </p>
-                                    </div>
-                                    <div class="sg-control-input">
-                                        <label class="sg-switch">
-                                            <input type="checkbox" name="spectrus_shield_settings[log_attacks]" value="1" <?php checked($settings['log_attacks'] ?? true); ?>>
-                                            <span class="sg-slider"></span>
-                                        </label>
-                                    </div>
-                                </div>
-
-                                <div class="sg-control-group" style="display: block;">
-                                    <label class="sg-control-label"
-                                        style="margin-bottom: 8px;"><?php esc_html_e('Rescue Key', 'spectrus-guard'); ?></label>
-                                    <input type="text" name="spectrus_shield_settings[rescue_key]"
-                                        value="<?php echo esc_attr($settings['rescue_key'] ?? ''); ?>" class="sg-input-text"
-                                        placeholder="e.g. secret-bypass-key">
-                                    <p class="sg-control-desc" style="margin-top: 8px;">
-                                        <?php esc_html_e('Use ?rescue_key=YOUR_KEY to bypass the WAF if you get locked out.', 'spectrus-guard'); ?>
-                                    </p>
-                                </div>
-
-                            </div>
-                        </div>
-
-                        <!-- Stealth Settings -->
-                        <div class="sg-card">
-                            <div class="sg-card-header">
-                                <h2><?php esc_html_e('Stealth Mode', 'spectrus-guard'); ?></h2>
-                            </div>
-                            <div class="sg-settings-card-body">
-
-                                <div class="sg-control-group">
-                                    <div class="sg-control-info">
-                                        <label
-                                            class="sg-control-label"><?php esc_html_e('Hide WordPress Version', 'spectrus-guard'); ?></label>
-                                        <p class="sg-control-desc">
-                                            <?php esc_html_e('Prevent scanners from detecting your WP version.', 'spectrus-guard'); ?>
-                                        </p>
-                                    </div>
-                                    <div class="sg-control-input">
-                                        <label class="sg-switch">
-                                            <input type="checkbox" name="spectrus_shield_settings[hide_wp_version]" value="1"
-                                                <?php checked($settings['hide_wp_version'] ?? true); ?>>
-                                            <span class="sg-slider"></span>
-                                        </label>
-                                    </div>
-                                </div>
-
-                                <div class="sg-control-group">
-                                    <div class="sg-control-info">
-                                        <label
-                                            class="sg-control-label"><?php esc_html_e('Disable XML-RPC', 'spectrus-guard'); ?></label>
-                                        <p class="sg-control-desc">
-                                            <?php esc_html_e('Block old API often used for brute force attacks.', 'spectrus-guard'); ?>
-                                        </p>
-                                    </div>
-                                    <div class="sg-control-input">
-                                        <label class="sg-switch">
-                                            <input type="checkbox" name="spectrus_shield_settings[block_xmlrpc]" value="1" <?php checked($settings['block_xmlrpc'] ?? true); ?>>
-                                            <span class="sg-slider"></span>
-                                        </label>
-                                    </div>
-                                </div>
-
-                                <div class="sg-control-group">
-                                    <div class="sg-control-info">
-                                        <label
-                                            class="sg-control-label"><?php esc_html_e('Protect REST API', 'spectrus-guard'); ?></label>
-                                        <p class="sg-control-desc">
-                                            <?php esc_html_e('Stop user enumeration via /wp-json/wp/v2/users.', 'spectrus-guard'); ?>
-                                        </p>
-                                    </div>
-                                    <div class="sg-control-input">
-                                        <label class="sg-switch">
-                                            <input type="checkbox" name="spectrus_shield_settings[protect_api]" value="1" <?php checked($settings['protect_api'] ?? true); ?>>
-                                            <span class="sg-slider"></span>
-                                        </label>
-                                    </div>
-                                </div>
-
-                            </div>
-                        </div>
-
-                        <!-- Login Protection -->
-                        <div class="sg-card">
-                            <div class="sg-card-header">
-                                <h2><?php esc_html_e('Login Security', 'spectrus-guard'); ?></h2>
-                            </div>
-                            <div class="sg-settings-card-body">
-                                <div class="sg-control-group">
-                                    <div class="sg-control-info">
-                                        <label
-                                            class="sg-control-label"><?php esc_html_e('Hide Login Page', 'spectrus-guard'); ?></label>
-                                        <p class="sg-control-desc">
-                                            <?php esc_html_e('Disable wp-login.php and use a custom slug.', 'spectrus-guard'); ?>
-                                        </p>
-                                    </div>
-                                    <div class="sg-control-input">
-                                        <label class="sg-switch">
-                                            <input type="checkbox" name="spectrus_shield_settings[hide_login]" value="1" <?php checked($settings['hide_login'] ?? false); ?>>
-                                            <span class="sg-slider"></span>
-                                        </label>
-                                    </div>
-                                </div>
-
-                                <div class="sg-control-group" style="display: block;">
-                                    <label class="sg-control-label"
-                                        style="margin-bottom: 8px;"><?php esc_html_e('Custom Login Slug', 'spectrus-guard'); ?></label>
-                                    <div style="display: flex; align-items: center; gap: 8px;">
-                                        <span
-                                            style="color: var(--sg-text-secondary);"><?php echo esc_url(home_url('/')); ?></span>
-                                        <input type="text" name="spectrus_shield_settings[login_slug]"
-                                            value="<?php echo esc_attr($settings['login_slug'] ?? 'sg-login'); ?>"
-                                            class="sg-input-text" style="width: auto; flex: 1;">
-                                    </div>
-                                </div>
-
-                                <div class="sg-control-group">
-                                    <div style="width: 100%; display: grid; grid-template-columns: 1fr 1fr; gap: 16px;">
-                                        <div>
+                                    <div class="sg-control-group">
+                                        <div class="sg-control-info">
                                             <label
-                                                class="sg-control-label"><?php esc_html_e('Max Attempts', 'spectrus-guard'); ?></label>
-                                            <input type="number" name="spectrus_shield_settings[max_login_attempts]"
-                                                value="<?php echo esc_attr($settings['max_login_attempts'] ?? 5); ?>"
-                                                class="sg-input-text">
+                                                class="sg-control-label"><?php esc_html_e('Web Application Firewall', 'spectrus-guard'); ?></label>
+                                            <p class="sg-control-desc">
+                                                <?php esc_html_e('Active protection against SQLi, XSS, and RCE attacks.', 'spectrus-guard'); ?>
+                                            </p>
                                         </div>
-                                        <div>
-                                            <label
-                                                class="sg-control-label"><?php esc_html_e('Lockout (min)', 'spectrus-guard'); ?></label>
-                                            <input type="number" name="spectrus_shield_settings[login_lockout_time]"
-                                                value="<?php echo esc_attr(intval(($settings['login_lockout_time'] ?? 900) / 60)); ?>"
-                                                class="sg-input-text">
+                                        <div class="sg-control-input">
+                                            <label class="sg-switch">
+                                                <input type="checkbox" name="spectrus_shield_settings[waf_enabled]" value="1" <?php checked($settings['waf_enabled'] ?? true); ?>>
+                                                <span class="sg-slider"></span>
+                                            </label>
                                         </div>
                                     </div>
-                                </div>
-                            </div>
-                        </div>
 
-                        <!-- Access Control -->
-                        <div class="sg-card">
-                            <div class="sg-card-header">
-                                <h2><?php esc_html_e('Access Control', 'spectrus-guard'); ?></h2>
-                            </div>
-                            <div class="sg-settings-card-body">
-                                <div class="sg-control-group" style="display: block;">
-                                    <label class="sg-control-label"
-                                        style="margin-bottom: 8px;"><?php esc_html_e('IP Whitelist', 'spectrus-guard'); ?></label>
-                                    <textarea name="spectrus_shield_settings[whitelist_ips_text]" rows="5"
-                                        class="sg-textarea code"><?php
-                                        echo esc_textarea(implode("\n", $settings['whitelist_ips'] ?? array()));
-                                        ?></textarea>
-                                    <p class="sg-control-desc" style="margin-top: 8px;">
-                                        <?php esc_html_e('One IP per line. These IPs bypass WAF rules.', 'spectrus-guard'); ?>
-                                    </p>
-                                </div>
-                            </div>
-                        </div>
+                                    <div class="sg-control-group">
+                                        <div class="sg-control-info">
+                                            <label
+                                                class="sg-control-label"><?php esc_html_e('Attack Logging', 'spectrus-guard'); ?></label>
+                                            <p class="sg-control-desc">
+                                                <?php esc_html_e('Keep a record of all blocked malicious attempts.', 'spectrus-guard'); ?>
+                                            </p>
+                                        </div>
+                                        <div class="sg-control-input">
+                                            <label class="sg-switch">
+                                                <input type="checkbox" name="spectrus_shield_settings[log_attacks]" value="1" <?php checked($settings['log_attacks'] ?? true); ?>>
+                                                <span class="sg-slider"></span>
+                                            </label>
+                                        </div>
+                                    </div>
 
-                    </div>
-
-                    <!-- Full Width: URL Cloaking -->
-                    <div class="sg-content-column" style="grid-column: span 12;">
-                        <div class="sg-card">
-                            <div class="sg-card-header">
-                                <h2><?php esc_html_e('Advanced: URL Cloaking', 'spectrus-guard'); ?></h2>
-                            </div>
-                            <div class="sg-settings-card-body">
-                                <div class="sg-control-group">
-                                    <div class="sg-control-info">
-                                        <label
-                                            class="sg-control-label"><?php esc_html_e('Enable URL Cloaking', 'spectrus-guard'); ?></label>
-                                        <p class="sg-control-desc">
-                                            <?php esc_html_e('Rewrite standard WordPress paths like /wp-content/ to hide them from sensors.', 'spectrus-guard'); ?>
+                                    <div class="sg-control-group" style="display: block;">
+                                        <label class="sg-control-label"
+                                            style="margin-bottom: 8px;"><?php esc_html_e('Rescue Key', 'spectrus-guard'); ?></label>
+                                        <input type="text" name="spectrus_shield_settings[rescue_key]"
+                                            value="<?php echo esc_attr($settings['rescue_key'] ?? ''); ?>" class="sg-input-text"
+                                            placeholder="e.g. secret-bypass-key">
+                                        <p class="sg-control-desc" style="margin-top: 8px;">
+                                            <?php esc_html_e('Use ?rescue_key=YOUR_KEY to bypass the WAF if you get locked out.', 'spectrus-guard'); ?>
                                         </p>
                                     </div>
-                                    <div class="sg-control-input">
-                                        <label class="sg-switch">
-                                            <input type="checkbox" name="spectrus_shield_settings[url_cloaking_enabled]"
-                                                value="1" <?php checked($settings['url_cloaking_enabled'] ?? false); ?>>
-                                            <span class="sg-slider"></span>
-                                        </label>
-                                    </div>
-                                </div>
 
-                                <?php if (!empty($settings['url_cloaking_enabled']) && class_exists('SG_URL_Cloaker')): ?>
-                                    <div
-                                        style="background: var(--sg-bg-app); padding: 16px; border-radius: 8px; border: 1px solid var(--sg-border);">
-                                        <?php $server_type = SG_URL_Cloaker::detect_server(); ?>
-                                        <?php if (in_array($server_type, array('apache', 'litespeed'), true)): ?>
-                                            <?php if (SG_URL_Cloaker::htaccess_has_rules()): ?>
-                                                <p class="sg-start-item" style="color: var(--sg-success);">✅
-                                                    <?php esc_html_e('.htaccess rules are active', 'spectrus-guard'); ?></p>
-                                            <?php else: ?>
-                                                <p class="sg-start-item" style="color: var(--sg-warning);">⚠️
-                                                    <?php esc_html_e('Rules pending. Click Save to apply.', 'spectrus-guard'); ?></p>
-                                            <?php endif; ?>
-                                        <?php elseif ($server_type === 'nginx'): ?>
-                                            <div class="sg-alert critical"
-                                                style="padding: 12px; border-radius: 8px; background: var(--sg-danger-bg); border: 1px solid var(--sg-danger);">
-                                                <strong>🚨 Nginx Detected</strong>
-                                                <p style="margin: 4px 0;">
-                                                    <?php esc_html_e('You must manually apply these rules:', 'spectrus-guard'); ?></p>
-                                                <pre
-                                                    style="background: #000; padding: 10px; border-radius: 4px; overflow-x: auto; color: #fbbf24;"><?php echo esc_html(SG_URL_Cloaker::generate_nginx_rules()); ?></pre>
+                                </div>
+                            </div>
+
+                            <!-- Stealth Settings -->
+                            <div class="sg-card">
+                                <div class="sg-card-header">
+                                    <h2><?php esc_html_e('Stealth Mode', 'spectrus-guard'); ?></h2>
+                                </div>
+                                <div class="sg-settings-card-body">
+
+                                    <div class="sg-control-group">
+                                        <div class="sg-control-info">
+                                            <label
+                                                class="sg-control-label"><?php esc_html_e('Hide WordPress Version', 'spectrus-guard'); ?></label>
+                                            <p class="sg-control-desc">
+                                                <?php esc_html_e('Prevent scanners from detecting your WP version.', 'spectrus-guard'); ?>
+                                            </p>
+                                        </div>
+                                        <div class="sg-control-input">
+                                            <label class="sg-switch">
+                                                <input type="checkbox" name="spectrus_shield_settings[hide_wp_version]" value="1"
+                                                    <?php checked($settings['hide_wp_version'] ?? true); ?>>
+                                                <span class="sg-slider"></span>
+                                            </label>
+                                        </div>
+                                    </div>
+
+                                    <div class="sg-control-group">
+                                        <div class="sg-control-info">
+                                            <label
+                                                class="sg-control-label"><?php esc_html_e('Disable XML-RPC', 'spectrus-guard'); ?></label>
+                                            <p class="sg-control-desc">
+                                                <?php esc_html_e('Block old API often used for brute force attacks.', 'spectrus-guard'); ?>
+                                            </p>
+                                        </div>
+                                        <div class="sg-control-input">
+                                            <label class="sg-switch">
+                                                <input type="checkbox" name="spectrus_shield_settings[block_xmlrpc]" value="1" <?php checked($settings['block_xmlrpc'] ?? true); ?>>
+                                                <span class="sg-slider"></span>
+                                            </label>
+                                        </div>
+                                    </div>
+
+                                    <div class="sg-control-group">
+                                        <div class="sg-control-info">
+                                            <label
+                                                class="sg-control-label"><?php esc_html_e('Protect REST API', 'spectrus-guard'); ?></label>
+                                            <p class="sg-control-desc">
+                                                <?php esc_html_e('Stop user enumeration via /wp-json/wp/v2/users.', 'spectrus-guard'); ?>
+                                            </p>
+                                        </div>
+                                        <div class="sg-control-input">
+                                            <label class="sg-switch">
+                                                <input type="checkbox" name="spectrus_shield_settings[protect_api]" value="1" <?php checked($settings['protect_api'] ?? true); ?>>
+                                                <span class="sg-slider"></span>
+                                            </label>
+                                        </div>
+                                    </div>
+
+                                </div>
+                            </div>
+
+                            <!-- Login Protection -->
+                            <div class="sg-card">
+                                <div class="sg-card-header">
+                                    <h2><?php esc_html_e('Login Security', 'spectrus-guard'); ?></h2>
+                                </div>
+                                <div class="sg-settings-card-body">
+                                    <div class="sg-control-group">
+                                        <div class="sg-control-info">
+                                            <label
+                                                class="sg-control-label"><?php esc_html_e('Hide Login Page', 'spectrus-guard'); ?></label>
+                                            <p class="sg-control-desc">
+                                                <?php esc_html_e('Disable wp-login.php and use a custom slug.', 'spectrus-guard'); ?>
+                                            </p>
+                                        </div>
+                                        <div class="sg-control-input">
+                                            <label class="sg-switch">
+                                                <input type="checkbox" name="spectrus_shield_settings[hide_login]" value="1" <?php checked($settings['hide_login'] ?? false); ?>>
+                                                <span class="sg-slider"></span>
+                                            </label>
+                                        </div>
+                                    </div>
+
+                                    <div class="sg-control-group" style="display: block;">
+                                        <label class="sg-control-label"
+                                            style="margin-bottom: 8px;"><?php esc_html_e('Custom Login Slug', 'spectrus-guard'); ?></label>
+                                        <div style="display: flex; align-items: center; gap: 8px;">
+                                            <span
+                                                style="color: var(--sg-text-secondary);"><?php echo esc_url(home_url('/')); ?></span>
+                                            <input type="text" name="spectrus_shield_settings[login_slug]"
+                                                value="<?php echo esc_attr($settings['login_slug'] ?? 'sg-login'); ?>"
+                                                class="sg-input-text" style="width: auto; flex: 1;">
+                                        </div>
+                                    </div>
+
+                                    <div class="sg-control-group">
+                                        <div style="width: 100%; display: grid; grid-template-columns: 1fr 1fr; gap: 16px;">
+                                            <div>
+                                                <label
+                                                    class="sg-control-label"><?php esc_html_e('Max Attempts', 'spectrus-guard'); ?></label>
+                                                <input type="number" name="spectrus_shield_settings[max_login_attempts]"
+                                                    value="<?php echo esc_attr($settings['max_login_attempts'] ?? 5); ?>"
+                                                    class="sg-input-text">
                                             </div>
-                                        <?php endif; ?>
+                                            <div>
+                                                <label
+                                                    class="sg-control-label"><?php esc_html_e('Lockout (min)', 'spectrus-guard'); ?></label>
+                                                <input type="number" name="spectrus_shield_settings[login_lockout_time]"
+                                                    value="<?php echo esc_attr(intval(($settings['login_lockout_time'] ?? 900) / 60)); ?>"
+                                                    class="sg-input-text">
+                                            </div>
+                                        </div>
                                     </div>
-                                <?php endif; ?>
+                                </div>
                             </div>
+
+                            <!-- Access Control -->
+                            <div class="sg-card">
+                                <div class="sg-card-header">
+                                    <h2><?php esc_html_e('Access Control', 'spectrus-guard'); ?></h2>
+                                </div>
+                                <div class="sg-settings-card-body">
+                                    <div class="sg-control-group" style="display: block;">
+                                        <label class="sg-control-label"
+                                            style="margin-bottom: 8px;"><?php esc_html_e('IP Whitelist', 'spectrus-guard'); ?></label>
+                                        <textarea name="spectrus_shield_settings[whitelist_ips_text]" rows="5"
+                                            class="sg-textarea code"><?php
+                                            echo esc_textarea(implode("\n", $settings['whitelist_ips'] ?? array()));
+                                            ?></textarea>
+                                        <p class="sg-control-desc" style="margin-top: 8px;">
+                                            <?php esc_html_e('One IP per line. These IPs bypass WAF rules.', 'spectrus-guard'); ?>
+                                        </p>
+                                    </div>
+                                </div>
+                            </div>
+
+                        </div>
+
+                        <!-- Full Width: URL Cloaking REMOVED (Moved to Ghost Cloak Tab) -->
+
+                    </div>
+                </form>
+                </form>
+            <?php elseif ($active_tab === 'cloak'): ?>
+                <!-- Ghost Cloak Tab -->
+                <form method="post" action="options.php" id="sg-cloak-form">
+                    <?php
+                    settings_fields('spectrus_shield_settings_group');
+                    $settings_view = SG_PLUGIN_DIR . 'includes/hardening/views/settings-cloak.php';
+                    if (file_exists($settings_view)) {
+                        include $settings_view;
+                    } else {
+                        echo '<p class="sg-alert error">View file not found.</p>';
+                    }
+                    ?>
+                </form>
+            <?php else: ?>
+                <!-- Security Tab (2FA) -->
+                <form method="post" id="sg-security-form">
+                    <?php wp_nonce_field('spectrus_save_security', 'spectrus_security_nonce'); ?>
+                    <div class="sg-main-layout">
+                        <div class="sg-content-column" style="grid-column: span 12;">
+                            <?php
+                            // Load setup view
+                            include SG_PLUGIN_DIR . 'includes/auth/views/setup-2fa.php';
+                            ?>
                         </div>
                     </div>
-
-                </div>
-            </form>
+                </form>
+            <?php endif; ?>
         </div>
         <?php
     }
@@ -1228,5 +1310,60 @@ class SG_Admin
             });
         </script>
         <?php
+    }
+
+    /**
+     * AJAX: Write .htaccess rules for Ghost Cloak
+     */
+    public function ajax_write_htaccess()
+    {
+        check_ajax_referer('spectrus_shield_nonce', 'nonce');
+
+        if (!current_user_can('manage_options')) {
+            wp_send_json_error(__('Insufficient permissions.', 'spectrus-guard'));
+        }
+
+        if (!class_exists('Spectrus_Cloak_Engine')) {
+            $engine_path = SG_PLUGIN_DIR . 'includes/hardening/class-sg-cloak-engine.php';
+            if (file_exists($engine_path)) {
+                require_once $engine_path;
+            } else {
+                wp_send_json_error(__('Cloak Engine not found.', 'spectrus-guard'));
+            }
+        }
+
+        $rules = Spectrus_Cloak_Engine::generate_apache_rules();
+        $htaccess_path = ABSPATH . '.htaccess';
+
+        if (!file_exists($htaccess_path)) {
+            // Attempt to create it
+            if (!file_put_contents($htaccess_path, '')) {
+                wp_send_json_error(__('Could not create .htaccess file.', 'spectrus-guard'));
+            }
+        }
+
+        // Use WordPress core function to write safely
+        require_once ABSPATH . 'wp-admin/includes/misc.php';
+
+        $lines = [];
+        $lines[] = '<IfModule mod_rewrite.c>';
+        $lines[] = 'RewriteEngine On';
+        $lines[] = 'RewriteRule ^content/skins/(.*) wp-content/themes/$1 [L,QSA]';
+        $lines[] = 'RewriteRule ^content/modules/(.*) wp-content/plugins/$1 [L,QSA]';
+        $lines[] = 'RewriteRule ^content/media/(.*) wp-content/uploads/$1 [L,QSA]';
+        $lines[] = 'RewriteRule ^core/lib/(.*) wp-includes/$1 [L,QSA]';
+        $lines[] = 'RewriteRule ^content/modules/ui-builder/(.*) wp-content/plugins/elementor/$1 [L,QSA]';
+        $lines[] = 'RewriteRule ^content/modules/shop-core/(.*) wp-content/plugins/woocommerce/$1 [L,QSA]';
+        $lines[] = 'RewriteRule ^content/modules/forms/(.*) wp-content/plugins/contact-form-7/$1 [L,QSA]';
+        $lines[] = 'RewriteRule ^content/modules/meta-engine/(.*) wp-content/plugins/yoast-seo/$1 [L,QSA]';
+        $lines[] = '</IfModule>';
+
+        $result = insert_with_markers($htaccess_path, 'SpectrusGuardCloak', $lines);
+
+        if ($result) {
+            wp_send_json_success();
+        } else {
+            wp_send_json_error(__('Could not write to .htaccess. Please check file permissions.', 'spectrus-guard'));
+        }
     }
 }

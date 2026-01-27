@@ -147,6 +147,25 @@ class SG_Loader
             require_once $url_cloaker_file;
         }
 
+        $cloak_engine_file = SG_PLUGIN_DIR . 'includes/hardening/class-sg-cloak-engine.php';
+        if (file_exists($cloak_engine_file)) {
+            require_once $cloak_engine_file;
+            if (class_exists('Spectrus_Cloak_Engine')) {
+                new Spectrus_Cloak_Engine();
+            }
+        }
+
+        // Auth Module (Spectrus Sentinel 2FA)
+        $totp_file = SG_PLUGIN_DIR . 'includes/auth/class-sg-totp-engine.php';
+        if (file_exists($totp_file)) {
+            require_once $totp_file;
+        }
+
+        $auth_handler_file = SG_PLUGIN_DIR . 'includes/auth/class-sg-2fa-handler.php';
+        if (file_exists($auth_handler_file)) {
+            require_once $auth_handler_file;
+        }
+
         // Scanner Module (Sprint 3 - load if exists)
         $scanner_file = SG_PLUGIN_DIR . 'includes/scanner/class-sg-scanner.php';
         if (file_exists($scanner_file)) {
@@ -187,6 +206,11 @@ class SG_Loader
         // Initialize URL Cloaker (if enabled)
         if (class_exists('SG_URL_Cloaker') && $this->get_setting('url_cloaking_enabled')) {
             new SG_URL_Cloaker($this->settings);
+        }
+
+        // Initialize 2FA Handler (Always active if class exists, individual user check is inside)
+        if (class_exists('Spectrus_2FA_Handler')) {
+            new Spectrus_2FA_Handler();
         }
 
         // Initialize Scanner (Sprint 3)
