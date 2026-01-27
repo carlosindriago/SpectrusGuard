@@ -1,827 +1,729 @@
-/**
- * GhostShield Admin Styles
- *
- * Premium dark theme dashboard styling.
- *
- * @package GhostShield
- * @since   1.0.0
- */
-
-/* ============================================
-   Variables
-   ============================================ */
 :root {
-    --gs-primary: #667eea;
-    --gs-primary-dark: #5a67d8;
-    --gs-secondary: #764ba2;
-    --gs-success: #48bb78;
-    --gs-warning: #ed8936;
-    --gs-danger: #f56565;
-    --gs-info: #4299e1;
+    /* Enterprise Dark Palette (Slate/Indigo) */
+    --gs-bg-app: #0f172a;
+    /* Slate 900 */
+    --gs-bg-card: #1e293b;
+    /* Slate 800 */
+    --gs-bg-hover: #334155;
+    /* Slate 700 */
+    --gs-border: #334155;
+    /* Slate 700 */
 
-    --gs-bg-dark: #1a1a2e;
-    --gs-bg-card: #16213e;
-    --gs-bg-lighter: #1f2a48;
+    --gs-text-primary: #f8fafc;
+    /* Slate 50 */
+    --gs-text-secondary: #94a3b8;
+    /* Slate 400 */
+    --gs-text-muted: #64748b;
+    /* Slate 500 */
 
-    --gs-text: #e2e8f0;
-    --gs-text-muted: #a0aec0;
-    --gs-text-dark: #2d3748;
+    --gs-primary: #3b82f6;
+    /* Blue 500 */
+    --gs-primary-hover: #2563eb;
+    /* Blue 600 */
 
-    --gs-border: rgba(255, 255, 255, 0.1);
-    --gs-shadow: 0 10px 40px rgba(0, 0, 0, 0.2);
+    --gs-success: #10b981;
+    /* Emerald 500 */
+    --gs-success-bg: rgba(16, 185, 129, 0.1);
 
-    --gs-gradient: linear-gradient(135deg, var(--gs-primary) 0%, var(--gs-secondary) 100%);
+    --gs-danger: #ef4444;
+    /* Red 500 */
+    --gs-danger-bg: rgba(239, 68, 68, 0.1);
+
+    --gs-warning: #f59e0b;
+    /* Amber 500 */
+    --gs-warning-bg: rgba(245, 158, 11, 0.1);
+
+    --gs-info: #0ea5e9;
+    /* Sky 500 */
+
+    --gs-radius-lg: 12px;
+    --gs-radius-md: 8px;
+    --gs-radius-sm: 4px;
+
+    --gs-shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.05);
+    --gs-shadow-md: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
+    --gs-shadow-lg: 0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1);
+
+    --gs-font-sans: 'Inter', system-ui, -apple-system, sans-serif;
 }
 
-/* ============================================
-   Dashboard Base
-   ============================================ */
-.gs-dashboard,
-.gs-logs-page,
-.gs-settings-page {
-    margin-left: -20px;
-    margin-right: 0;
-    padding: 20px;
+/* Base Reset & Typography */
+.gs-dashboard-header,
+.gs-dashboard-container,
+.gs-main-layout,
+.gs-card,
+.gs-hero-panel {
+    font-family: var(--gs-font-sans);
+    color: var(--gs-text-primary);
+    box-sizing: border-box;
+}
+
+.wrap.gs-dashboard {
+    background-color: var(--gs-bg-app);
+    padding: 32px;
+    margin: 20px -20px 0 -22px;
+    /* Pull to edges in WP Admin */
     min-height: calc(100vh - 32px);
-    background: var(--gs-bg-dark);
 }
 
-.gs-dashboard h1,
-.gs-logs-page h1,
-.gs-settings-page h1 {
-    color: var(--gs-text);
-    font-size: 28px;
-    font-weight: 600;
-    margin-bottom: 30px;
+.gs-dashboard-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 32px;
+}
+
+.gs-dashboard-header h1 {
+    font-size: 24px;
+    font-weight: 700;
+    color: var(--gs-text-primary);
+    margin: 0;
+    padding: 0;
     display: flex;
     align-items: center;
     gap: 12px;
 }
 
 .gs-logo {
-    font-size: 36px;
+    font-size: 28px;
 }
 
-/* ============================================
-   Dashboard Grid
-   ============================================ */
-/* ============================================
-   Dashboard Grid
-   ============================================ */
-.gs-dashboard-grid {
+.gs-version-badge {
+    background: var(--gs-bg-hover);
+    color: var(--gs-text-secondary);
+    padding: 4px 10px;
+    border-radius: 999px;
+    font-size: 12px;
+    font-weight: 600;
+    border: 1px solid var(--gs-border);
+}
+
+/* Hero Panel */
+.gs-hero-panel {
+    background: linear-gradient(135deg, var(--gs-bg-card) 0%, #1e1b4b 100%);
+    /* Deep Indigo hint */
+    border: 1px solid var(--gs-border);
+    border-radius: var(--gs-radius-lg);
+    padding: 24px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 24px;
+    box-shadow: var(--gs-shadow-md);
+    position: relative;
+    overflow: hidden;
+}
+
+.gs-hero-status {
+    display: flex;
+    align-items: center;
+    gap: 24px;
+    z-index: 1;
+}
+
+.gs-hero-icon-wrapper {
+    position: relative;
+    width: 64px;
+    height: 64px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: rgba(59, 130, 246, 0.1);
+    border-radius: 50%;
+    border: 2px solid rgba(59, 130, 246, 0.2);
+}
+
+.gs-hero-icon {
+    font-size: 32px;
+}
+
+.gs-hero-pulse {
+    position: absolute;
+    width: 100%;
+    height: 100%;
+    border-radius: 50%;
+    background: rgba(59, 130, 246, 0.5);
+    opacity: 0;
+    animation: gs-pulse 2s infinite;
+}
+
+@keyframes gs-pulse {
+    0% {
+        transform: scale(1);
+        opacity: 0.5;
+    }
+
+    100% {
+        transform: scale(1.5);
+        opacity: 0;
+    }
+}
+
+.gs-hero-content h2 {
+    font-size: 20px;
+    font-weight: 700;
+    margin: 0 0 4px 0;
+    color: var(--gs-text-primary);
+}
+
+.gs-hero-content p {
+    color: var(--gs-text-secondary);
+    margin: 0 0 12px 0;
+    font-size: 14px;
+}
+
+.gs-status-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 4px 10px;
+    border-radius: 6px;
+    font-size: 13px;
+    font-weight: 600;
+}
+
+.gs-status-badge.success {
+    background: var(--gs-success-bg);
+    color: var(--gs-success);
+}
+
+.gs-status-badge.warning {
+    background: var(--gs-warning-bg);
+    color: var(--gs-warning);
+}
+
+.gs-status-badge.danger {
+    background: var(--gs-danger-bg);
+    color: var(--gs-danger);
+}
+
+.gs-hero-actions {
+    display: flex;
+    align-items: center;
+    gap: 24px;
+    z-index: 1;
+}
+
+.gs-last-scan-info {
+    font-size: 14px;
+    color: var(--gs-text-secondary);
+    text-align: right;
+}
+
+.gs-last-scan-info strong {
+    color: var(--gs-text-primary);
+    display: block;
+}
+
+/* Main Layout Grid */
+.gs-main-layout {
     display: grid;
     grid-template-columns: repeat(12, 1fr);
-    grid-gap: 24px;
     gap: 24px;
-    padding-bottom: 40px;
 }
 
-/* Status Card: 3 cols */
-.gs-status-card {
-    grid-column: span 3;
-    display: flex;
-    flex-direction: column;
-}
-
-/* Scanner Card: 6 cols (Prominent center) */
-.gs-scanner-card {
-    grid-column: span 6;
-    display: flex;
-    flex-direction: column;
-    justify-content: center;
-}
-
-/* Quick Actions: 3 cols */
-.gs-actions-card {
-    grid-column: span 3;
-}
-
-/* Threats Blocked: 8 cols */
-.gs-threats-card {
+.gs-content-column {
     grid-column: span 8;
+    display: flex;
+    flex-direction: column;
+    gap: 24px;
 }
 
-/* Rescue Mode: 4 cols */
-.gs-rescue-card {
+.gs-sidebar-column {
     grid-column: span 4;
+    display: flex;
+    flex-direction: column;
+    gap: 24px;
 }
 
-/* Chart: Full width 12 cols */
-.gs-chart-card {
-    grid-column: span 12;
-}
-
-/* Tablet Layout */
-@media screen and (max-width: 1400px) {
-    .gs-status-card {
-        grid-column: span 4;
-    }
-
-    .gs-scanner-card {
-        grid-column: span 8;
-    }
-
-    .gs-actions-card {
-        grid-column: span 12;
-        order: 10;
-        display: flex;
-        flex-direction: row;
-        gap: 20px;
-    }
-
-    .gs-actions-card .gs-card-body {
-        display: flex;
-        gap: 20px;
-        width: 100%;
-    }
-
-    .gs-actions-card .gs-actions {
-        flex-direction: row;
-        width: 100%;
-        gap: 20px;
-    }
-
-    .gs-actions-card .gs-action-btn {
-        flex: 1;
-        justify-content: center;
-    }
-
-    .gs-threats-card {
-        grid-column: span 7;
-    }
-
-    .gs-rescue-card {
-        grid-column: span 5;
-    }
-}
-
-@media screen and (max-width: 1100px) {
-    .gs-status-card {
-        grid-column: span 6;
-    }
-
-    .gs-scanner-card {
-        grid-column: span 6;
-    }
-
-    .gs-threats-card {
-        grid-column: span 12;
-    }
-
-    .gs-rescue-card {
-        grid-column: span 12;
-    }
-}
-
-/* ============================================
-   Cards
-   ============================================ */
+/* Cards Generic */
 .gs-card {
     background: var(--gs-bg-card);
-    border-radius: 16px;
     border: 1px solid var(--gs-border);
-    box-shadow: var(--gs-shadow);
+    border-radius: var(--gs-radius-lg);
+    box-shadow: var(--gs-shadow-sm);
     overflow: hidden;
 }
 
 .gs-card-header {
-    padding: 20px 24px;
+    padding: 16px 20px;
     border-bottom: 1px solid var(--gs-border);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
 }
 
 .gs-card-header h2 {
-    color: var(--gs-text);
-    font-size: 16px;
+    font-size: 15px;
     font-weight: 600;
     margin: 0;
-    padding: 0;
+    color: var(--gs-text-primary);
 }
 
 .gs-card-body {
-    padding: 24px;
+    padding: 20px;
 }
 
-/* Status Card */
-.gs-status-card .gs-status-indicator {
-    display: flex;
-    align-items: center;
-    gap: 12px;
-    padding: 16px 20px;
-    border-radius: 12px;
-    margin-bottom: 20px;
-}
-
-.gs-status-indicator.active {
-    background: rgba(72, 187, 120, 0.15);
-}
-
-.gs-status-indicator.inactive {
-    background: rgba(245, 101, 101, 0.15);
-}
-
-.gs-status-dot {
-    width: 12px;
-    height: 12px;
-    border-radius: 50%;
-    animation: pulse-dot 2s ease-in-out infinite;
-}
-
-.gs-status-indicator.active .gs-status-dot {
-    background: var(--gs-success);
-    box-shadow: 0 0 12px var(--gs-success);
-}
-
-.gs-status-indicator.inactive .gs-status-dot {
-    background: var(--gs-danger);
-    box-shadow: 0 0 12px var(--gs-danger);
-}
-
-@keyframes pulse-dot {
-
-    0%,
-    100% {
-        transform: scale(1);
-        opacity: 1;
-    }
-
-    50% {
-        transform: scale(1.1);
-        opacity: 0.7;
-    }
-}
-
-.gs-status-text {
-    color: var(--gs-text);
+/* Threat Intel Grid */
+.gs-section-title {
+    font-size: 14px;
     font-weight: 600;
-    font-size: 15px;
-}
-
-.gs-quick-stats {
-    display: flex;
-    gap: 24px;
-}
-
-.gs-stat {
-    flex: 1;
-    text-align: center;
-    padding: 16px;
-    background: var(--gs-bg-lighter);
-    border-radius: 12px;
-}
-
-.gs-stat-value {
-    display: block;
-    font-size: 28px;
-    font-weight: 700;
-    color: var(--gs-text);
-    margin-bottom: 4px;
-}
-
-.gs-stat-label {
-    font-size: 12px;
     color: var(--gs-text-muted);
     text-transform: uppercase;
-    letter-spacing: 0.5px;
+    letter-spacing: 0.05em;
+    margin: 0 0 12px 0;
 }
 
-/* Threat Grid */
-.gs-threat-grid {
+.gs-threat-intel-grid {
     display: grid;
     grid-template-columns: repeat(2, 1fr);
     gap: 16px;
 }
 
-.gs-threat-item {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    padding: 20px;
-    border-radius: 12px;
-    background: var(--gs-bg-lighter);
-    transition: transform 0.2s ease;
-}
-
-.gs-threat-item:hover {
-    transform: translateY(-2px);
-}
-
-.gs-threat-item.critical {
-    border-left: 3px solid var(--gs-danger);
-}
-
-.gs-threat-item.high {
-    border-left: 3px solid var(--gs-warning);
-}
-
-.gs-threat-icon {
-    font-size: 24px;
-    margin-bottom: 8px;
-}
-
-.gs-threat-count {
-    font-size: 32px;
-    font-weight: 700;
-    color: var(--gs-text);
-    line-height: 1;
-}
-
-.gs-threat-name {
-    font-size: 12px;
-    color: var(--gs-text-muted);
-    margin-top: 6px;
-}
-
-/* Quick Actions */
-.gs-actions {
-    display: flex;
-    flex-direction: column;
-    gap: 12px;
-}
-
-.gs-action-btn {
-    display: flex;
-    align-items: center;
-    gap: 12px;
-    padding: 14px 20px;
-    background: var(--gs-bg-lighter);
+.gs-stat-card {
+    background: var(--gs-bg-card);
     border: 1px solid var(--gs-border);
-    border-radius: 10px;
-    color: var(--gs-text);
-    text-decoration: none;
-    font-size: 14px;
-    cursor: pointer;
-    transition: all 0.2s ease;
-}
-
-.gs-action-btn:hover {
-    background: var(--gs-gradient);
-    border-color: transparent;
-    color: white;
-}
-
-.gs-action-btn .dashicons {
-    font-size: 18px;
-    width: 18px;
-    height: 18px;
-}
-
-/* Rescue Card */
-.gs-rescue-url {
+    border-radius: var(--gs-radius-md);
+    padding: 20px;
     display: flex;
-    align-items: center;
-    gap: 12px;
-    padding: 12px 16px;
-    background: var(--gs-bg-lighter);
+    justify-content: space-between;
+    align-items: flex-start;
+    transition: transform 0.2s, box-shadow 0.2s;
+}
+
+.gs-stat-card:hover {
+    transform: translateY(-2px);
+    box-shadow: var(--gs-shadow-md);
+    border-color: var(--gs-primary);
+}
+
+.gs-stat-icon {
+    width: 40px;
+    height: 40px;
     border-radius: 8px;
-    margin: 16px 0;
-}
-
-.gs-rescue-url code {
-    flex: 1;
-    color: #ffd700;
-    font-size: 12px;
-    word-break: break-all;
-    background: transparent;
-}
-
-.gs-copy-btn {
-    background: var(--gs-gradient) !important;
-    color: white !important;
-    border: none !important;
-    padding: 6px 16px !important;
-    border-radius: 6px !important;
-    cursor: pointer;
-    font-size: 12px !important;
-}
-
-.gs-info-text {
-    color: var(--gs-text-muted);
-    font-size: 14px;
-    line-height: 1.6;
-}
-
-.gs-warning-text {
     display: flex;
     align-items: center;
-    gap: 8px;
-    color: var(--gs-warning);
-    font-size: 13px;
+    justify-content: center;
+    font-size: 20px;
 }
 
-/* Chart Card */
-.gs-chart-card {
-    grid-column: span 2;
+.gs-stat-icon.sqli {
+    background: rgba(59, 130, 246, 0.1);
+    color: #60a5fa;
 }
 
-.gs-chart-card .gs-card-body {
-    height: 300px;
+.gs-stat-icon.xss {
+    background: rgba(245, 158, 11, 0.1);
+    color: #fbbf24;
 }
 
-#gs-activity-chart {
-    width: 100% !important;
-    height: 100% !important;
+.gs-stat-icon.rce {
+    background: rgba(239, 68, 68, 0.1);
+    color: #f87171;
 }
 
-/* ============================================
-   Logs Page
-   ============================================ */
-.gs-logs-actions {
-    margin-bottom: 20px;
+.gs-stat-icon.traversal {
+    background: rgba(16, 185, 129, 0.1);
+    color: #34d399;
+}
+
+.gs-stat-data {
     display: flex;
-    gap: 10px;
+    flex-direction: column;
+    align-items: flex-end;
 }
 
-.gs-logs-table {
-    background: var(--gs-bg-card) !important;
-    border: 1px solid var(--gs-border) !important;
-    border-radius: 12px !important;
-    overflow: hidden;
+.gs-stat-number {
+    font-size: 24px;
+    font-weight: 700;
+    color: var(--gs-text-primary);
 }
 
-.gs-logs-table thead th {
-    background: var(--gs-bg-lighter) !important;
-    color: var(--gs-text) !important;
-    border-bottom: 1px solid var(--gs-border) !important;
-    padding: 14px 16px !important;
-    font-weight: 600;
+.gs-stat-label {
+    font-size: 13px;
+    color: var(--gs-text-secondary);
 }
 
-.gs-logs-table tbody td {
-    color: var(--gs-text-muted) !important;
-    border-bottom: 1px solid var(--gs-border) !important;
-    padding: 12px 16px !important;
+.gs-stat-trend {
+    grid-column: span 2;
+    margin-top: 12px;
+    width: 100%;
 }
 
-.gs-logs-table tbody tr:hover td {
-    background: var(--gs-bg-lighter) !important;
-}
-
-.gs-logs-table code {
-    background: rgba(0, 0, 0, 0.3);
-    padding: 2px 6px;
-    border-radius: 4px;
+.gs-stat-trend span {
     font-size: 12px;
-    color: #e2e8f0;
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
 }
 
-/* Badges */
-.gs-badge {
-    display: inline-block;
-    padding: 4px 10px;
-    border-radius: 6px;
-    font-size: 11px;
-    font-weight: 600;
-    text-transform: uppercase;
-    letter-spacing: 0.5px;
-}
-
-.gs-badge-sqli,
-.gs-badge-rce {
-    background: rgba(245, 101, 101, 0.2);
+.trend-up {
     color: var(--gs-danger);
 }
 
-.gs-badge-xss,
-.gs-badge-traversal,
-.gs-badge-lfi {
-    background: rgba(237, 137, 54, 0.2);
-    color: var(--gs-warning);
+.trend-down {
+    color: var(--gs-success);
 }
 
-/* ============================================
-   Settings Page
-   ============================================ */
-.gs-settings-section {
-    background: var(--gs-bg-card);
-    border-radius: 16px;
-    border: 1px solid var(--gs-border);
-    padding: 24px;
-    margin-bottom: 24px;
+.trend-flat {
+    color: var(--gs-text-muted);
 }
 
-.gs-settings-section h2 {
-    color: var(--gs-text);
-    font-size: 18px;
-    font-weight: 600;
-    margin: 0 0 20px 0;
-    padding-bottom: 16px;
+/* Quick Actions */
+.gs-actions-panel .gs-card-body {
+    padding: 0;
+}
+
+.gs-action-list {
+    display: flex;
+    flex-direction: column;
+}
+
+.gs-action-item {
+    display: flex;
+    align-items: center;
+    padding: 16px 20px;
     border-bottom: 1px solid var(--gs-border);
+    color: var(--gs-text-primary);
+    text-decoration: none;
+    transition: background 0.2s;
 }
 
-.gs-settings-section .form-table th {
-    color: var(--gs-text);
-    padding: 16px 10px 16px 0;
+.gs-action-item:last-child {
+    border-bottom: none;
+}
+
+.gs-action-item:hover {
+    background: var(--gs-bg-hover);
+}
+
+.gs-action-item .dashicons {
+    color: var(--gs-primary);
+    margin-right: 12px;
+    font-size: 20px;
+}
+
+.gs-action-text {
+    flex: 1;
     font-weight: 500;
 }
 
-.gs-settings-section .form-table td {
-    padding: 16px 10px;
-}
-
-.gs-settings-section input[type="text"],
-.gs-settings-section input[type="number"],
-.gs-settings-section textarea {
-    background: var(--gs-bg-lighter) !important;
-    border: 1px solid var(--gs-border) !important;
-    color: var(--gs-text) !important;
-    border-radius: 8px !important;
-}
-
-.gs-settings-section input[type="text"]:focus,
-.gs-settings-section input[type="number"]:focus,
-.gs-settings-section textarea:focus {
-    border-color: var(--gs-primary) !important;
-    box-shadow: 0 0 0 2px rgba(102, 126, 234, 0.2) !important;
-    outline: none !important;
-}
-
-.gs-settings-section label {
-    color: var(--gs-text);
-}
-
-.gs-settings-section .description {
+.gs-action-arrow {
     color: var(--gs-text-muted);
-    font-size: 13px;
-    margin-top: 8px;
+    font-size: 16px;
 }
 
-.gs-settings-section .description code {
-    background: var(--gs-bg-lighter);
-    padding: 2px 8px;
-    border-radius: 4px;
-    color: #ffd700;
+/* Rescue Mode Compact */
+.gs-rescue-panel .gs-card-header.warning-header {
+    background: rgba(245, 158, 11, 0.05);
+    border-bottom-color: rgba(245, 158, 11, 0.2);
 }
 
-.gs-settings-page .submit .button-primary {
-    background: var(--gs-gradient) !important;
-    border: none !important;
-    padding: 10px 24px !important;
-    font-size: 14px !important;
-    border-radius: 8px !important;
-    height: auto !important;
-}
-
-/* ============================================
-   Responsive
-   ============================================ */
-@media screen and (max-width: 1200px) {
-    .gs-chart-card {
-        grid-column: span 1;
-    }
-}
-
-@media screen and (max-width: 782px) {
-
-    .gs-dashboard,
-    .gs-logs-page,
-    .gs-settings-page {
-        margin-left: -10px;
-        padding: 10px;
-    }
-
-    .gs-dashboard-grid {
-        grid-template-columns: 1fr;
-    }
-
-    .gs-quick-stats {
-        flex-direction: column;
-    }
-}
-
-/* ============================================
-   Status Messages
-   ============================================ */
-.gs-status-ok {
-    color: var(--gs-success);
-    font-size: 13px;
-    margin-top: 8px;
-}
-
-.gs-status-warning {
+.gs-rescue-panel .gs-card-header h2 {
     color: var(--gs-warning);
+}
+
+.gs-rescue-desc {
     font-size: 13px;
-    margin-top: 8px;
+    color: var(--gs-text-secondary);
+    margin: 0 0 12px 0;
 }
 
-/* ============================================
-   Nginx Alert Block (Prominent)
-   ============================================ */
-.gs-nginx-alert {
-    margin-top: 16px;
-    background: linear-gradient(135deg, rgba(245, 101, 101, 0.15) 0%, rgba(237, 137, 54, 0.15) 100%);
-    border: 2px solid var(--gs-danger);
-    border-radius: 12px;
-    overflow: hidden;
-    animation: pulse-border 2s ease-in-out infinite;
+.gs-rescue-input-group {
+    display: flex;
+    gap: 8px;
+    background: var(--gs-bg-app);
+    border: 1px solid var(--gs-border);
+    border-radius: 6px;
+    padding: 4px 4px 4px 12px;
 }
 
-@keyframes pulse-border {
-
-    0%,
-    100% {
-        border-color: var(--gs-danger);
-    }
-
-    50% {
-        border-color: var(--gs-warning);
-    }
+.gs-rescue-input {
+    flex: 1;
+    background: transparent;
+    border: none;
+    color: var(--gs-text-primary);
+    font-family: monospace;
+    font-size: 12px;
 }
 
-.gs-nginx-alert-header {
-    background: linear-gradient(135deg, var(--gs-danger) 0%, var(--gs-warning) 100%);
-    padding: 12px 16px;
+.gs-copy-btn-icon {
+    background: var(--gs-bg-hover);
+    border: none;
+    color: var(--gs-text-secondary);
+    width: 32px;
+    height: 32px;
+    border-radius: 4px;
+    cursor: pointer;
     display: flex;
     align-items: center;
-    gap: 10px;
+    justify-content: center;
+    transition: all 0.2s;
 }
 
-.gs-nginx-icon {
-    font-size: 24px;
-    animation: shake 0.5s ease-in-out infinite alternate;
-}
-
-@keyframes shake {
-    0% {
-        transform: rotate(-5deg);
-    }
-
-    100% {
-        transform: rotate(5deg);
-    }
-}
-
-.gs-nginx-alert-header strong {
-    color: white;
-    font-size: 14px;
-    text-transform: uppercase;
-    letter-spacing: 0.5px;
-}
-
-.gs-nginx-alert-text {
-    color: var(--gs-text);
-    padding: 12px 16px;
-    margin: 0;
-    font-size: 14px;
-    line-height: 1.5;
-}
-
-.gs-nginx-alert details {
-    padding: 0 16px 16px;
-}
-
-.gs-nginx-summary {
-    color: var(--gs-primary);
-    cursor: pointer;
-    font-weight: 600;
-    font-size: 14px;
-    user-select: none;
-    padding: 8px 12px;
-    background: var(--gs-bg-lighter);
-    border-radius: 6px;
-    display: inline-block;
-}
-
-.gs-nginx-summary:hover {
+.gs-copy-btn-icon:hover {
     background: var(--gs-primary);
     color: white;
 }
 
-.gs-nginx-instructions {
-    color: var(--gs-text-muted);
+/* Recent Activity */
+.gs-recent-activity .gs-card-body {
+    /* Removed body wrapper in HTML for this? No, it's gs-activity-list */
+    padding: 0;
+}
+
+.gs-activity-list {
+    display: flex;
+    flex-direction: column;
+}
+
+.gs-activity-item {
+    display: flex;
+    align-items: center;
+    padding: 12px 20px;
+    border-bottom: 1px solid var(--gs-border);
+    gap: 12px;
+}
+
+.gs-activity-icon {
+    width: 32px;
+    height: 32px;
+    border-radius: 6px;
+    background: var(--gs-bg-hover);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 16px;
+}
+
+.gs-activity-icon.sqli {
+    background: rgba(59, 130, 246, 0.1);
+}
+
+.gs-activity-icon.xss {
+    background: rgba(245, 158, 11, 0.1);
+}
+
+.gs-activity-details {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+}
+
+.gs-activity-type {
     font-size: 13px;
-    margin-top: 12px;
-    padding: 12px;
-    background: var(--gs-bg-lighter);
-    border-radius: 8px;
-    line-height: 1.8;
+    font-weight: 600;
+    color: var(--gs-text-primary);
 }
 
-.gs-nginx-notice details {
-    margin-top: 12px;
+.gs-activity-ip {
+    font-size: 11px;
+    color: var(--gs-text-muted);
+    font-family: monospace;
 }
 
-.gs-nginx-notice summary {
-    color: var(--gs-text);
-    cursor: pointer;
-    font-weight: 500;
-    user-select: none;
+.gs-activity-time {
+    font-size: 11px;
+    color: var(--gs-text-muted);
 }
 
-.gs-nginx-notice summary:hover {
-    color: var(--gs-primary);
-}
-
-/* Code Block */
-.gs-code-block {
-    background: var(--gs-bg-dark);
-    border: 1px solid var(--gs-border);
-    border-radius: 8px;
-    padding: 16px;
-    margin-top: 12px;
-    overflow-x: auto;
-    font-family: 'SFMono-Regular', Consolas, 'Liberation Mono', Menlo, monospace;
-    font-size: 12px;
-    line-height: 1.6;
-    color: #a0aec0;
-    white-space: pre;
-}
-
-/* ============================================
-   Scanner Dashboard Widget
-   ============================================ */
-.gs-scanner-card {
-    border: 2px solid var(--gs-border);
-    transition: border-color 0.3s ease;
-}
-
-.gs-scanner-card.never {
-    border-color: var(--gs-info);
-    background: linear-gradient(135deg, rgba(66, 153, 225, 0.1) 0%, rgba(102, 126, 234, 0.05) 100%);
-}
-
-.gs-scanner-card.old {
-    border-color: var(--gs-warning);
-    background: linear-gradient(135deg, rgba(237, 137, 54, 0.15) 0%, rgba(255, 193, 7, 0.05) 100%);
-}
-
-.gs-scanner-card.recent {
-    border-color: var(--gs-success);
-    background: linear-gradient(135deg, rgba(72, 187, 120, 0.1) 0%, rgba(56, 178, 172, 0.05) 100%);
-}
-
-.gs-scanner-status {
+.gs-view-all-link {
+    display: block;
     text-align: center;
+    padding: 12px;
+    font-size: 13px;
+    font-weight: 500;
+    color: var(--gs-primary);
+    text-decoration: none;
+}
+
+.gs-view-all-link:hover {
+    background: var(--gs-bg-hover);
+}
+
+.gs-empty-state {
+    padding: 24px;
+    text-align: center;
+    color: var(--gs-text-muted);
+}
+
+/* Buttons */
+.gs-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 10px 20px;
+    border-radius: 6px;
+    font-weight: 600;
+    font-size: 14px;
+    text-decoration: none;
+    transition: all 0.2s;
+    cursor: pointer;
+    border: none;
+}
+
+.gs-btn-primary {
+    background: var(--gs-primary);
+    color: white;
+}
+
+.gs-btn-primary:hover {
+    background: var(--gs-primary-hover);
+    color: white;
+}
+
+/* Charts */
+.gs-chart-card {
+    min-height: 300px;
+}
+
+.gs-chart-card .gs-card-body {
+    height: 300px;
+    /* Constrain chart height */
+}
+
+/* Tables (Logs Page) */
+.gs-logs-table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-top: 20px;
+}
+
+.gs-logs-table th {
+    text-align: left;
+    padding: 12px 16px;
+    color: var(--gs-text-secondary);
+    font-weight: 600;
+    font-size: 13px;
+    border-bottom: 1px solid var(--gs-border);
+}
+
+.gs-logs-table td {
+    padding: 12px 16px;
+    color: var(--gs-text-primary);
+    border-bottom: 1px solid var(--gs-border);
+    font-size: 13px;
+}
+
+.gs-logs-table tr:hover td {
+    background: var(--gs-bg-hover);
+}
+
+/* Badges (Logs) */
+.gs-badge {
+    padding: 2px 8px;
+    border-radius: 4px;
+    font-size: 11px;
+    font-weight: 600;
+    text-transform: uppercase;
+}
+
+.gs-badge.sqli {
+    background: var(--gs-primary);
+    color: white;
+}
+
+.gs-badge.xss {
+    background: var(--gs-warning);
+    color: black;
+}
+
+.gs-badge.rce {
+    background: var(--gs-danger);
+    color: white;
+}
+
+/* Settings Form */
+.gs-settings-form table {
+    width: 100%;
+}
+
+.gs-settings-form th {
+    width: 200px;
+    text-align: left;
+    padding: 16px 0;
+    color: var(--gs-text-primary);
+}
+
+.gs-settings-form td {
     padding: 16px 0;
 }
 
-.gs-scanner-icon {
-    font-size: 48px;
-    display: block;
-    margin-bottom: 12px;
+.gs-settings-form input[type="text"],
+.gs-settings-form textarea,
+.gs-settings-form select {
+    background: var(--gs-bg-hover);
+    border: 1px solid var(--gs-border);
+    color: var(--gs-text-primary);
+    padding: 8px 12px;
+    border-radius: 6px;
+    width: 100%;
+    max-width: 400px;
 }
 
-.gs-scanner-message {
-    font-size: 16px;
-    font-weight: 600;
-    color: var(--gs-text);
-    margin: 0 0 8px;
+.gs-settings-form input[type="checkbox"] {
+    background: var(--gs-bg-hover);
+    border: 1px solid var(--gs-border);
 }
 
-.gs-scanner-cta {
-    font-size: 14px;
-    color: var(--gs-text-muted);
-    margin: 0;
-}
-
-.gs-scanner-threats {
+/* Tabs */
+.gs-tabs {
+    border-bottom: 1px solid var(--gs-border);
+    margin-bottom: 24px;
     display: flex;
-    align-items: center;
-    justify-content: center;
-    gap: 8px;
-    color: var(--gs-danger);
-    font-weight: 500;
-    margin-top: 8px;
+    gap: 24px;
 }
 
-.gs-threat-badge {
-    background: var(--gs-danger);
-    color: white;
-    padding: 2px 10px;
-    border-radius: 12px;
-    font-size: 14px;
-    font-weight: 700;
-}
-
-.gs-scanner-clean {
-    color: var(--gs-success);
-    font-weight: 500;
-    margin-top: 8px;
-}
-
-.gs-scanner-btn {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    gap: 8px;
-    margin-top: 16px;
-    padding: 12px 24px;
-    background: var(--gs-gradient);
-    color: white;
+.gs-tab-link {
+    padding: 12px 0;
+    color: var(--gs-text-secondary);
     text-decoration: none;
-    border-radius: 8px;
-    font-weight: 600;
-    font-size: 14px;
-    transition: all 0.3s ease;
+    font-weight: 500;
+    border-bottom: 2px solid transparent;
+    transition: all 0.2s;
 }
 
-.gs-scanner-btn:hover {
-    transform: translateY(-2px);
-    box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
-    color: white;
+.gs-tab-link:hover {
+    color: var(--gs-text-primary);
 }
 
-.gs-scanner-btn .dashicons {
-    font-size: 18px;
-    height: 18px;
-    width: 18px;
+.gs-tab-link.active {
+    color: var(--gs-primary);
+    border-bottom-color: var(--gs-primary);
+}
+
+/* Media Queries */
+@media screen and (max-width: 1200px) {
+    .gs-content-column {
+        grid-column: span 12;
+        order: 2;
+    }
+
+    .gs-sidebar-column {
+        grid-column: span 12;
+        order: 1;
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        gap: 24px;
+    }
+
+    .gs-hero-panel {
+        flex-direction: column;
+        text-align: center;
+        gap: 20px;
+    }
+
+    .gs-hero-status {
+        flex-direction: column;
+    }
+}
+
+@media screen and (max-width: 900px) {
+    .gs-sidebar-column {
+        grid-template-columns: 1fr;
+    }
+
+    .gs-threat-intel-grid {
+        grid-template-columns: 1fr;
+    }
 }
