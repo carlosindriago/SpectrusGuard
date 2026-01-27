@@ -1,12 +1,12 @@
 <?php
 /**
- * GhostShield URL Cloaker
+ * SpectrusGuard URL Cloaker
  *
  * Rewrites WordPress URLs to hide fingerprints that reveal WordPress usage.
  * Uses output buffering to rewrite URLs in HTML and .htaccess rules
  * to handle incoming requests to the cloaked URLs.
  *
- * @package GhostShield
+ * @package SpectrusGuard
  * @since   1.0.0
  */
 
@@ -16,11 +16,11 @@ if (!defined('ABSPATH')) {
 }
 
 /**
- * Class GS_URL_Cloaker
+ * Class SG_URL_Cloaker
  *
  * Rewrites WordPress URLs to generic paths to hide WordPress fingerprints.
  */
-class GS_URL_Cloaker
+class SG_URL_Cloaker
 {
 
     /**
@@ -225,7 +225,7 @@ class GS_URL_Cloaker
         $content_dir = basename(WP_CONTENT_DIR);
 
         $rules = <<<HTACCESS
-# BEGIN GhostShield URL Cloaking
+# BEGIN SpectrusGuard URL Cloaking
 <IfModule mod_rewrite.c>
 RewriteEngine On
 
@@ -241,7 +241,7 @@ RewriteRule ^assets/media/(.*)$ {$content_dir}/uploads/$1 [L,QSA]
 # Cloak wp-includes to assets/core
 RewriteRule ^assets/core/(.*)$ wp-includes/$1 [L,QSA]
 </IfModule>
-# END GhostShield URL Cloaking
+# END SpectrusGuard URL Cloaking
 HTACCESS;
 
         return $rules;
@@ -260,7 +260,7 @@ HTACCESS;
         $content_dir = basename(WP_CONTENT_DIR);
 
         $rules = <<<NGINX
-# GhostShield URL Cloaking - Add to your Nginx server block
+# SpectrusGuard URL Cloaking - Add to your Nginx server block
 # After adding these rules, reload Nginx: sudo systemctl reload nginx
 
 # Cloak wp-content/plugins to assets/plugins
@@ -322,7 +322,7 @@ NGINX;
 
         $content = file_get_contents($htaccess_path);
 
-        return strpos($content, '# BEGIN GhostShield URL Cloaking') !== false;
+        return strpos($content, '# BEGIN SpectrusGuard URL Cloaking') !== false;
     }
 
     /**
@@ -338,7 +338,7 @@ NGINX;
         if (!is_writable($htaccess_path)) {
             return new WP_Error(
                 'htaccess_not_writable',
-                __('The .htaccess file is not writable. Please add the rules manually.', 'ghost-shield')
+                __('The .htaccess file is not writable. Please add the rules manually.', 'spectrus-guard')
             );
         }
 
@@ -367,7 +367,7 @@ NGINX;
         if ($result === false) {
             return new WP_Error(
                 'htaccess_write_failed',
-                __('Failed to write to .htaccess file.', 'ghost-shield')
+                __('Failed to write to .htaccess file.', 'spectrus-guard')
             );
         }
 
@@ -390,7 +390,7 @@ NGINX;
         if (!is_writable($htaccess_path)) {
             return new WP_Error(
                 'htaccess_not_writable',
-                __('The .htaccess file is not writable.', 'ghost-shield')
+                __('The .htaccess file is not writable.', 'spectrus-guard')
             );
         }
 
@@ -402,7 +402,7 @@ NGINX;
         if ($result === false) {
             return new WP_Error(
                 'htaccess_write_failed',
-                __('Failed to write to .htaccess file.', 'ghost-shield')
+                __('Failed to write to .htaccess file.', 'spectrus-guard')
             );
         }
 
@@ -418,7 +418,7 @@ NGINX;
     private static function remove_htaccess_rules_from_content($content)
     {
         // Remove the block including comments
-        $pattern = '/# BEGIN GhostShield URL Cloaking.*?# END GhostShield URL Cloaking\s*/s';
+        $pattern = '/# BEGIN SpectrusGuard URL Cloaking.*?# END SpectrusGuard URL Cloaking\s*/s';
         return preg_replace($pattern, '', $content);
     }
 

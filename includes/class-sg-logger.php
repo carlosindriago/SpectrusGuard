@@ -1,11 +1,11 @@
 <?php
 /**
- * GhostShield Logger
+ * SpectrusGuard Logger
  *
  * Handles logging of security events to files and database.
  * Creates protected log files that are not publicly accessible.
  *
- * @package GhostShield
+ * @package SpectrusGuard
  * @since   1.0.0
  */
 
@@ -15,11 +15,11 @@ if (!defined('ABSPATH')) {
 }
 
 /**
- * Class GS_Logger
+ * Class SG_Logger
  *
  * Security event logger with file and database support.
  */
-class GS_Logger
+class SG_Logger
 {
 
     /**
@@ -55,7 +55,7 @@ class GS_Logger
      */
     public function __construct()
     {
-        $this->log_dir = WP_CONTENT_DIR . '/ghost-shield-logs';
+        $this->log_dir = WP_CONTENT_DIR . '/spectrus-guard-logs';
         $this->attack_log_file = $this->log_dir . '/attacks.log';
         $this->debug_log_file = $this->log_dir . '/debug.log';
 
@@ -133,7 +133,7 @@ class GS_Logger
         $this->update_stats($type);
 
         // Fire action for observers (notifications, etc.)
-        do_action('ghost_shield_attack_logged', $log_entry);
+        do_action('spectrus_shield_attack_logged', $log_entry);
     }
 
     /**
@@ -227,7 +227,7 @@ class GS_Logger
      */
     private function update_stats($type)
     {
-        $stats = get_option('ghost_shield_attack_stats', array(
+        $stats = get_option('spectrus_shield_attack_stats', array(
             'total_blocked' => 0,
             'sqli_blocked' => 0,
             'xss_blocked' => 0,
@@ -262,7 +262,7 @@ class GS_Logger
             }
         }
 
-        update_option('ghost_shield_attack_stats', $stats);
+        update_option('spectrus_shield_attack_stats', $stats);
     }
 
     /**
@@ -334,7 +334,7 @@ class GS_Logger
      */
     public function get_stats()
     {
-        return get_option('ghost_shield_attack_stats', array(
+        return get_option('spectrus_shield_attack_stats', array(
             'total_blocked' => 0,
             'sqli_blocked' => 0,
             'xss_blocked' => 0,

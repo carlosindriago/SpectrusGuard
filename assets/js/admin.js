@@ -1,9 +1,9 @@
 /**
- * GhostShield Admin JavaScript
+ * SpectrusGuard Admin JavaScript
  *
  * Dashboard interactions and AJAX functionality.
  *
- * @package GhostShield
+ * @package SpectrusGuard
  * @since   1.0.0
  */
 
@@ -11,9 +11,9 @@
     'use strict';
 
     /**
-     * GhostShield Admin Module
+     * SpectrusGuard Admin Module
      */
-    var GhostShieldAdmin = {
+    var SpectrusGuardAdmin = {
 
         /**
          * Initialize
@@ -28,21 +28,21 @@
          */
         bindEvents: function () {
             // Copy button functionality
-            $(document).on('click', '.gs-copy-btn', this.handleCopy);
+            $(document).on('click', '.sg-copy-btn', this.handleCopy);
 
             // Whitelist IP button
-            $('#gs-whitelist-my-ip').on('click', this.handleWhitelistIP);
+            $('#sg-whitelist-my-ip').on('click', this.handleWhitelistIP);
 
             // Clear logs button
-            $('#gs-clear-logs').on('click', this.handleClearLogs);
+            $('#sg-clear-logs').on('click', this.handleClearLogs);
 
             // Refresh logs button
-            $('#gs-refresh-logs').on('click', function () {
+            $('#sg-refresh-logs').on('click', function () {
                 location.reload();
             });
 
             // Toggle sections
-            $(document).on('click', '.gs-toggle-section', this.handleToggleSection);
+            $(document).on('click', '.sg-toggle-section', this.handleToggleSection);
         },
 
         /**
@@ -66,7 +66,7 @@
 
             if (navigator.clipboard && navigator.clipboard.writeText) {
                 navigator.clipboard.writeText(textToCopy).then(function () {
-                    $btn.text(GhostShield.i18n.copied || 'Copied!');
+                    $btn.text(SpectrusGuard.i18n.copied || 'Copied!');
                     setTimeout(function () {
                         $btn.text(originalText);
                     }, 2000);
@@ -79,7 +79,7 @@
                 document.execCommand('copy');
                 $temp.remove();
 
-                $btn.text(GhostShield.i18n.copied || 'Copied!');
+                $btn.text(SpectrusGuard.i18n.copied || 'Copied!');
                 setTimeout(function () {
                     $btn.text(originalText);
                 }, 2000);
@@ -96,21 +96,21 @@
             $btn.prop('disabled', true);
 
             $.ajax({
-                url: GhostShield.ajax_url,
+                url: SpectrusGuard.ajax_url,
                 type: 'POST',
                 data: {
-                    action: 'gs_whitelist_ip',
-                    nonce: GhostShield.nonce
+                    action: 'sg_whitelist_ip',
+                    nonce: SpectrusGuard.nonce
                 },
                 success: function (response) {
                     if (response.success) {
-                        GhostShieldAdmin.showNotice('success', response.data.message);
+                        SpectrusGuardAdmin.showNotice('success', response.data.message);
                     } else {
-                        GhostShieldAdmin.showNotice('error', response.data.message || GhostShield.i18n.error);
+                        SpectrusGuardAdmin.showNotice('error', response.data.message || SpectrusGuard.i18n.error);
                     }
                 },
                 error: function () {
-                    GhostShieldAdmin.showNotice('error', GhostShield.i18n.error);
+                    SpectrusGuardAdmin.showNotice('error', SpectrusGuard.i18n.error);
                 },
                 complete: function () {
                     $btn.prop('disabled', false);
@@ -124,7 +124,7 @@
         handleClearLogs: function (e) {
             e.preventDefault();
 
-            if (!confirm(GhostShield.i18n.confirm_clear || 'Are you sure you want to clear all logs?')) {
+            if (!confirm(SpectrusGuard.i18n.confirm_clear || 'Are you sure you want to clear all logs?')) {
                 return;
             }
 
@@ -132,24 +132,24 @@
             $btn.prop('disabled', true);
 
             $.ajax({
-                url: GhostShield.ajax_url,
+                url: SpectrusGuard.ajax_url,
                 type: 'POST',
                 data: {
-                    action: 'gs_clear_logs',
-                    nonce: GhostShield.nonce
+                    action: 'sg_clear_logs',
+                    nonce: SpectrusGuard.nonce
                 },
                 success: function (response) {
                     if (response.success) {
-                        GhostShieldAdmin.showNotice('success', response.data.message);
+                        SpectrusGuardAdmin.showNotice('success', response.data.message);
                         setTimeout(function () {
                             location.reload();
                         }, 1000);
                     } else {
-                        GhostShieldAdmin.showNotice('error', response.data.message || GhostShield.i18n.error);
+                        SpectrusGuardAdmin.showNotice('error', response.data.message || SpectrusGuard.i18n.error);
                     }
                 },
                 error: function () {
-                    GhostShieldAdmin.showNotice('error', GhostShield.i18n.error);
+                    SpectrusGuardAdmin.showNotice('error', SpectrusGuard.i18n.error);
                 },
                 complete: function () {
                     $btn.prop('disabled', false);
@@ -163,8 +163,8 @@
         handleToggleSection: function (e) {
             e.preventDefault();
 
-            var $section = $(this).closest('.gs-settings-section');
-            $section.find('.gs-section-content').slideToggle(200);
+            var $section = $(this).closest('.sg-settings-section');
+            $section.find('.sg-section-content').slideToggle(200);
             $(this).toggleClass('active');
         },
 
@@ -173,7 +173,7 @@
          */
         showNotice: function (type, message) {
             var $notice = $(
-                '<div class="notice notice-' + type + ' is-dismissible gs-notice">' +
+                '<div class="notice notice-' + type + ' is-dismissible sg-notice">' +
                 '<p>' + message + '</p>' +
                 '<button type="button" class="notice-dismiss">' +
                 '<span class="screen-reader-text">Dismiss</span>' +
@@ -182,7 +182,7 @@
             );
 
             // Remove existing notices
-            $('.gs-notice').remove();
+            $('.sg-notice').remove();
 
             // Insert at top of content
             $('.wrap h1').first().after($notice);
@@ -228,10 +228,10 @@
      * Document ready
      */
     $(document).ready(function () {
-        GhostShieldAdmin.init();
+        SpectrusGuardAdmin.init();
     });
 
     // Expose to global scope for external access
-    window.GhostShieldAdmin = GhostShieldAdmin;
+    window.SpectrusGuardAdmin = SpectrusGuardAdmin;
 
 })(jQuery);

@@ -1,6 +1,6 @@
 {
     "version": "1.0.0",
-    "description": "GhostShield WAF Rules - Regex patterns for detecting web attacks",
+    "description": "SpectrusGuard WAF Rules - Regex patterns for detecting web attacks",
     "last_updated": "2026-01-26",
     
     "sqli": [

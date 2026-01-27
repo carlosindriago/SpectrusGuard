@@ -1,11 +1,11 @@
 <?php
 /**
- * GhostShield Heuristics Scanner
+ * SpectrusGuard Heuristics Scanner
  *
  * Performs heuristic analysis of files to detect suspicious patterns,
  * files in wrong locations, and dangerous permissions.
  *
- * @package GhostShield
+ * @package SpectrusGuard
  * @since   1.0.0
  */
 
@@ -15,11 +15,11 @@ if (!defined('ABSPATH')) {
 }
 
 /**
- * Class GS_Heuristics
+ * Class SG_Heuristics
  *
  * Heuristic file analysis for detecting suspicious content.
  */
-class GS_Heuristics
+class SG_Heuristics
 {
 
     /**

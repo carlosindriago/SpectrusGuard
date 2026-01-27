@@ -1,4 +1,4 @@
-# GhostShield: Advanced WAF & Stealth Security Suite
+# SpectrusGuard: Advanced WAF & Stealth Security Suite
 
 ![Version](https://img.shields.io/badge/version-1.0.0-blue.svg)
 ![WordPress](https://img.shields.io/badge/WordPress-5.8%2B-green.svg)
@@ -38,20 +38,20 @@
 
 ## 📦 Installation
 
-1. Upload the `GhostShield` directory to `/wp-content/plugins/`.
+1. Upload the `SpectrusGuard` directory to `/wp-content/plugins/`.
 2. Activate the plugin via **Plugins > Installed Plugins**.
 3. The MU-Plugin (Must-Use) component automatically installs to `wp-content/mu-plugins/`.
-4. Configure settings via **GhostShield > Settings**.
+4. Configure settings via **SpectrusGuard > Settings**.
 
 ## ⚙️ Configuration
 
 ### Rescue Mode (Fail-Safe)
 If you accidentally lock yourself out, use the designated rescue URL:
 ```
-https://yoursite.com/?ghost_rescue=YOUR_SECRET_KEY
+https://yoursite.com/?spectrus_rescue=YOUR_SECRET_KEY
 ```
 
-The secret key is automatically generated and can be found in **GhostShield > Dashboard**.
+The secret key is automatically generated and can be found in **SpectrusGuard > Dashboard**.
 
 ### IP Whitelist
 add trusted IP addresses that should never be blocked in **Settings > IP Whitelist**.
@@ -64,25 +64,25 @@ add trusted IP addresses that should never be blocked in **Settings > IP Whiteli
 ## 📂 Project Structure
 
 ```
-ghost-shield/
-├── ghost-shield.php            # Main Bootstrapper
+spectrus-guard/
+├── spectrus-guard.php            # Main Bootstrapper
 ├── uninstall.php               # Cleanup Routine
 ├── assets/
 │   ├── css/admin.css           # Dashboard Styles (Enterprise Dark Theme)
 │   └── js/admin.js             # Admin Interactions
 ├── includes/
-│   ├── class-gs-loader.php     # Singleton Orchestrator
-│   ├── class-gs-logger.php     # Logging System
+│   ├── class-sg-loader.php     # Singleton Orchestrator
+│   ├── class-sg-logger.php     # Logging System
 │   ├── waf/
-│   │   ├── class-gs-firewall.php  # WAF Engine
+│   │   ├── class-sg-firewall.php  # WAF Engine
 │   │   └── rules.json          # Regex Ruleset
 │   ├── hardening/
-│   │   ├── class-gs-stealth.php   # Anti-fingerprinting Module
-│   │   └── class-gs-api-guard.php # REST API Protection
+│   │   ├── class-sg-stealth.php   # Anti-fingerprinting Module
+│   │   └── class-sg-api-guard.php # REST API Protection
 │   ├── scanner/
-│   │   └── class-gs-scanner.php   # Integrity Scanner Engine
+│   │   └── class-sg-scanner.php   # Integrity Scanner Engine
 │   └── admin/
-│       └── class-gs-admin.php  # Enterprise Dashboard Controller
+│       └── class-sg-admin.php  # Enterprise Dashboard Controller
 ├── mu-loader/
 │   └── ghost-waf.php           # MU-Plugin DROP-IN
 └── languages/                  # Localization Files
@@ -90,8 +90,8 @@ ghost-shield/
 
 ## 🔧 Design Patterns
 
-- **Singleton**: `GS_Loader` - Ensures a single instance of the main orchestrator.
-- **Factory**: `GS_Firewall` - Instantiates specific matchers based on attack vectors.
+- **Singleton**: `SG_Loader` - Ensures a single instance of the main orchestrator.
+- **Factory**: `SG_Firewall` - Instantiates specific matchers based on attack vectors.
 - **Observer**: Hooks into WordPress actions for alerts and notifications.
 
 ## 🔐 Security Best Practices

@@ -1,14 +1,14 @@
 <?php
 /**
- * GhostShield WAF - Must-Use Plugin (DROP-IN)
+ * SpectrusGuard WAF - Must-Use Plugin (DROP-IN)
  *
  * ⚠️ CRITICAL FILE: This file executes BEFORE WordPress loads!
  *
  * This file is automatically copied to wp-content/mu-plugins/ when the
- * GhostShield plugin is activated. It intercepts malicious requests
+ * SpectrusGuard plugin is activated. It intercepts malicious requests
  * before they can reach WordPress core or any other plugins.
  *
- * @package GhostShield
+ * @package SpectrusGuard
  * @since   1.0.0
  */
 
@@ -20,15 +20,15 @@ if (!defined('ABSPATH')) {
 }
 
 /**
- * GhostShield MU-Plugin Guard
+ * SpectrusGuard MU-Plugin Guard
  *
  * Early execution firewall that runs before WordPress initializes.
  */
-class GhostShield_MU_Guard
+class SpectrusGuard_MU_Guard
 {
 
     /**
-     * Path to the main GhostShield plugin
+     * Path to the main SpectrusGuard plugin
      *
      * @var string
      */
@@ -61,7 +61,11 @@ class GhostShield_MU_Guard
     public function __construct()
     {
         // Define paths
-        $this->plugin_dir = WP_CONTENT_DIR . '/plugins/GhostShield/';
+        // Define path to main plugin
+        if (!defined('SG_CORE_PATH')) {
+            define('SG_CORE_PATH', WP_CONTENT_DIR . '/plugins/spectrus-guard/');
+        }
+        $this->plugin_dir = SG_CORE_PATH;
         $this->rules_file = $this->plugin_dir . 'includes/waf/rules.json';
 
         // Early exit conditions
@@ -98,7 +102,7 @@ class GhostShield_MU_Guard
         }
 
         // Skip if main plugin doesn't exist
-        if (!file_exists($this->plugin_dir . 'ghost-shield.php')) {
+        if (!file_exists($this->plugin_dir . 'spectrus-guard.php')) {
             return true;
         }
 
@@ -124,17 +128,17 @@ class GhostShield_MU_Guard
         $settings = $this->get_settings();
         $rescue_key = isset($settings['rescue_key']) ? $settings['rescue_key'] : '';
 
-        if (!empty($rescue_key) && isset($_GET['ghost_rescue'])) {
-            if ($_GET['ghost_rescue'] === $rescue_key) {
+        if (!empty($rescue_key) && isset($_GET['spectrus_rescue'])) {
+            if ($_GET['spectrus_rescue'] === $rescue_key) {
                 // Set a cookie to maintain rescue mode for 1 hour
-                setcookie('gs_rescue_mode', md5($rescue_key), time() + 3600, '/');
+                setcookie('sg_rescue_mode', md5($rescue_key), time() + 3600, '/');
                 return true;
             }
         }
 
         // 2. Check for rescue cookie
-        if (isset($_COOKIE['gs_rescue_mode']) && !empty($rescue_key)) {
-            if ($_COOKIE['gs_rescue_mode'] === md5($rescue_key)) {
+        if (isset($_COOKIE['sg_rescue_mode']) && !empty($rescue_key)) {
+            if ($_COOKIE['sg_rescue_mode'] === md5($rescue_key)) {
                 return true;
             }
         }
@@ -172,7 +176,7 @@ class GhostShield_MU_Guard
             return $this->settings;
         }
 
-        $option_name = 'ghost_shield_settings';
+        $option_name = 'spectrus_shield_settings';
         $table_name = $wpdb->options;
 
         // Direct query since we're early in the load process
@@ -392,7 +396,7 @@ class GhostShield_MU_Guard
         // Set headers
         if (!headers_sent()) {
             header('HTTP/1.1 403 Forbidden');
-            header('X-GhostShield-Blocked: ' . strtoupper($type));
+            header('X-SpectrusGuard-Blocked: ' . strtoupper($type));
             header('Connection: close');
         }
 
@@ -410,7 +414,7 @@ class GhostShield_MU_Guard
      */
     private function log_attack($type, $payload)
     {
-        $log_dir = WP_CONTENT_DIR . '/ghost-shield-logs';
+        $log_dir = WP_CONTENT_DIR . '/spectrus-guard-logs';
         $log_file = $log_dir . '/attacks.log';
 
         // Create log directory if needed
@@ -458,7 +462,7 @@ class GhostShield_MU_Guard
             return;
         }
 
-        $option_name = 'ghost_shield_attack_stats';
+        $option_name = 'spectrus_shield_attack_stats';
         $table_name = $wpdb->options;
 
         // Get current stats
@@ -574,7 +578,7 @@ class GhostShield_MU_Guard
             <meta charset="UTF-8">
             <meta name="viewport" content="width=device-width, initial-scale=1.0">
             <meta name="robots" content="noindex, nofollow">
-            <title>Access Denied | GhostShield Security</title>
+            <title>Access Denied | SpectrusGuard Security</title>
             <style>
                 * {
                     margin: 0;
@@ -731,7 +735,7 @@ class GhostShield_MU_Guard
                 <div class="shield-icon">🛡️</div>
                 <h1>Access Blocked</h1>
                 <p class="subtitle">
-                    GhostShield has detected potentially malicious activity in your request
+                    SpectrusGuard has detected potentially malicious activity in your request
                     and blocked it to protect this website.
                 </p>
 
@@ -760,4 +764,4 @@ class GhostShield_MU_Guard
 }
 
 // Initialize the MU Guard
-new GhostShield_MU_Guard();
+new SpectrusGuard_MU_Guard();

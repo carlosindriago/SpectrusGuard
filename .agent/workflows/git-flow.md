@@ -1,10 +1,10 @@
 ---
-description: Git Flow workflow for GhostShield plugin development
+description: Git Flow workflow for SpectrusGuard plugin development
 ---
 
 # Git Flow Workflow
 
-Este workflow define cómo trabajar con ramas en GhostShield.
+Este workflow define cómo trabajar con ramas en SpectrusGuard.
 
 ## Estructura de Ramas
 

@@ -1,11 +1,11 @@
 <?php
 /**
- * GhostShield Malware Signatures
+ * SpectrusGuard Malware Signatures
  *
  * Database of known malware signatures and patterns used to detect
  * infected files in WordPress installations.
  *
- * @package GhostShield
+ * @package SpectrusGuard
  * @since   1.0.0
  */
 
@@ -22,7 +22,7 @@ if (!defined('ABSPATH')) {
  *
  * @return array Malware signatures.
  */
-function gs_get_malware_signatures()
+function sg_get_malware_signatures()
 {
     return array(
 
@@ -284,9 +284,9 @@ function gs_get_malware_signatures()
  *
  * @return array High priority signatures.
  */
-function gs_get_critical_signatures()
+function sg_get_critical_signatures()
 {
-    $all = gs_get_malware_signatures();
+    $all = sg_get_malware_signatures();
 
     $critical_keys = array(
         'FilesMan Backdoor',
@@ -306,9 +306,9 @@ function gs_get_critical_signatures()
  *
  * @return int Total number of signatures.
  */
-function gs_get_signature_count()
+function sg_get_signature_count()
 {
-    $signatures = gs_get_malware_signatures();
+    $signatures = sg_get_malware_signatures();
     $count = 0;
 
     foreach ($signatures as $patterns) {

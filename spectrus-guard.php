@@ -1,0 +1,215 @@
+<?php
+/**
+ * Plugin Name:       SpectrusGuard: Advanced WAF & Stealth Security Suite
+ * Plugin URI:        https://github.com/yourusername/spectrus-guard
+ * Description:       Sistema de seguridad integral que intercepta ataques antes de que toquen tu web y camufla tu sitio para que los hackers ni siquiera sepan que usas WordPress.
+ * Version:           1.0.0
+ * Requires at least: 5.8
+ * Requires PHP:      7.4
+ * Author:            Carlos Developer
+ * Author URI:        https://yoursite.com
+ * License:           GPL v2 or later
+ * License URI:       https://www.gnu.org/licenses/gpl-2.0.html
+ * Text Domain:       spectrus-guard
+ * Domain Path:       /languages
+ *
+ * @package SpectrusGuard
+ */
+
+// Prevent direct access
+if (!defined('ABSPATH')) {
+    exit;
+}
+
+/**
+ * Plugin Constants
+ */
+define('SG_VERSION', '1.0.0');
+define('SG_PLUGIN_FILE', __FILE__);
+define('SG_PLUGIN_DIR', plugin_dir_path(__FILE__));
+define('SG_PLUGIN_URL', plugin_dir_url(__FILE__));
+define('SG_PLUGIN_BASENAME', plugin_basename(__FILE__));
+define('SG_MIN_PHP_VERSION', '7.4');
+define('SG_MIN_WP_VERSION', '5.8');
+
+/**
+ * MU-Plugin paths
+ */
+define('SG_MU_SOURCE', SG_PLUGIN_DIR . 'mu-loader/spectrus-waf.php');
+define('SG_MU_DESTINATION', WP_CONTENT_DIR . '/mu-plugins/spectrus-waf.php');
+
+/**
+ * Check minimum requirements before loading
+ */
+function sg_check_requirements()
+{
+    $errors = array();
+
+    // Check PHP version
+    if (version_compare(PHP_VERSION, SG_MIN_PHP_VERSION, '<')) {
+        $errors[] = sprintf(
+            /* translators: 1: Current PHP version 2: Required PHP version */
+            __('SpectrusGuard requires PHP %2$s or higher. Your server is running PHP %1$s.', 'spectrus-guard'),
+            PHP_VERSION,
+            SG_MIN_PHP_VERSION
+        );
+    }
+
+    // Check WordPress version
+    global $wp_version;
+    if (version_compare($wp_version, SG_MIN_WP_VERSION, '<')) {
+        $errors[] = sprintf(
+            /* translators: 1: Current WP version 2: Required WP version */
+            __('SpectrusGuard requires WordPress %2$s or higher. You are running WordPress %1$s.', 'spectrus-guard'),
+            $wp_version,
+            SG_MIN_WP_VERSION
+        );
+    }
+
+    return $errors;
+}
+
+/**
+ * Display admin notice for requirement errors
+ */
+function sg_requirements_notice()
+{
+    $errors = sg_check_requirements();
+    if (empty($errors)) {
+        return;
+    }
+
+    echo '<div class="notice notice-error"><p><strong>SpectrusGuard:</strong></p><ul>';
+    foreach ($errors as $error) {
+        echo '<li>' . esc_html($error) . '</li>';
+    }
+    echo '</ul></div>';
+}
+
+/**
+ * Plugin activation hook
+ */
+function sg_activate()
+{
+    // Check requirements
+    $errors = sg_check_requirements();
+    if (!empty($errors)) {
+        wp_die(
+            esc_html(implode('<br>', $errors)),
+            esc_html__('Plugin Activation Error', 'spectrus-guard'),
+            array('back_link' => true)
+        );
+    }
+
+    // Create mu-plugins directory if it doesn't exist
+    $mu_plugins_dir = WP_CONTENT_DIR . '/mu-plugins';
+    if (!file_exists($mu_plugins_dir)) {
+        wp_mkdir_p($mu_plugins_dir);
+    }
+
+    // Copy the MU-Plugin file
+    if (file_exists(SG_MU_SOURCE)) {
+        // Remove old version if exists
+        if (file_exists(SG_MU_DESTINATION)) {
+            unlink(SG_MU_DESTINATION);
+        }
+
+        // Copy new version
+        $copied = copy(SG_MU_SOURCE, SG_MU_DESTINATION);
+
+        if (!$copied) {
+            wp_die(
+                esc_html__('SpectrusGuard could not install the MU-Plugin. Please check file permissions for wp-content/mu-plugins/', 'spectrus-guard'),
+                esc_html__('Plugin Activation Error', 'spectrus-guard'),
+                array('back_link' => true)
+            );
+        }
+    }
+
+    // Create logs directory with protection
+    $logs_dir = WP_CONTENT_DIR . '/spectrus-guard-logs';
+    if (!file_exists($logs_dir)) {
+        wp_mkdir_p($logs_dir);
+
+        // Protect logs directory with .htaccess
+        $htaccess_content = "Order deny,allow\nDeny from all";
+        file_put_contents($logs_dir . '/.htaccess', $htaccess_content);
+
+        // Also add index.php for extra protection
+        file_put_contents($logs_dir . '/index.php', '<?php // Silence is golden');
+    }
+
+    // Set default options
+    $default_options = array(
+        'waf_enabled' => true,
+        'rescue_key' => wp_generate_password(32, false),
+        'whitelist_ips' => array(),
+        'log_attacks' => true,
+        'block_xmlrpc' => true,
+        'hide_wp_version' => true,
+        'protect_api' => true,
+    );
+
+    add_option('spectrus_shield_settings', $default_options);
+    add_option('spectrus_shield_version', SG_VERSION);
+
+    // Flush rewrite rules
+    flush_rewrite_rules();
+}
+register_activation_hook(__FILE__, 'sg_activate');
+
+/**
+ * Plugin deactivation hook
+ */
+function sg_deactivate()
+{
+    // Remove MU-Plugin
+    if (file_exists(SG_MU_DESTINATION)) {
+        unlink(SG_MU_DESTINATION);
+    }
+
+    // Clear scheduled events if any
+    wp_clear_scheduled_hook('spectrus_shield_daily_scan');
+
+    // Flush rewrite rules
+    flush_rewrite_rules();
+}
+register_deactivation_hook(__FILE__, 'sg_deactivate');
+
+/**
+ * Initialize the plugin
+ */
+function sg_init()
+{
+    // Check requirements
+    $errors = sg_check_requirements();
+    if (!empty($errors)) {
+        add_action('admin_notices', 'sg_requirements_notice');
+        return;
+    }
+
+    // Load text domain for translations
+    load_plugin_textdomain('spectrus-guard', false, dirname(SG_PLUGIN_BASENAME) . '/languages');
+
+    // Load the main loader class
+    require_once SG_PLUGIN_DIR . 'includes/class-sg-loader.php';
+
+    // Initialize the plugin
+    SG_Loader::get_instance();
+}
+add_action('plugins_loaded', 'sg_init');
+
+/**
+ * Add settings link on plugin page
+ */
+function sg_plugin_action_links($links)
+{
+    $settings_link = sprintf(
+        '<a href="%s">%s</a>',
+        admin_url('admin.php?page=spectrus-guard'),
+        esc_html__('Settings', 'spectrus-guard')
+    );
+    array_unshift($links, $settings_link);
+    return $links;
+}
+add_filter('plugin_action_links_' . SG_PLUGIN_BASENAME, 'sg_plugin_action_links');

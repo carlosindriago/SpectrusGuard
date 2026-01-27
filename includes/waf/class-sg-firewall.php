@@ -1,13 +1,13 @@
 <?php
 /**
- * GhostShield Firewall Engine
+ * SpectrusGuard Firewall Engine
  *
  * Core WAF (Web Application Firewall) engine that analyzes requests
  * and blocks malicious payloads using regex pattern matching.
  *
  * Uses Factory pattern to create rule matchers for different attack types.
  *
- * @package GhostShield
+ * @package SpectrusGuard
  * @since   1.0.0
  */
 
@@ -17,17 +17,17 @@ if (!defined('ABSPATH')) {
 }
 
 /**
- * Class GS_Firewall
+ * Class SG_Firewall
  *
  * Main firewall engine with Factory pattern for rule matchers.
  */
-class GS_Firewall
+class SG_Firewall
 {
 
     /**
      * Logger instance
      *
-     * @var GS_Logger
+     * @var SG_Logger
      */
     private $logger;
 
@@ -70,9 +70,9 @@ class GS_Firewall
     /**
      * Constructor
      *
-     * @param GS_Logger $logger Logger instance.
+     * @param SG_Logger $logger Logger instance.
      */
-    public function __construct(GS_Logger $logger)
+    public function __construct(SG_Logger $logger)
     {
         $this->logger = $logger;
         $this->load_rules();
@@ -84,7 +84,7 @@ class GS_Firewall
      */
     private function load_rules()
     {
-        $rules_file = GS_PLUGIN_DIR . 'includes/waf/rules.json';
+        $rules_file = SG_PLUGIN_DIR . 'includes/waf/rules.json';
 
         if (!file_exists($rules_file)) {
             $this->logger->log_debug('Rules file not found: ' . $rules_file, 'error');
@@ -107,7 +107,7 @@ class GS_Firewall
      */
     private function load_whitelist()
     {
-        $settings = get_option('ghost_shield_settings', array());
+        $settings = get_option('spectrus_shield_settings', array());
 
         $this->whitelist_ips = isset($settings['whitelist_ips'])
             ? (array) $settings['whitelist_ips']
@@ -116,7 +116,7 @@ class GS_Firewall
         // Default whitelisted paths (WordPress admin AJAX, REST, etc.)
         $this->whitelist_paths = array(
             '/wp-admin/admin-ajax.php',
-            '/wp-json/ghost-shield/',
+            '/wp-json/spectrus-guard/',
             '/wp-cron.php',
         );
 
@@ -472,7 +472,7 @@ class GS_Firewall
         // Set response headers
         if (!headers_sent()) {
             header('HTTP/1.1 403 Forbidden');
-            header('X-GhostShield-Block: ' . $attack['type']);
+            header('X-SpectrusGuard-Block: ' . $attack['type']);
             header('Connection: close');
         }
 
@@ -634,9 +634,9 @@ class GS_Firewall
         if (!in_array($ip, $this->whitelist_ips, true)) {
             $this->whitelist_ips[] = $ip;
 
-            $settings = get_option('ghost_shield_settings', array());
+            $settings = get_option('spectrus_shield_settings', array());
             $settings['whitelist_ips'] = $this->whitelist_ips;
-            update_option('ghost_shield_settings', $settings);
+            update_option('spectrus_shield_settings', $settings);
         }
 
         return true;
@@ -656,9 +656,9 @@ class GS_Firewall
             unset($this->whitelist_ips[$key]);
             $this->whitelist_ips = array_values($this->whitelist_ips);
 
-            $settings = get_option('ghost_shield_settings', array());
+            $settings = get_option('spectrus_shield_settings', array());
             $settings['whitelist_ips'] = $this->whitelist_ips;
-            update_option('ghost_shield_settings', $settings);
+            update_option('spectrus_shield_settings', $settings);
 
             return true;
         }

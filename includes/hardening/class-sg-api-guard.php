@@ -1,10 +1,10 @@
 <?php
 /**
- * GhostShield API Guard
+ * SpectrusGuard API Guard
  *
  * Protects the WordPress REST API and blocks user enumeration.
  *
- * @package GhostShield
+ * @package SpectrusGuard
  * @since   1.0.0
  */
 
@@ -14,11 +14,11 @@ if (!defined('ABSPATH')) {
 }
 
 /**
- * Class GS_API_Guard
+ * Class SG_API_Guard
  *
  * REST API protection and anti-enumeration module.
  */
-class GS_API_Guard
+class SG_API_Guard
 {
 
     /**
@@ -94,7 +94,7 @@ class GS_API_Guard
             if (!is_user_logged_in() || !current_user_can('list_users')) {
                 return new WP_Error(
                     'rest_forbidden',
-                    __('You do not have permission to access this resource.', 'ghost-shield'),
+                    __('You do not have permission to access this resource.', 'spectrus-guard'),
                     array('status' => 403)
                 );
             }
@@ -120,7 +120,7 @@ class GS_API_Guard
         // Also block /author/username/ for non-logged-in users
         if (is_author() && !is_user_logged_in()) {
             // Get settings
-            $settings = get_option('ghost_shield_settings', array());
+            $settings = get_option('spectrus_shield_settings', array());
             $block_author_pages = isset($settings['block_author_pages']) ? $settings['block_author_pages'] : false;
 
             if ($block_author_pages) {
@@ -140,9 +140,9 @@ class GS_API_Guard
         // Create a hidden field that looks like a legitimate input
         $field_name = 'user_website'; // Looks tempting to bots
         ?>
-        <p class="gs-hp-field">
+        <p class="sg-hp-field">
             <label for="<?php echo esc_attr($field_name); ?>">
-                <?php esc_html_e('Website', 'ghost-shield'); ?><br>
+                <?php esc_html_e('Website', 'spectrus-guard'); ?><br>
                 <input type="text" name="<?php echo esc_attr($field_name); ?>" id="<?php echo esc_attr($field_name); ?>"
                     class="input" value="" size="20" autocomplete="off" tabindex="-1">
             </label>
@@ -157,7 +157,7 @@ class GS_API_Guard
     {
         ?>
         <style>
-            .gs-hp-field {
+            .sg-hp-field {
                 position: absolute !important;
                 left: -9999px !important;
                 top: -9999px !important;
@@ -195,7 +195,7 @@ class GS_API_Guard
             // Return error (vague to not tip off sophisticated bots)
             return new WP_Error(
                 'authentication_failed',
-                __('Authentication failed. Please try again.', 'ghost-shield')
+                __('Authentication failed. Please try again.', 'spectrus-guard')
             );
         }
 
@@ -209,7 +209,7 @@ class GS_API_Guard
      */
     private function log_bot_attempt($username)
     {
-        $log_dir = WP_CONTENT_DIR . '/ghost-shield-logs';
+        $log_dir = WP_CONTENT_DIR . '/spectrus-guard-logs';
         $log_file = $log_dir . '/bots.log';
 
         if (!file_exists($log_dir)) {
@@ -244,7 +244,7 @@ class GS_API_Guard
         }
 
         $ip = $this->get_client_ip();
-        $transient_key = 'gs_login_attempts_' . md5($ip);
+        $transient_key = 'sg_login_attempts_' . md5($ip);
         $attempts = get_transient($transient_key);
 
         if ($attempts === false) {
@@ -252,7 +252,7 @@ class GS_API_Guard
         }
 
         // Settings
-        $settings = get_option('ghost_shield_settings', array());
+        $settings = get_option('spectrus_shield_settings', array());
         $max_attempts = isset($settings['max_login_attempts']) ? (int) $settings['max_login_attempts'] : 5;
         $lockout_time = isset($settings['login_lockout_time']) ? (int) $settings['login_lockout_time'] : 900; // 15 minutes
 
@@ -261,7 +261,7 @@ class GS_API_Guard
                 'too_many_attempts',
                 sprintf(
                     /* translators: %d: lockout time in minutes */
-                    __('Too many failed login attempts. Please try again in %d minutes.', 'ghost-shield'),
+                    __('Too many failed login attempts. Please try again in %d minutes.', 'spectrus-guard'),
                     ceil($lockout_time / 60)
                 )
             );
@@ -278,7 +278,7 @@ class GS_API_Guard
     public function log_failed_login($username)
     {
         $ip = $this->get_client_ip();
-        $transient_key = 'gs_login_attempts_' . md5($ip);
+        $transient_key = 'sg_login_attempts_' . md5($ip);
 
         $attempts = get_transient($transient_key);
         if ($attempts === false) {
@@ -288,13 +288,13 @@ class GS_API_Guard
         $attempts++;
 
         // Get lockout time from settings
-        $settings = get_option('ghost_shield_settings', array());
+        $settings = get_option('spectrus_shield_settings', array());
         $lockout_time = isset($settings['login_lockout_time']) ? (int) $settings['login_lockout_time'] : 900;
 
         set_transient($transient_key, $attempts, $lockout_time);
 
         // Log to file
-        $log_dir = WP_CONTENT_DIR . '/ghost-shield-logs';
+        $log_dir = WP_CONTENT_DIR . '/spectrus-guard-logs';
         $log_file = $log_dir . '/login-attempts.log';
 
         if (!file_exists($log_dir)) {
@@ -321,7 +321,7 @@ class GS_API_Guard
     public function clear_login_attempts($username)
     {
         $ip = $this->get_client_ip();
-        $transient_key = 'gs_login_attempts_' . md5($ip);
+        $transient_key = 'sg_login_attempts_' . md5($ip);
         delete_transient($transient_key);
     }
 
@@ -375,7 +375,7 @@ class GS_API_Guard
 
         return new WP_Error(
             'rest_not_logged_in',
-            __('You must be logged in to access the REST API.', 'ghost-shield'),
+            __('You must be logged in to access the REST API.', 'spectrus-guard'),
             array('status' => 401)
         );
     }

@@ -1,11 +1,11 @@
 <?php
 /**
- * GhostShield Loader - Singleton Orchestrator
+ * SpectrusGuard Loader - Singleton Orchestrator
  *
  * Main orchestrator class that loads and initializes all modules.
  * Implements the Singleton pattern to ensure single instance.
  *
- * @package GhostShield
+ * @package SpectrusGuard
  * @since   1.0.0
  */
 
@@ -15,17 +15,17 @@ if (!defined('ABSPATH')) {
 }
 
 /**
- * Class GS_Loader
+ * Class SG_Loader
  *
- * Singleton orchestrator for the GhostShield plugin.
+ * Singleton orchestrator for the SpectrusGuard plugin.
  */
-class GS_Loader
+class SG_Loader
 {
 
     /**
      * Single instance of the class
      *
-     * @var GS_Loader|null
+     * @var SG_Loader|null
      */
     private static $instance = null;
 
@@ -39,28 +39,28 @@ class GS_Loader
     /**
      * Logger instance
      *
-     * @var GS_Logger|null
+     * @var SG_Logger|null
      */
     private $logger = null;
 
     /**
      * Firewall instance
      *
-     * @var GS_Firewall|null
+     * @var SG_Firewall|null
      */
     private $firewall = null;
 
     /**
      * Scanner instance
      *
-     * @var GS_Scanner|null
+     * @var SG_Scanner|null
      */
     private $scanner = null;
 
     /**
      * Get the singleton instance
      *
-     * @return GS_Loader
+     * @return SG_Loader
      */
     public static function get_instance()
     {
@@ -110,12 +110,12 @@ class GS_Loader
             'hide_wp_version' => true,
             'protect_api' => true,
             'hide_login' => false,
-            'login_slug' => 'gs-login',
+            'login_slug' => 'sg-login',
             'url_cloaking_enabled' => false,
         );
 
         $this->settings = wp_parse_args(
-            get_option('ghost_shield_settings', array()),
+            get_option('spectrus_shield_settings', array()),
             $defaults
         );
     }
@@ -126,36 +126,36 @@ class GS_Loader
     private function load_dependencies()
     {
         // Core classes
-        require_once GS_PLUGIN_DIR . 'includes/class-gs-logger.php';
+        require_once SG_PLUGIN_DIR . 'includes/class-sg-logger.php';
 
         // WAF Module
-        require_once GS_PLUGIN_DIR . 'includes/waf/class-gs-firewall.php';
+        require_once SG_PLUGIN_DIR . 'includes/waf/class-sg-firewall.php';
 
         // Hardening Module (Sprint 2 - load if exists)
-        $hardening_file = GS_PLUGIN_DIR . 'includes/hardening/class-gs-api-guard.php';
+        $hardening_file = SG_PLUGIN_DIR . 'includes/hardening/class-sg-api-guard.php';
         if (file_exists($hardening_file)) {
             require_once $hardening_file;
         }
 
-        $stealth_file = GS_PLUGIN_DIR . 'includes/hardening/class-gs-stealth.php';
+        $stealth_file = SG_PLUGIN_DIR . 'includes/hardening/class-sg-stealth.php';
         if (file_exists($stealth_file)) {
             require_once $stealth_file;
         }
 
-        $url_cloaker_file = GS_PLUGIN_DIR . 'includes/hardening/class-gs-url-cloaker.php';
+        $url_cloaker_file = SG_PLUGIN_DIR . 'includes/hardening/class-sg-url-cloaker.php';
         if (file_exists($url_cloaker_file)) {
             require_once $url_cloaker_file;
         }
 
         // Scanner Module (Sprint 3 - load if exists)
-        $scanner_file = GS_PLUGIN_DIR . 'includes/scanner/class-gs-scanner.php';
+        $scanner_file = SG_PLUGIN_DIR . 'includes/scanner/class-sg-scanner.php';
         if (file_exists($scanner_file)) {
             require_once $scanner_file;
         }
 
         // Admin (load only in admin context)
         if (is_admin()) {
-            $admin_file = GS_PLUGIN_DIR . 'includes/admin/class-gs-admin.php';
+            $admin_file = SG_PLUGIN_DIR . 'includes/admin/class-sg-admin.php';
             if (file_exists($admin_file)) {
                 require_once $admin_file;
             }
@@ -168,35 +168,35 @@ class GS_Loader
     private function init_modules()
     {
         // Initialize Logger (always active)
-        $this->logger = new GS_Logger();
+        $this->logger = new SG_Logger();
 
         // Initialize Firewall (if enabled)
         if ($this->get_setting('waf_enabled')) {
-            $this->firewall = new GS_Firewall($this->logger);
+            $this->firewall = new SG_Firewall($this->logger);
         }
 
         // Initialize Hardening modules (Sprint 2)
-        if (class_exists('GS_API_Guard') && $this->get_setting('protect_api')) {
-            new GS_API_Guard();
+        if (class_exists('SG_API_Guard') && $this->get_setting('protect_api')) {
+            new SG_API_Guard();
         }
 
-        if (class_exists('GS_Stealth') && $this->get_setting('hide_wp_version')) {
-            new GS_Stealth($this->settings);
+        if (class_exists('SG_Stealth') && $this->get_setting('hide_wp_version')) {
+            new SG_Stealth($this->settings);
         }
 
         // Initialize URL Cloaker (if enabled)
-        if (class_exists('GS_URL_Cloaker') && $this->get_setting('url_cloaking_enabled')) {
-            new GS_URL_Cloaker($this->settings);
+        if (class_exists('SG_URL_Cloaker') && $this->get_setting('url_cloaking_enabled')) {
+            new SG_URL_Cloaker($this->settings);
         }
 
         // Initialize Scanner (Sprint 3)
-        if (class_exists('GS_Scanner')) {
-            $this->scanner = new GS_Scanner();
+        if (class_exists('SG_Scanner')) {
+            $this->scanner = new SG_Scanner();
         }
 
         // Initialize Admin (if in admin context)
-        if (is_admin() && class_exists('GS_Admin')) {
-            new GS_Admin($this);
+        if (is_admin() && class_exists('SG_Admin')) {
+            new SG_Admin($this);
         }
     }
 
@@ -220,7 +220,7 @@ class GS_Loader
     public function register_rest_routes()
     {
         register_rest_route(
-            'ghost-shield/v1',
+            'spectrus-guard/v1',
             '/stats',
             array(
                 'methods' => 'GET',
@@ -239,7 +239,7 @@ class GS_Loader
      */
     public function get_stats_endpoint()
     {
-        $stats = get_option('ghost_shield_attack_stats', array(
+        $stats = get_option('spectrus_shield_attack_stats', array(
             'total_blocked' => 0,
             'sqli_blocked' => 0,
             'xss_blocked' => 0,
@@ -257,15 +257,15 @@ class GS_Loader
     public function enqueue_admin_assets($hook)
     {
         // Only load on our admin pages
-        if (strpos($hook, 'ghost-shield') === false) {
+        if (strpos($hook, 'spectrus-guard') === false) {
             return;
         }
 
         wp_enqueue_style(
-            'ghost-shield-admin',
-            GS_PLUGIN_URL . 'assets/css/admin.css',
+            'spectrus-guard-admin',
+            SG_PLUGIN_URL . 'assets/css/admin.css',
             array(),
-            GS_VERSION
+            SG_VERSION
         );
 
         // Enqueue Chart.js
@@ -278,23 +278,23 @@ class GS_Loader
         );
 
         wp_enqueue_script(
-            'ghost-shield-admin',
-            GS_PLUGIN_URL . 'assets/js/admin.js',
+            'spectrus-guard-admin',
+            SG_PLUGIN_URL . 'assets/js/admin.js',
             array('jquery', 'chart-js'),
-            GS_VERSION,
+            SG_VERSION,
             true
         );
 
         wp_localize_script(
-            'ghost-shield-admin',
-            'GhostShield',
+            'spectrus-guard-admin',
+            'SpectrusGuard',
             array(
                 'ajax_url' => admin_url('admin-ajax.php'),
-                'nonce' => wp_create_nonce('ghost_shield_nonce'),
+                'nonce' => wp_create_nonce('spectrus_shield_nonce'),
                 'i18n' => array(
-                    'scanning' => __('Scanning...', 'ghost-shield'),
-                    'complete' => __('Scan Complete', 'ghost-shield'),
-                    'error' => __('An error occurred', 'ghost-shield'),
+                    'scanning' => __('Scanning...', 'spectrus-guard'),
+                    'complete' => __('Scan Complete', 'spectrus-guard'),
+                    'error' => __('An error occurred', 'spectrus-guard'),
                 ),
             )
         );
@@ -332,7 +332,7 @@ class GS_Loader
     public function update_setting($key, $value)
     {
         $this->settings[$key] = $value;
-        return update_option('ghost_shield_settings', $this->settings);
+        return update_option('spectrus_shield_settings', $this->settings);
     }
 
     /**
@@ -344,13 +344,13 @@ class GS_Loader
     public function update_settings($new_settings)
     {
         $this->settings = wp_parse_args($new_settings, $this->settings);
-        return update_option('ghost_shield_settings', $this->settings);
+        return update_option('spectrus_shield_settings', $this->settings);
     }
 
     /**
      * Get the logger instance
      *
-     * @return GS_Logger
+     * @return SG_Logger
      */
     public function get_logger()
     {
@@ -360,7 +360,7 @@ class GS_Loader
     /**
      * Get the firewall instance
      *
-     * @return GS_Firewall|null
+     * @return SG_Firewall|null
      */
     public function get_firewall()
     {
@@ -370,7 +370,7 @@ class GS_Loader
     /**
      * Get the scanner instance
      *
-     * @return GS_Scanner|null
+     * @return SG_Scanner|null
      */
     public function get_scanner()
     {

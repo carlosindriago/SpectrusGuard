@@ -1,11 +1,11 @@
 <?php
 /**
- * GhostShield Checksum Verification
+ * SpectrusGuard Checksum Verification
  *
  * Verifies WordPress core file integrity by comparing local files
  * against official checksums from the WordPress.org API.
  *
- * @package GhostShield
+ * @package SpectrusGuard
  * @since   1.0.0
  */
 
@@ -15,11 +15,11 @@ if (!defined('ABSPATH')) {
 }
 
 /**
- * Class GS_Checksum
+ * Class SG_Checksum
  *
  * Core file integrity verification using WordPress.org checksums API.
  */
-class GS_Checksum
+class SG_Checksum
 {
 
     /**
@@ -41,7 +41,7 @@ class GS_Checksum
      *
      * @var string
      */
-    const CHECKSUMS_TRANSIENT = 'ghost_shield_wp_checksums';
+    const CHECKSUMS_TRANSIENT = 'spectrus_shield_wp_checksums';
 
     /**
      * Fetch checksums from WordPress.org API
@@ -91,7 +91,7 @@ class GS_Checksum
         $data = json_decode($body, true);
 
         if (json_last_error() !== JSON_ERROR_NONE) {
-            return new WP_Error('json_error', __('Invalid response from WordPress.org API', 'ghost-shield'));
+            return new WP_Error('json_error', __('Invalid response from WordPress.org API', 'spectrus-guard'));
         }
 
         if (empty($data['checksums'])) {
@@ -114,7 +114,7 @@ class GS_Checksum
         }
 
         if (empty($data['checksums'])) {
-            return new WP_Error('no_checksums', __('No checksums available for this WordPress version', 'ghost-shield'));
+            return new WP_Error('no_checksums', __('No checksums available for this WordPress version', 'spectrus-guard'));
         }
 
         $this->checksums = $data['checksums'];

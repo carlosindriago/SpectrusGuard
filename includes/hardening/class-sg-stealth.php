@@ -1,11 +1,11 @@
 <?php
 /**
- * GhostShield Stealth Module
+ * SpectrusGuard Stealth Module
  *
  * Anti-fingerprinting module that removes WordPress signatures and
  * hides technical details from attackers and scanners.
  *
- * @package GhostShield
+ * @package SpectrusGuard
  * @since   1.0.0
  */
 
@@ -15,11 +15,11 @@ if (!defined('ABSPATH')) {
 }
 
 /**
- * Class GS_Stealth
+ * Class SG_Stealth
  *
  * Cleans up WordPress fingerprints and hides technical details.
  */
-class GS_Stealth
+class SG_Stealth
 {
 
     /**
@@ -139,7 +139,7 @@ class GS_Stealth
 
         if (strpos($src, $home_url) !== false || strpos($src, '/') === 0) {
             // Local asset - replace version with hash
-            $hash = 'gs_' . substr(md5(GS_VERSION . $src), 0, 8);
+            $hash = 'sg_' . substr(md5(SG_VERSION . $src), 0, 8);
             $src = add_query_arg('ver', $hash, remove_query_arg('ver', $src));
         }
 
@@ -202,8 +202,8 @@ class GS_Stealth
 
                 // Fallback
                 wp_die(
-                    esc_html__('Page not found.', 'ghost-shield'),
-                    esc_html__('404 Not Found', 'ghost-shield'),
+                    esc_html__('Page not found.', 'spectrus-guard'),
+                    esc_html__('404 Not Found', 'spectrus-guard'),
                     array('response' => 404)
                 );
             }
@@ -233,12 +233,12 @@ class GS_Stealth
         }
 
         $request_uri = isset($_SERVER['REQUEST_URI']) ? $_SERVER['REQUEST_URI'] : '';
-        $secret_slug = isset($this->settings['login_slug']) ? $this->settings['login_slug'] : 'gs-login';
+        $secret_slug = isset($this->settings['login_slug']) ? $this->settings['login_slug'] : 'sg-login';
 
         // Check if accessing the secret login URL
         if (strpos($request_uri, '/' . $secret_slug) !== false) {
             // Set a cookie to allow access
-            setcookie('gs_login_access', md5($secret_slug . AUTH_SALT), time() + 3600, '/');
+            setcookie('sg_login_access', md5($secret_slug . AUTH_SALT), time() + 3600, '/');
             wp_safe_redirect(wp_login_url());
             exit;
         }
@@ -253,7 +253,7 @@ class GS_Stealth
             // Check for access cookie
             $expected_cookie = md5($secret_slug . AUTH_SALT);
 
-            if (!isset($_COOKIE['gs_login_access']) || $_COOKIE['gs_login_access'] !== $expected_cookie) {
+            if (!isset($_COOKIE['sg_login_access']) || $_COOKIE['sg_login_access'] !== $expected_cookie) {
                 // No valid cookie - block access
                 $this->show_404_or_redirect();
             }
@@ -272,7 +272,7 @@ class GS_Stealth
     public function filter_login_url($url, $path, $scheme, $blog_id)
     {
         if (strpos($path, 'wp-login.php') !== false) {
-            $secret_slug = isset($this->settings['login_slug']) ? $this->settings['login_slug'] : 'gs-login';
+            $secret_slug = isset($this->settings['login_slug']) ? $this->settings['login_slug'] : 'sg-login';
             // Only modify for display purposes, not actual redirects
         }
         return $url;
@@ -294,10 +294,10 @@ class GS_Stealth
 
         if (strpos($location, 'wp-login.php') !== false) {
             // Check if they have the access cookie
-            $secret_slug = isset($this->settings['login_slug']) ? $this->settings['login_slug'] : 'gs-login';
+            $secret_slug = isset($this->settings['login_slug']) ? $this->settings['login_slug'] : 'sg-login';
             $expected_cookie = md5($secret_slug . AUTH_SALT);
 
-            if (!isset($_COOKIE['gs_login_access']) || $_COOKIE['gs_login_access'] !== $expected_cookie) {
+            if (!isset($_COOKIE['sg_login_access']) || $_COOKIE['sg_login_access'] !== $expected_cookie) {
                 // Redirect to home instead
                 return home_url('/');
             }

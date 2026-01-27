@@ -1,11 +1,11 @@
 <?php
 /**
- * GhostShield Scanner - Main Orchestrator
+ * SpectrusGuard Scanner - Main Orchestrator
  *
  * Coordinates all scanning operations: core integrity, heuristics, and malware detection.
  * Uses transients for caching results and supports batch processing.
  *
- * @package GhostShield
+ * @package SpectrusGuard
  * @since   1.0.0
  */
 
@@ -15,24 +15,24 @@ if (!defined('ABSPATH')) {
 }
 
 /**
- * Class GS_Scanner
+ * Class SG_Scanner
  *
  * Main scanner orchestrator that coordinates all security scans.
  */
-class GS_Scanner
+class SG_Scanner
 {
 
     /**
      * Checksum scanner instance
      *
-     * @var GS_Checksum
+     * @var SG_Checksum
      */
     private $checksum;
 
     /**
      * Heuristics scanner instance
      *
-     * @var GS_Heuristics
+     * @var SG_Heuristics
      */
     private $heuristics;
 
@@ -48,7 +48,7 @@ class GS_Scanner
      *
      * @var string
      */
-    const RESULTS_TRANSIENT = 'ghost_shield_scan_results';
+    const RESULTS_TRANSIENT = 'spectrus_shield_scan_results';
 
     /**
      * Transient expiration (24 hours)
@@ -79,12 +79,12 @@ class GS_Scanner
      */
     private function load_dependencies()
     {
-        require_once GS_PLUGIN_DIR . 'includes/scanner/class-gs-checksum.php';
-        require_once GS_PLUGIN_DIR . 'includes/scanner/class-gs-heuristics.php';
-        require_once GS_PLUGIN_DIR . 'includes/scanner/signatures.php';
+        require_once SG_PLUGIN_DIR . 'includes/scanner/class-sg-checksum.php';
+        require_once SG_PLUGIN_DIR . 'includes/scanner/class-sg-heuristics.php';
+        require_once SG_PLUGIN_DIR . 'includes/scanner/signatures.php';
 
-        $this->checksum = new GS_Checksum();
-        $this->heuristics = new GS_Heuristics();
+        $this->checksum = new SG_Checksum();
+        $this->heuristics = new SG_Heuristics();
     }
 
     /**
@@ -137,7 +137,7 @@ class GS_Scanner
         set_transient(self::RESULTS_TRANSIENT, $this->results, self::CACHE_EXPIRATION);
 
         // Update last scan time option
-        update_option('ghost_shield_last_scan', current_time('mysql'));
+        update_option('spectrus_shield_last_scan', current_time('mysql'));
 
         return $this->results;
     }
@@ -170,7 +170,7 @@ class GS_Scanner
             $this->results['uploads_php'][] = array(
                 'file' => $file,
                 'severity' => self::SEVERITY_CRITICAL,
-                'message' => __('PHP file found in uploads directory - potential backdoor', 'ghost-shield'),
+                'message' => __('PHP file found in uploads directory - potential backdoor', 'spectrus-guard'),
             );
         }
     }
@@ -187,7 +187,7 @@ class GS_Scanner
                 'file' => $file,
                 'type' => 'hidden',
                 'severity' => self::SEVERITY_MEDIUM,
-                'message' => __('Hidden file detected', 'ghost-shield'),
+                'message' => __('Hidden file detected', 'spectrus-guard'),
             );
         }
 
@@ -200,7 +200,7 @@ class GS_Scanner
                 'severity' => self::SEVERITY_HIGH,
                 'message' => sprintf(
                     /* translators: %s: file permissions */
-                    __('Dangerous permissions: %s', 'ghost-shield'),
+                    __('Dangerous permissions: %s', 'spectrus-guard'),
                     $file['permissions']
                 ),
             );
@@ -212,7 +212,7 @@ class GS_Scanner
      */
     private function scan_for_malware()
     {
-        $signatures = gs_get_malware_signatures();
+        $signatures = sg_get_malware_signatures();
         $directories = array(
             WP_CONTENT_DIR . '/plugins',
             WP_CONTENT_DIR . '/themes',
@@ -234,7 +234,7 @@ class GS_Scanner
                     'severity' => self::SEVERITY_CRITICAL,
                     'message' => sprintf(
                         /* translators: %s: malware signature name */
-                        __('Malware signature detected: %s', 'ghost-shield'),
+                        __('Malware signature detected: %s', 'spectrus-guard'),
                         $match['signature']
                     ),
                 );
@@ -303,13 +303,13 @@ class GS_Scanner
     {
         switch ($file['status']) {
             case 'modified':
-                return __('Core file has been modified from original', 'ghost-shield');
+                return __('Core file has been modified from original', 'spectrus-guard');
             case 'missing':
-                return __('Core file is missing', 'ghost-shield');
+                return __('Core file is missing', 'spectrus-guard');
             case 'unknown':
-                return __('Unknown file in WordPress core directory', 'ghost-shield');
+                return __('Unknown file in WordPress core directory', 'spectrus-guard');
             default:
-                return __('File integrity issue detected', 'ghost-shield');
+                return __('File integrity issue detected', 'spectrus-guard');
         }
     }
 
@@ -340,7 +340,7 @@ class GS_Scanner
      */
     public function get_last_scan_time()
     {
-        return get_option('ghost_shield_last_scan', null);
+        return get_option('spectrus_shield_last_scan', null);
     }
 
     /**
@@ -365,8 +365,8 @@ class GS_Scanner
      */
     public function schedule_daily_scan()
     {
-        if (!wp_next_scheduled('ghost_shield_daily_scan')) {
-            wp_schedule_event(time(), 'daily', 'ghost_shield_daily_scan');
+        if (!wp_next_scheduled('spectrus_shield_daily_scan')) {
+            wp_schedule_event(time(), 'daily', 'spectrus_shield_daily_scan');
         }
     }
 
@@ -375,7 +375,7 @@ class GS_Scanner
      */
     public function unschedule_scans()
     {
-        wp_clear_scheduled_hook('ghost_shield_daily_scan');
+        wp_clear_scheduled_hook('spectrus_shield_daily_scan');
     }
 
     /**
@@ -390,7 +390,7 @@ class GS_Scanner
         if (!$results) {
             return array(
                 'has_results' => false,
-                'message' => __('No scan results available. Run a scan to check your site.', 'ghost-shield'),
+                'message' => __('No scan results available. Run a scan to check your site.', 'spectrus-guard'),
             );
         }
 
