@@ -111,6 +111,7 @@ class GS_Loader
             'protect_api' => true,
             'hide_login' => false,
             'login_slug' => 'gs-login',
+            'url_cloaking_enabled' => false,
         );
 
         $this->settings = wp_parse_args(
@@ -139,6 +140,11 @@ class GS_Loader
         $stealth_file = GS_PLUGIN_DIR . 'includes/hardening/class-gs-stealth.php';
         if (file_exists($stealth_file)) {
             require_once $stealth_file;
+        }
+
+        $url_cloaker_file = GS_PLUGIN_DIR . 'includes/hardening/class-gs-url-cloaker.php';
+        if (file_exists($url_cloaker_file)) {
+            require_once $url_cloaker_file;
         }
 
         // Scanner Module (Sprint 3 - load if exists)
@@ -176,6 +182,11 @@ class GS_Loader
 
         if (class_exists('GS_Stealth') && $this->get_setting('hide_wp_version')) {
             new GS_Stealth($this->settings);
+        }
+
+        // Initialize URL Cloaker (if enabled)
+        if (class_exists('GS_URL_Cloaker') && $this->get_setting('url_cloaking_enabled')) {
+            new GS_URL_Cloaker($this->settings);
         }
 
         // Initialize Scanner (Sprint 3)

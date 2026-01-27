@@ -131,6 +131,7 @@ class GS_Admin {
             'protect_api',
             'hide_login',
             'block_author_pages',
+            'url_cloaking_enabled',
         );
 
         foreach ( $boolean_fields as $field ) {
@@ -165,7 +166,19 @@ class GS_Admin {
         }
 
         if ( isset( $input['login_lockout_time'] ) ) {
-            $sanitized['login_lockout_time'] = absint( $input['login_lockout_time'] );
+            // User inputs minutes, we store seconds
+            $sanitized['login_lockout_time'] = max( 1, absint( $input['login_lockout_time'] ) ) * 60;
+        }
+
+        // Handle URL Cloaking .htaccess rules
+        if ( class_exists( 'GS_URL_Cloaker' ) ) {
+            if ( ! empty( $sanitized['url_cloaking_enabled'] ) ) {
+                // Add .htaccess rules if cloaking is enabled
+                GS_URL_Cloaker::add_htaccess_rules();
+            } else {
+                // Remove .htaccess rules if cloaking is disabled
+                GS_URL_Cloaker::remove_htaccess_rules();
+            }
         }
 
         return $sanitized;
@@ -588,6 +601,54 @@ class GS_Admin {
                                 </p>
                             </td>
                         </tr>
+                        <tr>
+                            <th scope="row"><?php esc_html_e( 'URL Cloaking', 'ghost-shield' ); ?></th>
+                            <td>
+                                <label>
+                                    <input type="checkbox" name="ghost_shield_settings[url_cloaking_enabled]" value="1" 
+                                        <?php checked( $settings['url_cloaking_enabled'] ?? false ); ?>>
+                                    <?php esc_html_e( 'Rewrite WordPress URLs to hide fingerprints', 'ghost-shield' ); ?>
+                                </label>
+                                <p class="description">
+                                    <?php esc_html_e( 'Changes /wp-content/plugins/ to /assets/plugins/, etc.', 'ghost-shield' ); ?>
+                                </p>
+                                <?php if ( ! empty( $settings['url_cloaking_enabled'] ) && class_exists( 'GS_URL_Cloaker' ) ) : ?>
+                                    <?php $server_type = GS_URL_Cloaker::detect_server(); ?>
+                                    
+                                    <?php if ( in_array( $server_type, array( 'apache', 'litespeed' ), true ) ) : ?>
+                                        <?php if ( GS_URL_Cloaker::htaccess_has_rules() ) : ?>
+                                            <p class="gs-status-ok">✅ <?php esc_html_e( '.htaccess rules are active', 'ghost-shield' ); ?></p>
+                                        <?php else : ?>
+                                            <p class="gs-status-warning">⚠️ <?php esc_html_e( '.htaccess rules need to be added. Save settings to apply.', 'ghost-shield' ); ?></p>
+                                        <?php endif; ?>
+                                    
+                                    <?php elseif ( $server_type === 'nginx' ) : ?>
+                                        <div class="gs-nginx-alert">
+                                            <div class="gs-nginx-alert-header">
+                                                <span class="gs-nginx-icon">🚨</span>
+                                                <strong><?php esc_html_e( 'ACTION REQUIRED: Nginx Server Detected', 'ghost-shield' ); ?></strong>
+                                            </div>
+                                            <p class="gs-nginx-alert-text">
+                                                <?php esc_html_e( 'URL Cloaking requires manual configuration on Nginx. Without these rules, your cloaked URLs will return 404 errors!', 'ghost-shield' ); ?>
+                                            </p>
+                                            <details open>
+                                                <summary class="gs-nginx-summary"><?php esc_html_e( '📋 Copy these rules to your Nginx config', 'ghost-shield' ); ?></summary>
+                                                <pre class="gs-code-block"><?php echo esc_html( GS_URL_Cloaker::generate_nginx_rules() ); ?></pre>
+                                                <p class="gs-nginx-instructions">
+                                                    <strong><?php esc_html_e( 'Steps:', 'ghost-shield' ); ?></strong><br>
+                                                    1. <?php esc_html_e( 'Copy the rules above', 'ghost-shield' ); ?><br>
+                                                    2. <?php esc_html_e( 'Add them to your Nginx server block (usually in /etc/nginx/sites-available/)', 'ghost-shield' ); ?><br>
+                                                    3. <?php esc_html_e( 'Run: sudo nginx -t && sudo systemctl reload nginx', 'ghost-shield' ); ?>
+                                                </p>
+                                            </details>
+                                        </div>
+                                    
+                                    <?php else : ?>
+                                        <p class="gs-status-warning">⚠️ <?php esc_html_e( 'Unknown server. Add rewrite rules manually.', 'ghost-shield' ); ?></p>
+                                    <?php endif; ?>
+                                <?php endif; ?>
+                            </td>
+                        </tr>
                     </table>
                 </div>
 
@@ -611,8 +672,8 @@ class GS_Admin {
                             <th scope="row"><?php esc_html_e( 'Lockout Duration', 'ghost-shield' ); ?></th>
                             <td>
                                 <input type="number" name="ghost_shield_settings[login_lockout_time]" 
-                                    value="<?php echo esc_attr( ( $settings['login_lockout_time'] ?? 900 ) / 60 ); ?>" 
-                                    min="1" max="1440" class="small-text">
+                                    value="<?php echo esc_attr( intval( ( $settings['login_lockout_time'] ?? 900 ) / 60 ) ); ?>" 
+                                    min="1" max="1440" class="small-text" step="1">
                                 <?php esc_html_e( 'minutes', 'ghost-shield' ); ?>
                             </td>
                         </tr>

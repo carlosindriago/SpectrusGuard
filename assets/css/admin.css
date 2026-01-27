@@ -18,18 +18,18 @@
     --gs-warning: #ed8936;
     --gs-danger: #f56565;
     --gs-info: #4299e1;
-    
+
     --gs-bg-dark: #1a1a2e;
     --gs-bg-card: #16213e;
     --gs-bg-lighter: #1f2a48;
-    
+
     --gs-text: #e2e8f0;
     --gs-text-muted: #a0aec0;
     --gs-text-dark: #2d3748;
-    
+
     --gs-border: rgba(255, 255, 255, 0.1);
     --gs-shadow: 0 10px 40px rgba(0, 0, 0, 0.2);
-    
+
     --gs-gradient: linear-gradient(135deg, var(--gs-primary) 0%, var(--gs-secondary) 100%);
 }
 
@@ -135,8 +135,17 @@
 }
 
 @keyframes pulse-dot {
-    0%, 100% { transform: scale(1); opacity: 1; }
-    50% { transform: scale(1.1); opacity: 0.7; }
+
+    0%,
+    100% {
+        transform: scale(1);
+        opacity: 1;
+    }
+
+    50% {
+        transform: scale(1.1);
+        opacity: 0.7;
+    }
 }
 
 .gs-status-text {
@@ -460,18 +469,157 @@
 }
 
 @media screen and (max-width: 782px) {
+
     .gs-dashboard,
     .gs-logs-page,
     .gs-settings-page {
         margin-left: -10px;
         padding: 10px;
     }
-    
+
     .gs-dashboard-grid {
         grid-template-columns: 1fr;
     }
-    
+
     .gs-quick-stats {
         flex-direction: column;
     }
+}
+
+/* ============================================
+   Status Messages
+   ============================================ */
+.gs-status-ok {
+    color: var(--gs-success);
+    font-size: 13px;
+    margin-top: 8px;
+}
+
+.gs-status-warning {
+    color: var(--gs-warning);
+    font-size: 13px;
+    margin-top: 8px;
+}
+
+/* ============================================
+   Nginx Alert Block (Prominent)
+   ============================================ */
+.gs-nginx-alert {
+    margin-top: 16px;
+    background: linear-gradient(135deg, rgba(245, 101, 101, 0.15) 0%, rgba(237, 137, 54, 0.15) 100%);
+    border: 2px solid var(--gs-danger);
+    border-radius: 12px;
+    overflow: hidden;
+    animation: pulse-border 2s ease-in-out infinite;
+}
+
+@keyframes pulse-border {
+
+    0%,
+    100% {
+        border-color: var(--gs-danger);
+    }
+
+    50% {
+        border-color: var(--gs-warning);
+    }
+}
+
+.gs-nginx-alert-header {
+    background: linear-gradient(135deg, var(--gs-danger) 0%, var(--gs-warning) 100%);
+    padding: 12px 16px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.gs-nginx-icon {
+    font-size: 24px;
+    animation: shake 0.5s ease-in-out infinite alternate;
+}
+
+@keyframes shake {
+    0% {
+        transform: rotate(-5deg);
+    }
+
+    100% {
+        transform: rotate(5deg);
+    }
+}
+
+.gs-nginx-alert-header strong {
+    color: white;
+    font-size: 14px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.gs-nginx-alert-text {
+    color: var(--gs-text);
+    padding: 12px 16px;
+    margin: 0;
+    font-size: 14px;
+    line-height: 1.5;
+}
+
+.gs-nginx-alert details {
+    padding: 0 16px 16px;
+}
+
+.gs-nginx-summary {
+    color: var(--gs-primary);
+    cursor: pointer;
+    font-weight: 600;
+    font-size: 14px;
+    user-select: none;
+    padding: 8px 12px;
+    background: var(--gs-bg-lighter);
+    border-radius: 6px;
+    display: inline-block;
+}
+
+.gs-nginx-summary:hover {
+    background: var(--gs-primary);
+    color: white;
+}
+
+.gs-nginx-instructions {
+    color: var(--gs-text-muted);
+    font-size: 13px;
+    margin-top: 12px;
+    padding: 12px;
+    background: var(--gs-bg-lighter);
+    border-radius: 8px;
+    line-height: 1.8;
+}
+
+.gs-nginx-notice details {
+    margin-top: 12px;
+}
+
+.gs-nginx-notice summary {
+    color: var(--gs-text);
+    cursor: pointer;
+    font-weight: 500;
+    user-select: none;
+}
+
+.gs-nginx-notice summary:hover {
+    color: var(--gs-primary);
+}
+
+/* Code Block */
+.gs-code-block {
+    background: var(--gs-bg-dark);
+    border: 1px solid var(--gs-border);
+    border-radius: 8px;
+    padding: 16px;
+    margin-top: 12px;
+    overflow-x: auto;
+    font-family: 'SFMono-Regular', Consolas, 'Liberation Mono', Menlo, monospace;
+    font-size: 12px;
+    line-height: 1.6;
+    color: #a0aec0;
+    white-space: pre;
 }
