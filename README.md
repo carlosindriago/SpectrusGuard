@@ -16,12 +16,33 @@
 - 🔄 **Multi-Layer Decoding**: Handles encoded payloads to prevent filter evasion.
 - 📊 **Detailed Logging**: Comprehensive attack logging with automatic rotation.
 
-### Ghost Stealth (Anti-Fingerprinting)
+### Ghost Cloak™ (Advanced Stealth Obfuscation)
+- 🕵️ **URL Path Rewriting**: Dynamically obfuscates `wp-content`, `wp-includes`, and plugin directories.
+- 🎭 **Plugin Masking Studio**: Custom fake names for installed plugins to confuse scanners.
+- 🔄 **Dynamic Mapping**: Database-driven configuration for plugin obfuscation.
+- 🧹 **CSS Class Cleaning**: Removes revealing WordPress body classes.
+- 🌐 **Server Rule Generation**: Automatic `.htaccess`/Nginx rules creation.
+- 🆘 **Ghost Rescue Mode**: Emergency access key to bypass cloaking if locked out.
+
+### Login Guard (Access Control)
+- 🔐 **Custom Login Slug**: Replace `wp-login.php` with a secret URL (e.g., `/ghost-access`).
+- 🚫 **Admin Panel Protection**: Block `/wp-admin` access for non-authenticated users (returns 404).
+- 🔄 **URL Filtering**: Automatically rewrites all WordPress-generated login URLs.
+- ✅ **Logout Protection**: Allows logout actions while blocking unauthorized access.
+- 🛡️ **Scope Fix**: Proper global declarations for seamless `wp-login.php` integration.
+
+### Two-Factor Authentication (2FA)
+- 🔑 **TOTP Engine**: Time-based one-time passwords compatible with Google Authenticator, Authy.
+- 📱 **QR Code Setup**: Easy enrollment with automatic QR code generation.
+- 🔒 **Mandatory Verification**: Force 2FA for admin/editor roles.
+- 📋 **Backup Codes**: Recovery codes for emergency access.
+- 🎨 **Integrated UI**: Seamless setup and verification interfaces.
+
+### Legacy Stealth Features
 - 🕵️ **Metadata Scrubbing**: Removes revealing meta tags (e.g., `<meta name="generator">`).
 - 🔇 **Header Sanitization**: Strips HTTP headers like `X-Powered-By` and `Server`.
 - 🎭 **Asset Obfuscation**: Hides version strings in CSS/JS files (`?ver=X.X`).
 - 🚫 **Protocol Hardening**: Blocks XML-RPC and pingbacks to reduce attack surface.
-- 🔐 **Login Cloaking**: Conceals `/wp-login.php` with a custom slug.
 
 ### API Guard
 - 🛑 **Enumeration Blocking**: Prevents user enumeration via REST API endpoints.
@@ -56,10 +77,27 @@ The secret key is automatically generated and can be found in **SpectrusGuard > 
 ### IP Whitelist
 add trusted IP addresses that should never be blocked in **Settings > IP Whitelist**.
 
-### Login Cloaking
-1. Enable "Hide Login Page" in Settings.
-2. Define your custom slug (e.g., `my-secret-access`).
-3. Access your administration panel via `https://yoursite.com/my-secret-access`.
+### Ghost Cloak Configuration
+1. Navigate to **SpectrusGuard > Settings > Ghost Cloak**.
+2. Enable the "URL Cloaking" toggle.
+3. Configure **Login Hider**:
+   - Set custom login slug (e.g., `secret-door`).
+   - Access admin via: `https://yoursite.com/secret-door`
+4. Configure **Plugin Masking Studio**:
+   - Add real plugin names (e.g., `woocommerce`).
+   - Assign fake names (e.g., `shop-core`).
+   - Click "Randomize" 🎲 for auto-generated names.
+5. **Write Server Rules** to apply `.htaccess`/Nginx rewrite rules.
+6. Save your **Ghost Rescue Key** for emergency access:
+   ```
+   https://yoursite.com/?ghost_rescue=YOUR_GHOST_KEY
+   ```
+
+### Two-Factor Authentication (2FA)
+1. Go to **SpectrusGuard > Settings > 2FA**.
+2. Enable 2FA and scan the QR code with your authenticator app.
+3. Enter the verification code to complete setup.
+4. Save backup codes in a secure location.
 
 ## 📂 Project Structure
 
@@ -77,8 +115,19 @@ spectrus-guard/
 │   │   ├── class-sg-firewall.php  # WAF Engine
 │   │   └── rules.json          # Regex Ruleset
 │   ├── hardening/
-│   │   ├── class-sg-stealth.php   # Anti-fingerprinting Module
-│   │   └── class-sg-api-guard.php # REST API Protection
+│   │   ├── class-sg-stealth.php      # Legacy Anti-fingerprinting
+│   │   ├── class-sg-cloak-engine.php # Ghost Cloak URL Rewriting Engine
+│   │   ├── class-sg-login-guard.php  # Login & Admin Access Control
+│   │   ├── class-sg-ghost-rescue.php # Emergency Access System
+│   │   ├── class-sg-api-guard.php    # REST API Protection
+│   │   └── views/
+│   │       └── settings-cloak.php    # Ghost Cloak Configuration UI
+│   ├── auth/
+│   │   ├── class-sg-2fa-handler.php  # 2FA Authentication Logic
+│   │   ├── class-sg-totp-engine.php  # TOTP Generator
+│   │   └── views/
+│   │       ├── setup-2fa.php         # 2FA Setup Interface
+│   │       └── verify-2fa.php        # 2FA Verification Screen
 │   ├── scanner/
 │   │   └── class-sg-scanner.php   # Integrity Scanner Engine
 │   └── admin/
@@ -111,6 +160,11 @@ The codebase adheres to strict WordPress security standards:
 - [x] **Sprint 3**: Integrity & Malware Scanner
 - [x] **Sprint 4**: URL Cloaking & Advanced Features
 - [x] **Sprint 5**: Enterprise UI/UX Overhaul (Dashboard Redesign)
+- [x] **Sprint 6**: Ghost Cloak Engine (Dynamic URL Obfuscation)
+- [x] **Sprint 7**: Login Guard & Plugin Masking Studio
+- [x] **Sprint 8**: Two-Factor Authentication (TOTP)
+- [ ] **Sprint 9**: Geo-Blocking & IP Intelligence
+- [ ] **Sprint 10**: Advanced Threat Analytics & ML Detection
 
 ## 📄 License
 
