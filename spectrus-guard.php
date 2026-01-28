@@ -191,6 +191,12 @@ function sg_init()
     // Load text domain for translations
     load_plugin_textdomain('spectrus-guard', false, dirname(SG_PLUGIN_BASENAME) . '/languages');
 
+    // Initialize Ghost Rescue (Secure Mode)
+    require_once SG_PLUGIN_DIR . 'includes/hardening/class-sg-ghost-rescue.php';
+    $rescue = new SG_Ghost_Rescue();
+    // Hook early to ensure we can intercept before other init logic, but after pluggables are loaded
+    add_action('init', array($rescue, 'run'), 0);
+
     // Load the main loader class
     require_once SG_PLUGIN_DIR . 'includes/class-sg-loader.php';
 
