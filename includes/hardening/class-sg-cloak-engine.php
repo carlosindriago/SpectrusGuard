@@ -8,22 +8,7 @@ if (!defined('ABSPATH')) {
 class Spectrus_Cloak_Engine
 {
 
-    // Mapeo de rutas (Esto podría venir de la DB para ser personalizable)
-    private $replacements = [
-        'wp-content/themes' => 'content/skins',
-        'wp-content/plugins' => 'content/modules',
-        'wp-content/uploads' => 'content/media',
-        'wp-includes' => 'core/lib',
-        'wp-content' => 'content', // Fallback
-    ];
-
-    // Mapeo específico para ofuscar plugins famosos (Anti-Detector)
-    private $plugin_obfuscation = [
-        'elementor' => 'ui-builder',
-        'woocommerce' => 'shop-core',
-        'contact-form-7' => 'forms',
-        'yoast-seo' => 'meta-engine'
-    ];
+    // Mapeo de rutas dinámico via get_mappings()
 
     public function __construct()
     {
@@ -56,6 +41,34 @@ class Spectrus_Cloak_Engine
     }
 
     /**
+     * Obtiene el mapa de reemplazos (Configurable por el usuario)
+     */
+    private function get_mappings()
+    {
+        // Defaults base
+        $defaults = [
+            'wp-content/themes' => 'assets/skins',
+            'wp-content/uploads' => 'assets/media',
+            'wp-includes' => 'core/lib',
+            'wp-content/plugins' => 'assets/modules', // Carpeta base de plugins
+        ];
+
+        // Obtener mapeos personalizados de plugins (Guardados en DB)
+        // Estructura en DB: ['woocommerce' => 'shop-sys', 'elementor' => 'ui-kit']
+        $custom_plugins = get_option('sg_cloak_plugin_map', []);
+
+        $plugin_rewrites = [];
+        foreach ($custom_plugins as $real => $fake) {
+            // OJO: El orden importa. Primero las rutas largas (plugins específicos)
+            // luego las rutas cortas (carpeta plugins general).
+            $plugin_rewrites["wp-content/plugins/$real"] = "assets/modules/$fake";
+        }
+
+        // Fusionar: Primero plugins específicos, luego carpetas generales
+        return array_merge($plugin_rewrites, $defaults);
+    }
+
+    /**
      * El corazón del camuflaje. Reemplaza rutas en el HTML final.
      */
     public function rewrite_html($buffer)
@@ -63,16 +76,13 @@ class Spectrus_Cloak_Engine
         if (empty($buffer))
             return $buffer;
 
-        // DEBUG: Uncomment to trace execution
-        // file_put_contents(WP_CONTENT_DIR . '/sg_cloak_log.txt', "Rewriting output " . strlen($buffer) . " chars\n", FILE_APPEND);
+        $mappings = $this->get_mappings();
 
-        // 1. Reemplazo de Rutas Base (Normal y Escaped Slashes)
-        foreach ($this->replacements as $original => $new) {
-            // Normal: wp-content/themes -> content/skins
+        foreach ($mappings as $original => $new) {
+            // Reemplazo simple de string
             $buffer = str_replace($original, $new, $buffer);
 
-            // Escaped (JSON/JS): wp-content\/themes -> content\/skins
-            // We escape the slash for the replacement simply by checking usage
+            // Escaped Slashes Support (maintained from previous version)
             $buffer = str_replace(
                 str_replace('/', '\/', $original),
                 str_replace('/', '\/', $new),
@@ -80,20 +90,18 @@ class Spectrus_Cloak_Engine
             );
         }
 
-        // 2. Ofuscación Específica de Plugins
-        foreach ($this->plugin_obfuscation as $real_name => $fake_name) {
-            // Normal
-            $buffer = str_replace("modules/$real_name", "modules/$fake_name", $buffer); // Already rewritten wp-content/plugins to modules
-
-            // Escaped
-            $buffer = str_replace("modules\/$real_name", "modules\/$fake_name", $buffer);
-
-            // Handle edge case where it might still be wp-content/plugins/... if skipped above (redundant but safe)
-            // Note: The first loop should have mostly handled the prefix.
-        }
+        // Limpieza de Clases CSS del BODY (Para evitar 'wp-page', etc)
+        // Usamos Regex para limpiar clases específicas dentro de class="..."
+        $buffer = preg_replace_callback('/<body([^>]*)class=["\'](.*?)["\']([^>]*)>/', function ($matches) {
+            $classes = $matches[2];
+            // Filtramos clases que empiecen por wp- (pero cuidado con romper themes)
+            // Mejor quitamos las conocidas que delatan versión
+            $blacklist = ['wp-custom-logo', 'customize-support', 'wp-embed-responsive'];
+            $classes = str_replace($blacklist, '', $classes);
+            return "<body{$matches[1]}class=\"$classes\"{$matches[3]}>";
+        }, $buffer);
 
         // 3. Limpieza de comentarios HTML de WP
-        // Elimina <!-- /wp:paragraph --> y similares
         $buffer = preg_replace('/<!--.*?-->/s', '', $buffer);
 
         return $buffer;
@@ -132,31 +140,28 @@ class Spectrus_Cloak_Engine
         $content = file_get_contents($htaccess_path);
 
         // insert_with_markers usa este formato
-        return strpos($content, '# BEGIN SpectrusGuardCloak') !== false;
+        return strpos($content, '# BEGIN SpectrusGuard Cloak') !== false; // Fixed: Matches user provided string used in insert_with_markers (usually removes space?) - sticking to WP standard or previous
     }
 
+    // Note: insert_with_markers uses # BEGIN $name ... so if name is SpectrusGuardCloak it works.
+
     /**
-     * Generador de Reglas para APACHE (.htaccess)
-     * Estas reglas son necesarias para que las nuevas URLs funcionen.
+     * ACTUALIZADO: Generador de Reglas Apache Dinámico
      */
     public static function generate_apache_rules()
     {
+        $engine = new self(); // Instancia temporal para acceder a mappings
+        $mappings = $engine->get_mappings();
+
         $rules = "<IfModule mod_rewrite.c>\n";
         $rules .= "RewriteEngine On\n";
 
-        // Reglas para rutas base
-        $rules .= "RewriteRule ^content/skins/(.*) wp-content/themes/$1 [L,QSA]\n";
-        $rules .= "RewriteRule ^content/modules/(.*) wp-content/plugins/$1 [L,QSA]\n";
-        $rules .= "RewriteRule ^content/media/(.*) wp-content/uploads/$1 [L,QSA]\n";
-        $rules .= "RewriteRule ^core/lib/(.*) wp-includes/$1 [L,QSA]\n";
-
-        // Reglas para plugins específicos (Deben ir ANTES de las generales)
-        // Ejemplo: content/modules/ui-builder -> wp-content/plugins/elementor
-        $rules .= "RewriteRule ^content/modules/ui-builder/(.*) wp-content/plugins/elementor/$1 [L,QSA]\n";
-        $rules .= "RewriteRule ^content/modules/shop-core/(.*) wp-content/plugins/woocommerce/$1 [L,QSA]\n";
-        // Agregar el resto
-        $rules .= "RewriteRule ^content/modules/forms/(.*) wp-content/plugins/contact-form-7/$1 [L,QSA]\n";
-        $rules .= "RewriteRule ^content/modules/meta-engine/(.*) wp-content/plugins/yoast-seo/$1 [L,QSA]\n";
+        foreach ($mappings as $real => $fake) {
+            // Convertimos ruta real a ruta fake para el RewriteRule
+            // Lógica inversa: Cuando entra FAKE, sirve REAL.
+            // Regla: RewriteRule ^fake/(.*) real/$1 [L,QSA]
+            $rules .= "RewriteRule ^{$fake}/(.*) {$real}/$1 [L,QSA]\n";
+        }
 
         $rules .= "</IfModule>\n";
 

@@ -191,6 +191,34 @@ class SG_Admin
                 $sanitized['rescue_key'] = sanitize_text_field($input['rescue_key']);
             }
 
+            // Login Slug (Also present in Cloak tab now)
+            if (isset($input['login_slug'])) {
+                $sanitized['login_slug'] = sanitize_title($input['login_slug']);
+            }
+
+            // Handle Plugin Mapping (Dynamic Masking)
+            // Accessed via $_POST because they are outside the main settings array
+            if (isset($_POST['sg_map_real']) && isset($_POST['sg_map_fake'])) {
+                $clean_map = [];
+                $reals = $_POST['sg_map_real'];
+                $fakes = $_POST['sg_map_fake'];
+
+                if (is_array($reals) && is_array($fakes)) {
+                    for ($i = 0; $i < count($reals); $i++) {
+                        $r = sanitize_text_field($reals[$i]);
+                        $f = sanitize_title($fakes[$i]); // sanitize_title ensures URL safety
+                        if ($r && $f) {
+                            $clean_map[$r] = $f;
+                        }
+                    }
+                }
+                update_option('sg_cloak_plugin_map', $clean_map);
+
+                // Write rules if applicable
+                // We rely on the user clicking "Write Rules" manually or we can trigger it.
+                // For now, allow manual trigger via UI message.
+            }
+
         } else {
             // --- GENERAL TAB (Default) ---
 
@@ -612,7 +640,7 @@ class SG_Admin
                 // ... Actually I used a link to settings tab=whitelist in Quick Actions, so this might be obsolete or valid for another button?
                 // Let's keep it if I restore the button or for other pages.
             });
-                                                                                                                                                                                });
+                                                                                                                                                                                        });
         </script>
         <?php
     }

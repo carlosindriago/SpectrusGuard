@@ -147,6 +147,12 @@ class SG_Loader
             require_once $url_cloaker_file;
         }
 
+        // Login Guard
+        $login_guard_file = SG_PLUGIN_DIR . 'includes/hardening/class-sg-login-guard.php';
+        if (file_exists($login_guard_file)) {
+            require_once $login_guard_file;
+        }
+
         $cloak_engine_file = SG_PLUGIN_DIR . 'includes/hardening/class-sg-cloak-engine.php';
         if (file_exists($cloak_engine_file)) {
             require_once $cloak_engine_file;
@@ -201,6 +207,11 @@ class SG_Loader
 
         if (class_exists('SG_Stealth') && $this->get_setting('hide_wp_version')) {
             new SG_Stealth($this->settings);
+        }
+
+        // Initialize Login Guard (Always active, internal logic handles enabling/disabling via option)
+        if (class_exists('Spectrus_Login_Guard')) {
+            new Spectrus_Login_Guard();
         }
 
         // Initialize URL Cloaker (if enabled)

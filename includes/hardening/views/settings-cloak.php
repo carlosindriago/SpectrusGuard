@@ -374,6 +374,146 @@ if (!empty($settings['url_cloaking_enabled'])) {
         </div>
     </div>
 
+    <!-- NEW: Login Hider Panel (Visible in Step 3) -->
+    <div class="sg-gc-panel" style="<?php echo ($step < 2) ? 'opacity: 0.5; pointer-events: none;' : ''; ?>">
+        <h3 style="margin: 0 0 16px 0; font-size: 18px; color: var(--sg-text-primary);">
+            🔐 <?php esc_html_e('Login Hider', 'spectrus-guard'); ?>
+        </h3>
+        <p style="color: var(--sg-text-secondary); margin-bottom: 20px;">
+            <?php esc_html_e('Change your login URL to prevent brute force attacks.', 'spectrus-guard'); ?>
+        </p>
+
+        <div
+            style="background: var(--sg-bg-app); padding: 16px; border-radius: 8px; border: 1px solid var(--sg-border);">
+            <label style="display: block; margin-bottom: 8px; font-weight: 600; color: var(--sg-text-secondary);">
+                <?php esc_html_e('New Login URL:', 'spectrus-guard'); ?>
+            </label>
+            <div style="display: flex; align-items: center; gap: 8px;">
+                <code
+                    style="background: transparent; color: var(--sg-text-secondary);"><?php echo home_url('/'); ?></code>
+                <input type="text" name="spectrus_shield_settings[login_slug]"
+                    value="<?php echo esc_attr($settings['login_slug'] ?? 'ghost-access'); ?>" class="sg-input-text"
+                    style="flex: 1; max-width: 200px;" placeholder="e.g. secret-entrance">
+            </div>
+        </div>
+    </div>
+
+    <!-- NEW: Plugin Masking Studio (Visible in Step 3) -->
+    <div class="sg-gc-panel" style="<?php echo ($step < 2) ? 'opacity: 0.5; pointer-events: none;' : ''; ?>">
+        <h3 style="margin: 0 0 16px 0; font-size: 18px; color: var(--sg-text-primary);">
+            🎭 <?php esc_html_e('Plugin Masking Studio', 'spectrus-guard'); ?>
+        </h3>
+        <p style="color: var(--sg-text-secondary); margin-bottom: 20px;">
+            <?php esc_html_e('Assign fake names to your plugins to confuse scanners.', 'spectrus-guard'); ?>
+        </p>
+
+        <style>
+            .sg-table {
+                width: 100%;
+                border-collapse: collapse;
+                margin-bottom: 16px;
+            }
+
+            .sg-table th,
+            .sg-table td {
+                text-align: left;
+                padding: 12px;
+                border-bottom: 1px solid var(--sg-border);
+            }
+
+            .sg-table th {
+                color: var(--sg-text-muted);
+                font-weight: 600;
+                font-size: 12px;
+                text-transform: uppercase;
+            }
+
+            .sg-table input[type="text"] {
+                width: 100%;
+                background: var(--sg-bg-app);
+                border: 1px solid var(--sg-border);
+                color: var(--sg-text-primary);
+                padding: 8px;
+                border-radius: 4px;
+            }
+
+            .sg-input-group {
+                display: flex;
+                gap: 8px;
+            }
+
+            .sg-btn-icon {
+                background: transparent;
+                border: 1px solid var(--sg-border);
+                color: var(--sg-text-secondary);
+                cursor: pointer;
+                padding: 8px;
+                border-radius: 4px;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+            }
+
+            .sg-btn-icon:hover {
+                background: var(--sg-bg-hover);
+                color: var(--sg-text-primary);
+            }
+
+            .sg-notice.warning {
+                background: rgba(245, 158, 11, 0.1);
+                border-left: 4px solid var(--sg-warning);
+                padding: 12px;
+                margin-top: 20px;
+                color: var(--sg-text-primary);
+            }
+        </style>
+
+        <table class="sg-table" id="sg-mapping-table">
+            <thead>
+                <tr>
+                    <th><?php esc_html_e('Real Name (Folder)', 'spectrus-guard'); ?></th>
+                    <th><?php esc_html_e('Mask Name (Public)', 'spectrus-guard'); ?></th>
+                    <th style="width: 50px;"><?php esc_html_e('Action', 'spectrus-guard'); ?></th>
+                </tr>
+            </thead>
+            <tbody>
+                <?php
+                $mappings = get_option('sg_cloak_plugin_map', []);
+                if (empty($mappings)) {
+                    // Default example
+                    $mappings = ['woocommerce' => 'shop-core'];
+                }
+                foreach ($mappings as $real => $fake):
+                    ?>
+                    <tr>
+                        <td><input type="text" name="sg_map_real[]" value="<?php echo esc_attr($real); ?>"
+                                placeholder="e.g. elementor"></td>
+                        <td>
+                            <div class="sg-input-group">
+                                <input type="text" name="sg_map_fake[]" value="<?php echo esc_attr($fake); ?>"
+                                    placeholder="e.g. ui-builder">
+                                <button type="button" class="sg-btn-icon sg-randomize" title="Generate Random">🎲</button>
+                            </div>
+                        </td>
+                        <td><button type="button" class="sg-btn-icon sg-remove-row">❌</button></td>
+                    </tr>
+                <?php endforeach; ?>
+            </tbody>
+        </table>
+
+        <button type="button" class="sg-btn sg-btn-secondary" id="sg-add-mapping"
+            style="background: var(--sg-bg-app); border: 1px solid var(--sg-border); color: var(--sg-text-primary); margin-top: 8px;">
+            + <?php esc_html_e('Add Mapping', 'spectrus-guard'); ?>
+        </button>
+
+        <div class="sg-notice warning">
+            <p style="margin: 0; font-size: 13px;">
+                ⚠️ <strong><?php esc_html_e('Important:', 'spectrus-guard'); ?></strong>
+                <?php esc_html_e('After saving changes, you must update your server rules (Apache/Nginx) for the new paths to work.', 'spectrus-guard'); ?>
+            </p>
+        </div>
+    </div>
+
 </div>
 
 <script>
@@ -408,6 +548,33 @@ if (!empty($settings['url_cloaking_enabled'])) {
                     $btn.removeClass('disabled').prop('disabled', false).html(originalText);
                 }
             });
+        });
+
+        // --- Plugin Masking Studio Logic ---
+
+        // Add Row
+        $('#sg-add-mapping').on('click', function () {
+            var row = '<tr>' +
+                '<td><input type="text" name="sg_map_real[]" placeholder="e.g. elementor"></td>' +
+                '<td><div class="sg-input-group"><input type="text" name="sg_map_fake[]" placeholder="e.g. ui-builder"><button type="button" class="sg-btn-icon sg-randomize" title="Generate Random">🎲</button></div></td>' +
+                '<td><button type="button" class="sg-btn-icon sg-remove-row">❌</button></td>' +
+                '</tr>';
+            $('#sg-mapping-table tbody').append(row);
+        });
+
+        // Remove Row
+        $(document).on('click', '.sg-remove-row', function () {
+            // Allows removing even the last row if user wants empty
+            $(this).closest('tr').remove();
+        });
+
+        // Randomize
+        $(document).on('click', '.sg-randomize', function () {
+            var fakes = ['core-sys', 'app-data', 'ui-kit', 'auth-module', 'xyz-lib', 'content-hub', 'media-grid', 'form-engine', 'seo-pro', 'site-core'];
+            var random = fakes[Math.floor(Math.random() * fakes.length)];
+            // Optionally add number to ensure uniqueness
+            // random += '-' + Math.floor(Math.random() * 100);
+            $(this).closest('td').find('input').val(random);
         });
     });
 </script>
