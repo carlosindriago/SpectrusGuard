@@ -94,4 +94,4 @@ spectrus-guard/
 GPL v2 or later.
 
 ---
-**Developed with ❤️ by SpectrusGuard Team**
+**Developed with ❤️ by Carlos Indriago**
