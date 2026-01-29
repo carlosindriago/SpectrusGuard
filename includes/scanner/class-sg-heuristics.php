@@ -384,11 +384,22 @@ class SG_Heuristics
         }
 
         // Check for extremely long lines (obfuscation indicator)
-        $lines = explode("\n", $content);
-        foreach ($lines as $line) {
-            if (strlen($line) > 5000) {
+        $offset = 0;
+        $length = strlen($content);
+        while ($offset < $length) {
+            $pos = strpos($content, "\n", $offset);
+
+            if ($pos === false) {
+                if (($length - $offset) > 5000) {
+                    return true;
+                }
+                break;
+            }
+
+            if (($pos - $offset) > 5000) {
                 return true;
             }
+            $offset = $pos + 1;
         }
 
         return false;
