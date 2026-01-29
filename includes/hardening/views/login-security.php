@@ -20,7 +20,7 @@ $settings = get_option('spectrus_shield_settings', []);
             <input type="hidden" name="spectrus_shield_settings[form_context]" value="login">
 
             <!-- Card 1: Access Control (Hide Login) -->
-            <div class="sg-card">
+            <div class="sg-card" style="margin-bottom: 24px;">
                 <div class="sg-card-header">
                     <h2><?php esc_html_e('Hide Login Area', 'spectrus-guard'); ?></h2>
                 </div>
@@ -49,7 +49,7 @@ $settings = get_option('spectrus_shield_settings', []);
             </div>
 
             <!-- Card 2: Brute Force Protection -->
-            <div class="sg-card">
+            <div class="sg-card" style="margin-bottom: 24px;">
                 <div class="sg-card-header">
                     <h2><?php esc_html_e('Brute Force Protection', 'spectrus-guard'); ?></h2>
                 </div>

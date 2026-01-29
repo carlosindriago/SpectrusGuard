@@ -4,14 +4,87 @@
    ========================================= */
 
 /* Common Selector List for all Plugin Pages */
-.toplevel_page_spectrus-guard,
-.spectrusguard_page_spectrus-guard-scanner,
-.spectrusguard_page_spectrus-guard-logs,
-.spectrusguard_page_spectrus-guard-settings,
-.spectrus-guard_page_spectrus-guard-scanner,
-.spectrus-guard_page_spectrus-guard-logs,
-.spectrus-guard_page_spectrus-guard-settings {
+/* Common Selector List for all Plugin Pages */
+body.toplevel_page_spectrus-guard,
+body.spectrusguard_page_spectrus-guard-firewall,
+body.spectrusguard_page_spectrus-guard-scanner,
+body.spectrusguard_page_spectrus-guard-hardening,
+body.spectrusguard_page_spectrus-guard-settings,
+body.spectrus-guard_page_spectrus-guard-firewall,
+body.spectrus-guard_page_spectrus-guard-scanner,
+body.spectrus-guard_page_spectrus-guard-hardening,
+body.spectrus-guard_page_spectrus-guard-settings {
     /* Shared Variables or Scope */
+    background-color: #0f172a !important;
+    /* Force body bg */
+}
+
+/* TABS UNIFICATION */
+.toplevel_page_spectrus-guard .nav-tab-wrapper,
+.spectrusguard_page_spectrus-guard-firewall .nav-tab-wrapper,
+.spectrusguard_page_spectrus-guard-scanner .nav-tab-wrapper,
+.spectrusguard_page_spectrus-guard-hardening .nav-tab-wrapper,
+.spectrusguard_page_spectrus-guard-settings .nav-tab-wrapper,
+.spectrus-guard_page_spectrus-guard-firewall .nav-tab-wrapper,
+.spectrus-guard_page_spectrus-guard-scanner .nav-tab-wrapper,
+.spectrus-guard_page_spectrus-guard-hardening .nav-tab-wrapper,
+.spectrus-guard_page_spectrus-guard-settings .nav-tab-wrapper {
+    border-bottom: 1px solid #334155 !important;
+    padding-bottom: 0 !important;
+    margin-bottom: 24px !important;
+}
+
+.toplevel_page_spectrus-guard .nav-tab,
+.spectrusguard_page_spectrus-guard-firewall .nav-tab,
+.spectrusguard_page_spectrus-guard-scanner .nav-tab,
+.spectrusguard_page_spectrus-guard-hardening .nav-tab,
+.spectrusguard_page_spectrus-guard-settings .nav-tab,
+.spectrus-guard_page_spectrus-guard-firewall .nav-tab,
+.spectrus-guard_page_spectrus-guard-scanner .nav-tab,
+.spectrus-guard_page_spectrus-guard-hardening .nav-tab,
+.spectrus-guard_page_spectrus-guard-settings .nav-tab {
+    background: transparent !important;
+    border: none !important;
+    border-bottom: 2px solid transparent !important;
+    color: #94a3b8 !important;
+    /* sg-text-secondary */
+    font-size: 14px !important;
+    padding: 10px 16px !important;
+    margin: 0 4px 0 0 !important;
+    transition: all 0.2s ease !important;
+}
+
+.toplevel_page_spectrus-guard .nav-tab:hover,
+.spectrusguard_page_spectrus-guard-firewall .nav-tab:hover,
+.spectrusguard_page_spectrus-guard-scanner .nav-tab:hover,
+.spectrusguard_page_spectrus-guard-hardening .nav-tab:hover,
+.spectrusguard_page_spectrus-guard-settings .nav-tab:hover,
+.spectrus-guard_page_spectrus-guard-firewall .nav-tab:hover,
+.spectrus-guard_page_spectrus-guard-scanner .nav-tab:hover,
+.spectrus-guard_page_spectrus-guard-hardening .nav-tab:hover,
+.spectrus-guard_page_spectrus-guard-settings .nav-tab:hover {
+    color: #f8fafc !important;
+    /* sg-text-primary */
+    background: rgba(51, 65, 85, 0.5) !important;
+    /* sg-bg-hover */
+}
+
+.toplevel_page_spectrus-guard .nav-tab-active,
+.spectrusguard_page_spectrus-guard-firewall .nav-tab-active,
+.spectrusguard_page_spectrus-guard-scanner .nav-tab-active,
+.spectrusguard_page_spectrus-guard-hardening .nav-tab-active,
+.spectrusguard_page_spectrus-guard-settings .nav-tab-active,
+.spectrus-guard_page_spectrus-guard-firewall .nav-tab-active,
+.spectrus-guard_page_spectrus-guard-scanner .nav-tab-active,
+.spectrus-guard_page_spectrus-guard-hardening .nav-tab-active,
+.spectrus-guard_page_spectrus-guard-settings .nav-tab-active {
+    background: transparent !important;
+    border: none !important;
+    border-bottom: 2px solid #3b82f6 !important;
+    /* sg-primary */
+    color: #3b82f6 !important;
+    /* sg-primary */
+    font-weight: 600 !important;
 }
 
 /* 1. ELIMINATE WORDPRESS MARGINS & PADDING */
