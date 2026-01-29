@@ -1,125 +1,97 @@
 # SpectrusGuard: Advanced WAF & Stealth Security Suite
 
-![Version](https://img.shields.io/badge/version-1.0.0-blue.svg)
-![WordPress](https://img.shields.io/badge/WordPress-5.8%2B-green.svg)
-![PHP](https://img.shields.io/badge/PHP-7.4%2B-purple.svg)
+![Version](https://img.shields.io/badge/version-2.1.0-blue.svg)
+![WordPress](https://img.shields.io/badge/WordPress-6.0%2B-green.svg)
+![PHP](https://img.shields.io/badge/PHP-8.0%2B-purple.svg)
 ![License](https://img.shields.io/badge/license-GPL--2.0%2B-orange.svg)
 
-**A comprehensive security system** designed to intercept attacks before they reach your site and camouflage your WordPress instance, making it invisible to automated scanners and hackers.
+**SpectrusGuard** is an enterprise-grade security plugin for WordPress that combines a high-performance WAF, advanced stealth capabilities, and a modern "Immersive Mode" administration interface. It is designed to intercept attacks at the application layer, mask the CMS footprint, and provide granular access control.
 
-## 🛡️ Key Features
+## 🚀 Key Features
 
-### Web Application Firewall (WAF)
-- ⚡ **MU-Plugin DROP-IN**: Executes BEFORE WordPress loads for maximum efficiency.
-- 🔒 **Defense Vector**: Proactive protection against **SQL Injection**, **XSS**, **RCE**, **Path Traversal**, and **LFI**.
-- 📋 **Extensible Ruleset**: Regex-based rules defined in `rules.json`.
-- 🔄 **Multi-Layer Decoding**: Handles encoded payloads to prevent filter evasion.
-- 📊 **Detailed Logging**: Comprehensive attack logging with automatic rotation.
+### 🛡️ Web Application Firewall (WAF)
+- **Zero-Latency Drop-In**: Operates as an MU-Plugin to intercept threats *before* WordPress loads.
+- **Deep Packet Inspection**: Proactively blocks **SQL Injection**, **XSS**, **RCE**, **LFI/RFI**, and **Path Traversal**.
+- **Geo-Defense Strategy**:
+  - 🌍 **Country Blocking**: Restrict access by nation using a local MaxMind GeoLite2 database.
+  - 🧅 **Tor Node Detection**: Automatically identify and block traffic from the Tor anonymity network.
+- **Intelligent Ruleset**: Regex-based pattern matching with sophisticated decoding to prevent evasion.
 
-### Ghost Stealth (Anti-Fingerprinting)
-- 🕵️ **Metadata Scrubbing**: Removes revealing meta tags (e.g., `<meta name="generator">`).
-- 🔇 **Header Sanitization**: Strips HTTP headers like `X-Powered-By` and `Server`.
-- 🎭 **Asset Obfuscation**: Hides version strings in CSS/JS files (`?ver=X.X`).
-- 🚫 **Protocol Hardening**: Blocks XML-RPC and pingbacks to reduce attack surface.
-- 🔐 **Login Cloaking**: Conceals `/wp-login.php` with a custom slug.
+### 👻 Stealth & Hardening
+- **Ghost Cloak**: Completely hides standard WordPress paths (`/wp-content`, `/wp-includes`) via rewrite rules.
+- **Login Defense**:
+  - 🚫 **Hide Login Page**: Move `/wp-login.php` to a custom secret slug.
+  - 🔐 **Zero-Trust 2FA**: Enforce Two-Factor Authentication (TOTP) for administrators and privileged roles.
+  - 🛑 **Brute Force Protection**: Intelligent lockout mechanism with configurable attempts and duration.
+- **Fingerprint Erasure**: Removes `X-Powered-By` headers, WP version generators, and blocks XML-RPC/REST API enumeration.
 
-### API Guard
-- 🛑 **Enumeration Blocking**: Prevents user enumeration via REST API endpoints.
-- 🍯 **Honeypot Mechanism**: Trap for bots in the login form.
-- ⏱️ **Rate Limiting**: Mitigates brute-force attempts on sensitive endpoints.
-- 📝 **Intrusion Detection**: Logs suspicious bot activity.
-
-### Enterprise Dashboard
-- 🖥️ **Unified Hero Section**: Central command center displaying real-time security status and scan results.
-- 📊 **Threat Intel Grid**: Visual metrics for attack vectors with sparklines and semantic status indicators.
-- 🌙 **Professional Dark Mode**: Modern, high-contrast dark theme (Slate/Blue palette) optimized for readability.
-- 🖱️ **Smart Sidebar**: Quick access to critical actions and a compact Rescue Mode panel.
-- 📈 **Interactive Analytics**: Dynamic activity chart visualizing attack trends over the last 30 days.
+### 🖥️ Immersive Admin Interface
+- **SPA-Like Experience**: A fully custom "Immersive Mode" UI that overrides standard WordPress styling.
+- **Dark Mode**: High-contrast Slate/Indigo theme optimized for security operations centers (SOC).
+- **Page Controller Architecture**: Modular backend design ensuring speed and code maintainability.
+- **Unified Dashboard**:
+  - **Threat Intelligence**: Real-time visual metrics of attack vectors.
+  - **Activity Logs**: Integrated traffic inspection with severity tagging.
+  - **Quick Actions**: Rapid response tools for emergency hardening.
 
 ## 📦 Installation
 
 1. Upload the `SpectrusGuard` directory to `/wp-content/plugins/`.
-2. Activate the plugin via **Plugins > Installed Plugins**.
-3. The MU-Plugin (Must-Use) component automatically installs to `wp-content/mu-plugins/`.
-4. Configure settings via **SpectrusGuard > Settings**.
+2. Activate the plugin via WordPress Admin.
+3. The WAF Drop-In (`ghost-waf.php`) will automatically install to `/wp-content/mu-plugins/`.
+4. Navigate to the **SpectrusGuard** menu to configure your policy.
 
-## ⚙️ Configuration
+## ⚙️ Configuration Hints
 
-### Rescue Mode (Fail-Safe)
-If you accidentally lock yourself out, use the designated rescue URL:
+### 🆘 Rescue Mode
+Locked out? Use the emergency bypass URL defined in your dashboard:
 ```
-https://yoursite.com/?spectrus_rescue=YOUR_SECRET_KEY
+https://yoursite.com/?spectrus_rescue=YOUR_GENERATED_KEY
 ```
 
-The secret key is automatically generated and can be found in **SpectrusGuard > Dashboard**.
+### 🌍 Geo-IP Setup
+1. Go to **Firewall > Geo-Defense**.
+2. Click **Update Database** to download the latest MaxMind GeoLite2 City DB.
+3. Select countries to block from the interactive list.
 
-### IP Whitelist
-add trusted IP addresses that should never be blocked in **Settings > IP Whitelist**.
+## 🏗️ Architecture
 
-### Login Cloaking
-1. Enable "Hide Login Page" in Settings.
-2. Define your custom slug (e.g., `my-secret-access`).
-3. Access your administration panel via `https://yoursite.com/my-secret-access`.
+SpectrusGuard 2.0 adopts a **Page Controller Pattern** for robust scalability and separation of concerns.
 
-## 📂 Project Structure
-
-```
+```tree
 spectrus-guard/
-├── spectrus-guard.php            # Main Bootstrapper
-├── uninstall.php               # Cleanup Routine
-├── assets/
-│   ├── css/admin.css           # Dashboard Styles (Enterprise Dark Theme)
-│   └── js/admin.js             # Admin Interactions
+├── spectrus-guard.php            # Bootshrapper
 ├── includes/
-│   ├── class-sg-loader.php     # Singleton Orchestrator
-│   ├── class-sg-logger.php     # Logging System
-│   ├── waf/
-│   │   ├── class-sg-firewall.php  # WAF Engine
-│   │   └── rules.json          # Regex Ruleset
-│   ├── hardening/
-│   │   ├── class-sg-stealth.php   # Anti-fingerprinting Module
-│   │   └── class-sg-api-guard.php # REST API Protection
-│   ├── scanner/
-│   │   └── class-sg-scanner.php   # Integrity Scanner Engine
-│   └── admin/
-│       └── class-sg-admin.php  # Enterprise Dashboard Controller
-├── mu-loader/
-│   └── ghost-waf.php           # MU-Plugin DROP-IN
-└── languages/                  # Localization Files
+│   ├── class-sg-loader.php       # Dependency Injection Container
+│   ├── admin/
+│   │   ├── class-sg-admin.php    # Main Router
+│   │   └── pages/                # Page Controllers
+│   │       ├── class-sg-page-dashboard.php
+│   │       ├── class-sg-page-firewall.php
+│   │       ├── class-sg-page-scanner.php
+│   │       ├── class-sg-page-hardening.php
+│   │       └── class-sg-page-settings.php
+│   ├── geo/                      # Geo-Defense Engine
+│   │   ├── class-sg-geo-engine.php
+│   │   └── class-sg-maxmind-reader.php
+│   ├── waf/                      # Firewall Core
+│   └── hardening/                # Security Modules
+├── assets/
+│   └── css/
+│       └── admin.css             # Immersive Mode Styles
+└── mu-loader/
+    └── ghost-waf.php             # Early Execution WAF
 ```
 
-## 🔧 Design Patterns
+## 🔐 Security Standards
 
-- **Singleton**: `SG_Loader` - Ensures a single instance of the main orchestrator.
-- **Factory**: `SG_Firewall` - Instantiates specific matchers based on attack vectors.
-- **Observer**: Hooks into WordPress actions for alerts and notifications.
-
-## 🔐 Security Best Practices
-
-The codebase adheres to strict WordPress security standards:
-
-- ✅ `esc_html()`, `esc_attr()` for output escaping.
-- ✅ `sanitize_text_field()` for input sanitization.
-- ✅ `wp_verify_nonce()` for CSRF protection on all AJAX calls.
-- ✅ `current_user_can('manage_options')` for capability checks.
-- ✅ Prepared statements for all database queries.
-
-## 📋 Roadmap
-
-- [x] **Sprint 1**: WAF Core & MU-Plugin Implementation
-- [x] **Sprint 2**: Hardening & Stealth Module
-- [x] **Sprint 3**: Integrity & Malware Scanner
-- [x] **Sprint 4**: URL Cloaking & Advanced Features
-- [x] **Sprint 5**: Enterprise UI/UX Overhaul (Dashboard Redesign)
+- **Context-Aware Sanitization**: Strict input validation using `sanitize_text_field`, `absint`, and custom regex.
+- **Nonce Verification**: All AJAX actions and form submissions are protected against CSRF.
+- **Capability Checks**: Administrative functions strictly require `manage_options`.
 
 ## 📄 License
 
-GPL v2 or later. See [LICENSE](LICENSE) for details.
-
-## 👨‍💻 Author
-
-Developed by Carlos Developer
+GPL v2 or later.
 
 ---
-
-**⚠️ Note**: This plugin is designed for production environments. Always maintain a backup and test in a staging environment before deployment.
+**Developed with ❤️ by SpectrusGuard Team**
