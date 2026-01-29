@@ -227,6 +227,41 @@ class SG_Logger
      */
     private function update_stats($type)
     {
+        // Try to buffer stats in a transient
+        $buffer = get_transient('spectrus_shield_stats_buffer');
+        if (false === $buffer) {
+            $buffer = array(
+                'count' => 0,
+                'types' => array(),
+                'start_time' => time(),
+            );
+        }
+
+        // Increment buffer counters
+        $buffer['count']++;
+        $type_key = strtolower($type) . '_blocked';
+        if (!isset($buffer['types'][$type_key])) {
+            $buffer['types'][$type_key] = 0;
+        }
+        $buffer['types'][$type_key]++;
+
+        // Flush buffer if it exceeds limit or time threshold
+        // Flush every 100 attacks or 5 minutes
+        if ($buffer['count'] >= 100 || (time() - $buffer['start_time']) > 300) {
+            $this->flush_stats_buffer($buffer);
+            delete_transient('spectrus_shield_stats_buffer');
+        } else {
+            set_transient('spectrus_shield_stats_buffer', $buffer, 3600);
+        }
+    }
+
+    /**
+     * Flush buffered stats to database
+     *
+     * @param array $buffer Buffered stats.
+     */
+    private function flush_stats_buffer($buffer)
+    {
         $stats = get_option('spectrus_shield_attack_stats', array(
             'total_blocked' => 0,
             'sqli_blocked' => 0,
@@ -237,12 +272,15 @@ class SG_Logger
             'daily_stats' => array(),
         ));
 
-        // Increment counters
-        $stats['total_blocked']++;
+        // Merge buffer into stats
+        $stats['total_blocked'] += $buffer['count'];
 
-        $type_key = strtolower($type) . '_blocked';
-        if (isset($stats[$type_key])) {
-            $stats[$type_key]++;
+        foreach ($buffer['types'] as $type => $count) {
+            if (isset($stats[$type])) {
+                $stats[$type] += $count;
+            } else {
+                $stats[$type] = $count;
+            }
         }
 
         $stats['last_attack'] = current_time('mysql');
@@ -252,7 +290,7 @@ class SG_Logger
         if (!isset($stats['daily_stats'][$today])) {
             $stats['daily_stats'][$today] = 0;
         }
-        $stats['daily_stats'][$today]++;
+        $stats['daily_stats'][$today] += $buffer['count'];
 
         // Prune old daily stats
         $cutoff = date('Y-m-d', strtotime('-30 days'));
