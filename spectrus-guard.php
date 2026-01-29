@@ -1,11 +1,11 @@
 <?php
 /**
- * Plugin Name:       SpectrusGuard: Advanced WAF & Stealth Security Suite
+ * Plugin Name:       SpectrusGuard Enterprise: AI-Powered Security Suite
  * Plugin URI:        https://github.com/carlosindriago/SpectrusGuard/
- * Description:       Sistema de seguridad integral que intercepta ataques antes de que toquen tu web y camufla tu sitio para que los hackers ni siquiera sepan que usas WordPress.
- * Version:           1.0.0
- * Requires at least: 5.8
- * Requires PHP:      7.4
+ * Description:       Enterprise-grade security with WAF, Geo-Blocking, and AI-powered User and Entity Behavior Analytics (UEBA). Detects threats that traditional security misses.
+ * Version:           3.0.0
+ * Requires at least: 6.4
+ * Requires PHP:      8.1
  * Author:            Carlos Indriago
  * Author URI:        https://github.com/carlosindriago/
  * License:           GPL v2 or later
@@ -14,6 +14,7 @@
  * Domain Path:       /languages
  *
  * @package SpectrusGuard
+ * @since   1.0.0
  */
 
 // Prevent direct access
@@ -24,13 +25,13 @@ if (!defined('ABSPATH')) {
 /**
  * Plugin Constants
  */
-define('SG_VERSION', '1.0.0');
+define('SG_VERSION', '3.0.0');
 define('SG_PLUGIN_FILE', __FILE__);
 define('SG_PLUGIN_DIR', plugin_dir_path(__FILE__));
 define('SG_PLUGIN_URL', plugin_dir_url(__FILE__));
 define('SG_PLUGIN_BASENAME', plugin_basename(__FILE__));
-define('SG_MIN_PHP_VERSION', '7.4');
-define('SG_MIN_WP_VERSION', '5.8');
+define('SG_MIN_PHP_VERSION', '8.1');
+define('SG_MIN_WP_VERSION', '6.4');
 
 /**
  * MU-Plugin paths
