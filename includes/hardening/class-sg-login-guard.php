@@ -57,8 +57,8 @@ class Spectrus_Login_Guard
 
             // FIX: Declare globals that wp-login.php relies on.
             // Include them in the scope so they are valid when wp-login.php runs.
-            global $user_login, $error, $action, $interim_login, $message;
-            global $wp_error, $user_identity, $c, $d;
+            global $user_login, $user_email, $error, $errors, $action, $interim_login, $message, $redirect_to;
+            global $wp_error, $user_identity;
 
             require_once ABSPATH . 'wp-login.php';
             exit;
