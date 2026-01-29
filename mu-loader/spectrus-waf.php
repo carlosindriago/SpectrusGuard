@@ -101,6 +101,16 @@ class SpectrusGuard_MU_Guard
             return true;
         }
 
+        // Skip for admin-ajax.php (critical for plugin functionality)
+        if (isset($_SERVER['REQUEST_URI']) && strpos($_SERVER['REQUEST_URI'], '/admin-ajax.php') !== false) {
+            return true;
+        }
+
+        // Skip for load-scripts.php (WordPress core functionality)
+        if (isset($_SERVER['REQUEST_URI']) && strpos($_SERVER['REQUEST_URI'], '/load-scripts.php') !== false) {
+            return true;
+        }
+
         // Skip if main plugin doesn't exist
         if (!file_exists($this->plugin_dir . 'spectrus-guard.php')) {
             return true;

@@ -343,11 +343,11 @@ class SG_Loader
         );
 
         wp_localize_script(
-            'spectrus-guard-admin',
+                'spectrus-guard-admin',
             'SpectrusGuard',
             array(
                 'ajax_url' => admin_url('admin-ajax.php'),
-                'nonce' => wp_create_nonce('sg_nonce'),
+                'nonce' => wp_create_nonce('spectrus_guard_nonce'),
                 'i18n' => array(
                     'scanning' => __('Scanning...', 'spectrus-guard'),
                     'complete' => __('Scan Complete', 'spectrus-guard'),

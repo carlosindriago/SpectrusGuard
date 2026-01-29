@@ -187,38 +187,38 @@ class SG_Page_Scanner
             </div>
         </div>
 
-        <script>
-            jQuery(document).ready(function ($) {
-                $('#sg-run-scan').on('click', function () {
-                    var $btn = $(this);
-                    $btn.prop('disabled', true).addClass('loading');
-                    // Hide results, show progress
-                    $('.sg-threat-intel-grid, .sg-card:not(#sg-scan-progress)').fadeOut();
-                    $('#sg-scan-progress').fadeIn();
+         <script>
+              jQuery(document).ready(function ($) {
+                  $('#sg-run-scan').on('click', function () {
+                      var $btn = $(this);
+                      $btn.prop('disabled', true).addClass('loading');
+                      // Hide results, show progress
+                      $('.sg-threat-intel-grid, .sg-card:not(#sg-scan-progress)').fadeOut();
+                      $('#sg-scan-progress').fadeIn();
 
-                    $.ajax({
-                        url: ajaxurl,
-                        type: 'POST',
-                        data: {
-                            action: 'sg_run_scan',
-                            nonce: SpectrusGuard.nonce
-                        },
-                        success: function (response) {
-                            if (response.success) {
-                                location.reload();
-                            } else {
-                                alert(response.data.message || 'Scan failed');
-                                location.reload(); // Reload anyway to reset state
-                            }
-                        },
-                        error: function () {
-                            alert('<?php esc_html_e('An error occurred during the scan.', 'spectrus-guard'); ?>');
-                            location.reload();
-                        }
-                    });
-                });
-            });
-        </script>
+                      $.ajax({
+                          url: SpectrusGuard.ajax_url,
+                          type: 'POST',
+                          data: {
+                              action: 'sg_run_scan',
+                              _ajax_nonce: SpectrusGuard.nonce
+                          },
+                          success: function (response) {
+                              if (response.success) {
+                                  location.reload();
+                              } else {
+                                  alert(response.data.message || '<?php esc_html_e('Scan failed', 'spectrus-guard'); ?>');
+                                  location.reload();
+                              }
+                          },
+                          error: function () {
+                              alert('<?php esc_html_e('An error occurred during the scan.', 'spectrus-guard'); ?>');
+                              location.reload();
+                          }
+                      });
+                  });
+              });
+         </script>
         <?php
     }
 
@@ -227,10 +227,11 @@ class SG_Page_Scanner
      */
     public function ajax_run_scan()
     {
-        check_ajax_referer('spectrus_shield_nonce', 'nonce');
+        // Verify nonce - consistent with loader
+        check_ajax_referer('spectrus_guard_nonce', 'nonce');
 
         if (!current_user_can('manage_options')) {
-            wp_send_json_error(array('message' => 'Unauthorized'));
+            wp_send_json_error(array('message' => __('Unauthorized', 'spectrus-guard')));
         }
 
         $scanner = $this->loader->get_scanner();
@@ -238,12 +239,37 @@ class SG_Page_Scanner
             wp_send_json_error(array('message' => __('Scanner not available.', 'spectrus-guard')));
         }
 
-        // Run fresh scan
-        $results = $scanner->run_full_scan(true);
+        // Check if scanner is already running to prevent duplicate scans
+        $scan_lock = get_transient('spectrus_guard_scan_lock');
+        if ($scan_lock) {
+            wp_send_json_error(array('message' => __('A scan is already in progress. Please wait.', 'spectrus-guard')));
+        }
 
-        wp_send_json_success(array(
-            'message' => __('Scan completed successfully.', 'spectrus-guard'),
-            'results' => $scanner->get_display_results(),
-        ));
+        // Set scan lock for 5 minutes
+        set_transient('spectrus_guard_scan_lock', true, 300);
+
+        try {
+            // Run fresh scan
+            $results = $scanner->run_full_scan(true);
+
+            // Clear scan lock
+            delete_transient('spectrus_guard_scan_lock');
+
+            wp_send_json_success(array(
+                'message' => __('Scan completed successfully.', 'spectrus-guard'),
+                'results' => $scanner->get_display_results(),
+            ));
+        } catch (Exception $e) {
+            // Clear scan lock on error
+            delete_transient('spectrus_guard_scan_lock');
+
+            // Log error
+            error_log('SpectrusGuard Scan Error: ' . $e->getMessage());
+
+            wp_send_json_error(array(
+                'message' => __('Scan failed: ' . $e->getMessage(), 'spectrus-guard'),
+                'debug' => $e->getMessage(),
+            ));
+        }
     }
 }
