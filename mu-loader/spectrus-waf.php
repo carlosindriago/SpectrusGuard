@@ -197,12 +197,19 @@ class SpectrusGuard_MU_Guard
     }
 
     /**
-     * Load firewall rules from JSON file
+     * Load firewall rules from JSON file or PHP cache
      *
      * @return bool True if rules loaded successfully
      */
     private function load_rules()
     {
+        // Try to load from PHP file first (faster)
+        $rules_php = $this->plugin_dir . 'includes/waf/rules.php';
+        if (file_exists($rules_php)) {
+            $this->rules = require $rules_php;
+            return true;
+        }
+
         if (!file_exists($this->rules_file)) {
             return false;
         }
