@@ -85,8 +85,7 @@ class SG_Stealth
         }
 
         // 9. Remove WordPress-specific comments
-        add_action('wp_head', array($this, 'remove_wp_comments'), 1);
-        add_action('wp_footer', array($this, 'remove_wp_comments'), 1);
+        add_action('template_redirect', array($this, 'remove_wp_comments'), 1);
     }
 
     /**
@@ -332,13 +331,14 @@ class SG_Stealth
     public function remove_wp_comments()
     {
         ob_start(function ($html) {
-            // Remove WordPress version comments
-            $html = preg_replace('/<!--[^>]*WordPress[^>]*-->/i', '', $html);
+            // Fast fail check
+            if (strpos($html, '<!--') === false) {
+                return $html;
+            }
 
-            // Remove plugin/theme name comments
-            $html = preg_replace('/<!--[^>]*(plugin|theme|generator)[^>]*-->/i', '', $html);
-
-            return $html;
+            // Remove WordPress version comments and plugin/theme name comments
+            // Combined regex for performance
+            return preg_replace('/<!--[^>]*(WordPress|plugin|theme|generator)[^>]*-->/i', '', $html);
         });
     }
 }
