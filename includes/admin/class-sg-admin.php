@@ -204,7 +204,8 @@ class SG_Admin
                 $fakes = $_POST['sg_map_fake'];
 
                 if (is_array($reals) && is_array($fakes)) {
-                    for ($i = 0; $i < count($reals); $i++) {
+                    $count = count($reals);
+                    for ($i = 0; $i < $count; $i++) {
                         $r = sanitize_text_field($reals[$i]);
                         $f = sanitize_title($fakes[$i]); // sanitize_title ensures URL safety
                         if ($r && $f) {
