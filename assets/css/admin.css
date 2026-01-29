@@ -21,7 +21,9 @@
 .spectrusguard_page_spectrus-guard-settings #wpcontent,
 .spectrus-guard_page_spectrus-guard-scanner #wpcontent,
 .spectrus-guard_page_spectrus-guard-logs #wpcontent,
-.spectrus-guard_page_spectrus-guard-settings #wpcontent {
+.spectrus-guard_page_spectrus-guard-settings #wpcontent,
+.spectrusguard_page_spectrus-guard-hardening #wpcontent,
+.spectrus-guard_page_spectrus-guard-hardening #wpcontent {
     padding-left: 0;
 }
 
@@ -31,7 +33,9 @@
 .spectrusguard_page_spectrus-guard-settings #wpbody-content,
 .spectrus-guard_page_spectrus-guard-scanner #wpbody-content,
 .spectrus-guard_page_spectrus-guard-logs #wpbody-content,
-.spectrus-guard_page_spectrus-guard-settings #wpbody-content {
+.spectrus-guard_page_spectrus-guard-settings #wpbody-content,
+.spectrusguard_page_spectrus-guard-hardening #wpbody-content,
+.spectrus-guard_page_spectrus-guard-hardening #wpbody-content {
     padding-bottom: 0;
 }
 
@@ -41,7 +45,9 @@
 .spectrusguard_page_spectrus-guard-settings .wrap,
 .spectrus-guard_page_spectrus-guard-scanner .wrap,
 .spectrus-guard_page_spectrus-guard-logs .wrap,
-.spectrus-guard_page_spectrus-guard-settings .wrap {
+.spectrus-guard_page_spectrus-guard-settings .wrap,
+.spectrusguard_page_spectrus-guard-hardening .wrap,
+.spectrus-guard_page_spectrus-guard-hardening .wrap {
     margin: 0;
     max-width: 100%;
 }
@@ -80,7 +86,14 @@
 .spectrusguard_page_spectrus-guard-settings .sg-dashboard,
 .spectrus-guard_page_spectrus-guard-settings #wpcontent,
 .spectrus-guard_page_spectrus-guard-settings #wpbody,
-.spectrus-guard_page_spectrus-guard-settings .sg-dashboard {
+.spectrus-guard_page_spectrus-guard-settings .sg-dashboard,
+/* Hardening */
+.spectrusguard_page_spectrus-guard-hardening #wpcontent,
+.spectrusguard_page_spectrus-guard-hardening #wpbody,
+.spectrusguard_page_spectrus-guard-hardening .sg-dashboard,
+.spectrus-guard_page_spectrus-guard-hardening #wpcontent,
+.spectrus-guard_page_spectrus-guard-hardening #wpbody,
+.spectrus-guard_page_spectrus-guard-hardening .sg-dashboard {
     background-color: #0f172a !important;
     /* Slate 900 */
 }
@@ -92,7 +105,9 @@
 .spectrusguard_page_spectrus-guard-settings #wpfooter,
 .spectrus-guard_page_spectrus-guard-scanner #wpfooter,
 .spectrus-guard_page_spectrus-guard-logs #wpfooter,
-.spectrus-guard_page_spectrus-guard-settings #wpfooter {
+.spectrus-guard_page_spectrus-guard-settings #wpfooter,
+.spectrusguard_page_spectrus-guard-hardening #wpfooter,
+.spectrus-guard_page_spectrus-guard-hardening #wpfooter {
     background-color: #0f172a !important;
     color: #64748b !important;
     border-top: 1px solid #1e293b;
@@ -127,7 +142,9 @@
 .spectrusguard_page_spectrus-guard-settings #wpadminbar,
 .spectrus-guard_page_spectrus-guard-scanner #wpadminbar,
 .spectrus-guard_page_spectrus-guard-logs #wpadminbar,
-.spectrus-guard_page_spectrus-guard-settings #wpadminbar {
+.spectrus-guard_page_spectrus-guard-settings #wpadminbar,
+.spectrusguard_page_spectrus-guard-hardening #wpadminbar,
+.spectrus-guard_page_spectrus-guard-hardening #wpadminbar {
     background-color: #0f172a !important;
     border-bottom: 1px solid #1e293b;
 }

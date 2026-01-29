@@ -22,64 +22,52 @@ if (!$secret) {
 $otpauth = "otpauth://totp/SpectrusGuard:" . wp_get_current_user()->user_email . "?secret=" . $secret . "&issuer=SpectrusGuard";
 ?>
 
-<div class="sg-card">
-    <div class="sg-card-header">
-        <h2>
-            <?php esc_html_e('Spectrus Sentinel 2FA', 'spectrus-guard'); ?>
-        </h2>
-    </div>
-    <div class="sg-card-body">
+<div class="sg-form-group">
+    <label class="sg-label">
+        <?php esc_html_e('Authentication Method', 'spectrus-guard'); ?>
+    </label>
+    <select name="spectrus_2fa_method" id="spectrus_2fa_method" class="sg-form-control" style="max-width: 300px;">
+        <option value="" <?php selected($current_method, ''); ?>>
+            <?php esc_html_e('Disabled', 'spectrus-guard'); ?>
+        </option>
+        <option value="app" <?php selected($current_method, 'app'); ?>>
+            <?php esc_html_e('Mobile App (Google Auth / Authy)', 'spectrus-guard'); ?>
+        </option>
+        <option value="email" <?php selected($current_method, 'email'); ?>>
+            <?php esc_html_e('Email Verification', 'spectrus-guard'); ?>
+        </option>
+    </select>
+    <p class="description">
+        <?php esc_html_e('Choose how you want to verify your login.', 'spectrus-guard'); ?>
+    </p>
+</div>
 
-        <div class="sg-form-group">
-            <label class="sg-label">
-                <?php esc_html_e('Authentication Method', 'spectrus-guard'); ?>
-            </label>
-            <select name="spectrus_2fa_method" id="spectrus_2fa_method" class="sg-form-control"
-                style="max-width: 300px;">
-                <option value="" <?php selected($current_method, ''); ?>>
-                    <?php esc_html_e('Disabled', 'spectrus-guard'); ?>
-                </option>
-                <option value="app" <?php selected($current_method, 'app'); ?>>
-                    <?php esc_html_e('Mobile App (Google Auth / Authy)', 'spectrus-guard'); ?>
-                </option>
-                <option value="email" <?php selected($current_method, 'email'); ?>>
-                    <?php esc_html_e('Email Verification', 'spectrus-guard'); ?>
-                </option>
-            </select>
-            <p class="description">
-                <?php esc_html_e('Choose how you want to verify your login.', 'spectrus-guard'); ?>
-            </p>
+<!-- App Configuration Section -->
+<div id="sg-2fa-app-config"
+    style="display: none; margin-top: 20px; padding: 20px; background: rgba(0,0,0,0.2); border-radius: 8px;">
+    <h3 style="margin-top: 0; color: var(--sg-text-primary);">
+        <?php esc_html_e('Setup Authenticator App', 'spectrus-guard'); ?>
+    </h3>
+
+    <div style="display: flex; gap: 30px; align-items: flex-start;">
+        <div style="background: white; padding: 10px; border-radius: 4px;">
+            <div id="sg-qrcode"></div>
         </div>
+        <div>
+            <p style="margin-top: 0;"><strong>1. Scan the QR code</strong> with your authenticator app.</p>
+            <p><strong>2. Or enter this code manually:</strong></p>
+            <code
+                style="display: block; background: #0f172a; padding: 10px; border-radius: 4px; color: #f8fafc; font-family: monospace; font-size: 1.2em; letter-spacing: 2px; margin: 10px 0;">
+                    <?php echo esc_html($secret); ?>
+                </code>
+            <input type="hidden" name="spectrus_2fa_secret" value="<?php echo esc_attr($secret); ?>">
 
-        <!-- App Configuration Section -->
-        <div id="sg-2fa-app-config"
-            style="display: none; margin-top: 20px; padding: 20px; background: rgba(0,0,0,0.2); border-radius: 8px;">
-            <h3 style="margin-top: 0; color: var(--sg-text-primary);">
-                <?php esc_html_e('Setup Authenticator App', 'spectrus-guard'); ?>
-            </h3>
-
-            <div style="display: flex; gap: 30px; align-items: flex-start;">
-                <div style="background: white; padding: 10px; border-radius: 4px;">
-                    <div id="sg-qrcode"></div>
-                </div>
-                <div>
-                    <p style="margin-top: 0;"><strong>1. Scan the QR code</strong> with your authenticator app.</p>
-                    <p><strong>2. Or enter this code manually:</strong></p>
-                    <code
-                        style="display: block; background: #0f172a; padding: 10px; border-radius: 4px; color: #f8fafc; font-family: monospace; font-size: 1.2em; letter-spacing: 2px; margin: 10px 0;">
-                        <?php echo esc_html($secret); ?>
-                    </code>
-                    <input type="hidden" name="spectrus_2fa_secret" value="<?php echo esc_attr($secret); ?>">
-
-                    <p style="margin-top: 20px;"><strong>3. Verify Setup:</strong></p>
-                    <p class="description">Enter the 6-digit code from your app to confirm it's working.</p>
-                    <input type="text" name="spectrus_2fa_verify_code" class="sg-input-text" placeholder="000000"
-                        maxlength="6" pattern="[0-9]*" inputmode="numeric"
-                        style="background: #0f172a; border: 1px solid #334155; color: #fff; padding: 8px; border-radius: 4px; width: 150px; text-align: center; letter-spacing: 4px; font-size: 1.2em;">
-                </div>
-            </div>
+            <p style="margin-top: 20px;"><strong>3. Verify Setup:</strong></p>
+            <p class="description">Enter the 6-digit code from your app to confirm it's working.</p>
+            <input type="text" name="spectrus_2fa_verify_code" class="sg-input-text" placeholder="000000" maxlength="6"
+                pattern="[0-9]*" inputmode="numeric"
+                style="background: #0f172a; border: 1px solid #334155; color: #fff; padding: 8px; border-radius: 4px; width: 150px; text-align: center; letter-spacing: 4px; font-size: 1.2em;">
         </div>
-
     </div>
 </div>
 

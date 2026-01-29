@@ -100,13 +100,13 @@ $settings = get_option('spectrus_shield_settings', []);
                         <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 12px;">
                             <?php
                             $roles = wp_roles()->get_names();
-                            $enforced_roles = $settings['enforce_2fa_roles'] ?? ['administrator']; // Default to admin
+                            $enforced_roles = $settings['enforce_2fa_roles'] ?? ['administrator']; 
                             foreach ($roles as $role_key => $role_name):
                                 ?>
                                 <label style="display: flex; align-items: center; gap: 8px; background: rgba(255,255,255,0.05); padding: 8px; border-radius: 4px;">
                                     <input type="checkbox" name="spectrus_shield_settings[enforce_2fa_roles][]" value="<?php echo esc_attr($role_key); ?>" 
                                         <?php checked(in_array($role_key, $enforced_roles)); ?>>
-                                    <span style="color: var(--sg-text-primary); fon-size: 13px;"><?php echo esc_html($role_name); ?></span>
+                                    <span style="color: var(--sg-text-primary); font-size: 13px;"><?php echo esc_html($role_name); ?></span>
                                 </label>
                             <?php endforeach; ?>
                         </div>
@@ -136,16 +136,28 @@ $settings = get_option('spectrus_shield_settings', []);
         </form>
 
         <!-- Card 4: Personal Identity (My 2FA) -->
-        <form method="post" id="sg-personal-2fa-form" style="margin-top: 40px;">
+        <h3 style="margin: 24px 0 16px 0; padding-left: 4px; border-left: 4px solid #3b82f6; color: var(--sg-text-primary);">
+            <?php esc_html_e('My Security Profile', 'spectrus-guard'); ?>
+        </h3>
+
+        <form method="post" id="sg-personal-2fa-form" style="margin-top: 0;">
              <?php wp_nonce_field('spectrus_save_security', 'spectrus_security_nonce'); ?>
              
-             <!-- Include existing View -->
-             <?php include SG_PLUGIN_DIR . 'includes/auth/views/setup-2fa.php'; ?>
-             
-             <div style="margin-top: 16px; text-align: right;">
-                <button type="submit" class="sg-btn sg-btn-secondary">
-                    <span class="dashicons dashicons-lock"></span> <?php esc_html_e('Update My Identity', 'spectrus-guard'); ?>
-                </button>
+             <div class="sg-card">
+                 <div class="sg-card-header">
+                     <h2><?php esc_html_e('Spectrus Sentinel 2FA', 'spectrus-guard'); ?></h2>
+                 </div>
+                 <div class="sg-settings-card-body">
+                     <!-- Include Content Partial -->
+                     <?php include SG_PLUGIN_DIR . 'includes/auth/views/setup-2fa.php'; ?>
+                     
+                     <!-- Footer with Action -->
+                     <div class="sg-card-footer" style="margin-top: 24px; padding-top: 20px; border-top: 1px solid var(--sg-border); text-align: right;">
+                        <button type="submit" class="sg-btn sg-btn-secondary">
+                            <span class="dashicons dashicons-lock"></span> <?php esc_html_e('Update My Identity', 'spectrus-guard'); ?>
+                        </button>
+                     </div>
+                 </div>
              </div>
         </form>
 
