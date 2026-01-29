@@ -84,6 +84,13 @@ class SG_Firewall
      */
     private function load_rules()
     {
+        // Try to load from PHP file first (faster)
+        $rules_php = SG_PLUGIN_DIR . 'includes/waf/rules.php';
+        if (file_exists($rules_php)) {
+            $this->rules = require $rules_php;
+            return;
+        }
+
         $rules_file = SG_PLUGIN_DIR . 'includes/waf/rules.json';
 
         if (!file_exists($rules_file)) {
