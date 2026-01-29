@@ -125,24 +125,24 @@ class SG_Response_Engine
      */
     private function handle_medium_risk($context)
     {
-        // Show warning in admin
+            // Show warning in admin
         add_action('admin_notices', function () use ($context) {
             $user_id = isset($context['user_id']) ? $context['user_id'] : 0;
             $ip = isset($context['ip']) ? $context['ip'] : 'unknown';
             $anomalies = isset($context['anomalies']) ? $context['anomalies'] : array();
 
             echo '<div class="notice notice-warning is-dismissible">';
-            echo '<p><strong>⚠️ SpectrusGuard: Unusual Activity Detected</strong></p>';
-            echo '<p>We detected unusual activity on your account:</p>';
+            echo '<p><strong>' . esc_html__('⚠️ SpectrusGuard: Unusual Activity Detected', 'spectrus-guard') . '</strong></p>';
+            echo '<p>' . esc_html__('We detected unusual activity on your account:', 'spectrus-guard') . '</p>';
             echo '<ul>';
 
             foreach ($anomalies as $anomaly) {
-                echo '<li>' . esc_html($anomaly['description'] ?? 'Unknown anomaly') . '</li>';
+                echo '<li>' . esc_html($anomaly['description'] ?? esc_html__('Unknown anomaly', 'spectrus-guard')) . '</li>';
             }
 
             echo '</ul>';
-            echo '<p><strong>IP:</strong> ' . esc_html($ip) . '</p>';
-            echo '<p>If this was you, you can ignore this message. If not, please change your password immediately.</p>';
+            echo '<p><strong>' . esc_html__('IP:', 'spectrus-guard') . '</strong> ' . esc_html($ip) . '</p>';
+            echo '<p>' . esc_html__('If this was you, you can ignore this message. If not, please change your password immediately.', 'spectrus-guard') . '</p>';
             echo '</div>';
         });
 
@@ -305,7 +305,7 @@ class SG_Response_Engine
                 "%d. [%s] %s\n",
                 $index + 1,
                 $anomaly['severity'] ?? 'MEDIUM',
-                $anomaly['description'] ?? 'Unknown anomaly'
+                esc_html($anomaly['description'] ?? 'Unknown anomaly')
             );
         }
 
@@ -370,8 +370,8 @@ class SG_Response_Engine
         header('X-SpectrusGuard-Block: UEBA-CRITICAL');
 
         // Get details
-        $risk_score = isset($context['risk_score']) ? $context['risk_score'] : 0;
-        $ip = isset($context['ip']) ? $context['ip'] : 'unknown';
+        $risk_score = isset($context['risk_score']) ? (int) $context['risk_score'] : 0;
+        $ip = isset($context['ip']) ? sanitize_text_field($context['ip']) : 'unknown';
         $incident_id = substr(md5(uniqid('', true)), 0, 12);
 
         // Output HTML
@@ -477,16 +477,16 @@ class SG_Response_Engine
                 </div>
                 
                 <div class="incident-box">
-                    <div><span class="label">Incident ID:</span> <?php echo esc_html($incident_id); ?></div>
-                    <div><span class="label">Risk Score:</span> <?php echo esc_html($risk_score); ?>/100 (CRITICAL)</div>
-                    <div><span class="label">IP Address:</span> <?php echo esc_html($ip); ?></div>
-                    <div><span class="label">Time:</span> <?php echo esc_html(date('Y-m-d H:i:s')); ?></div>
+                    <div><span class="label"><?php esc_html_e('Incident ID:', 'spectrus-guard'); ?></span> <?php echo esc_html($incident_id); ?></div>
+                    <div><span class="label"><?php esc_html_e('Risk Score:', 'spectrus-guard'); ?></span> <?php echo esc_html($risk_score); ?>/100 (<?php esc_html_e('CRITICAL', 'spectrus-guard'); ?>)</div>
+                    <div><span class="label"><?php esc_html_e('IP Address:', 'spectrus-guard'); ?></span> <?php echo esc_html($ip); ?></div>
+                    <div><span class="label"><?php esc_html_e('Time:', 'spectrus-guard'); ?></span> <?php echo esc_html(date('Y-m-d H:i:s')); ?></div>
                 </div>
                 
-                <p><strong>What should I do?</strong></p>
-                <p>Contact your site administrator with the Incident ID above. They can review the security event and unblock your account if appropriate.</p>
-                
-                <a href="<?php echo esc_url(home_url('/')); ?>" class="btn">Return to Homepage</a>
+                <p><strong><?php esc_html_e('What should I do?', 'spectrus-guard'); ?></strong></p>
+                <p><?php esc_html_e('Contact your site administrator with Incident ID above. They can review security event and unblock your account if appropriate.', 'spectrus-guard'); ?></p>
+
+                <a href="<?php echo esc_url(home_url('/')); ?>" class="btn"><?php esc_html_e('Return to Homepage', 'spectrus-guard'); ?></a>
             </div>
         </body>
         </html>

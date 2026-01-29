@@ -412,7 +412,7 @@ class SG_UEBA_Engine
 
         $wpdb->query(
             $wpdb->prepare(
-                "DELETE FROM {$table_name} WHERE timestamp < %s",
+                "DELETE FROM {$wpdb->prefix}spectrus_ueba_metrics WHERE timestamp < %s",
                 $cutoff_date
             )
         );

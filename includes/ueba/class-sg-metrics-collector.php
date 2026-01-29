@@ -52,7 +52,7 @@ class SG_Metrics_Collector
             'user_login' => $user->user_login,
             'user_role' => $this->get_user_primary_role($user->ID),
             'ip' => $this->get_client_ip(),
-            'user_agent' => $_SERVER['HTTP_USER_AGENT'] ?? '',
+            'user_agent' => isset($_SERVER['HTTP_USER_AGENT']) ? sanitize_text_field($_SERVER['HTTP_USER_AGENT']) : '',
             'device_fingerprint' => $this->get_device_fingerprint(),
             'timestamp' => time(),
             'hour' => (int) date('H'),
@@ -88,9 +88,9 @@ class SG_Metrics_Collector
             'event_type' => 'request',
             'user_id' => $user_id,
             'ip' => $this->get_client_ip(),
-            'user_agent' => $_SERVER['HTTP_USER_AGENT'] ?? '',
-            'request_uri' => $_SERVER['REQUEST_URI'] ?? '',
-            'request_method' => $_SERVER['REQUEST_METHOD'] ?? 'GET',
+            'user_agent' => isset($_SERVER['HTTP_USER_AGENT']) ? sanitize_text_field($_SERVER['HTTP_USER_AGENT']) : '',
+            'request_uri' => isset($_SERVER['REQUEST_URI']) ? esc_url_raw($_SERVER['REQUEST_URI']) : '',
+            'request_method' => isset($_SERVER['REQUEST_METHOD']) ? sanitize_text_field($_SERVER['REQUEST_METHOD']) : 'GET',
             'timestamp' => time(),
             'hour' => (int) date('H'),
             'day_of_week' => (int) date('w'),
@@ -126,10 +126,10 @@ class SG_Metrics_Collector
         // Only trust X-Forwarded-For if behind trusted proxy
         $trusted_proxies = $this->get_trusted_proxies();
 
-        $ip = $_SERVER['REMOTE_ADDR'] ?? '0.0.0.0';
+        $ip = isset($_SERVER['REMOTE_ADDR']) ? filter_var($_SERVER['REMOTE_ADDR'], FILTER_VALIDATE_IP) : '0.0.0.0';
 
         // Check if we're behind a trusted proxy
-        if (!empty($_SERVER['HTTP_X_FORWARDED_FOR']) && in_array($ip, $trusted_proxies, true)) {
+        if (isset($_SERVER['HTTP_X_FORWARDED_FOR']) && in_array($ip, $trusted_proxies, true)) {
             $ips = explode(',', $_SERVER['HTTP_X_FORWARDED_FOR']);
             $ip = trim($ips[0]);
         }
