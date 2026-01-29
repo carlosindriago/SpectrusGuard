@@ -2,86 +2,143 @@
 description: Git Flow workflow for SpectrusGuard plugin development
 ---
 
-# Git Flow Workflow
+# 🔀 Git Flow Estricto para SpectrusGuard
 
-Este workflow define cómo trabajar con ramas en SpectrusGuard.
+> ⚠️ **REGLA FUNDAMENTAL**: NUNCA hacer cambios directamente en `main` ni en `develop`.
 
-## Estructura de Ramas
+## Estructura de Ramas Permanentes
 
 ```
-main                    ← Producción estable (solo releases)
-└── develop             ← Integración continua
-    └── feature/*       ← Features en desarrollo (temporales)
-    └── release/*       ← Preparación de release (temporales)
-    └── hotfix/*        ← Fixes urgentes en producción (temporales)
+main     ← Solo recibe merges desde develop (producción)
+develop  ← Solo recibe merges desde ramas hijas (integración)
 ```
 
-## Crear una Feature
+## Ramas Temporales (Se eliminan después del merge)
 
+| Tipo | Origen | Destino | Propósito |
+|------|--------|---------|-----------|
+| `feature/*` | develop | develop | Nueva funcionalidad |
+| `bugfix/*` | develop | develop | Corrección de bugs |
+| `hotfix/*` | main | main + develop | Fix urgente en producción |
+| `release/*` | develop | main + develop | Preparar release |
+
+---
+
+## 🚀 Iniciar Trabajo en una Feature
+
+// turbo
 ```bash
-# Asegurarse de estar en develop actualizado
 git checkout develop
 git pull origin develop
-
-# Crear rama de feature
 git checkout -b feature/nombre-descriptivo
 ```
 
-## Finalizar una Feature
+## ✅ Finalizar Feature (Merge a Develop)
 
 ```bash
-# Asegurarse de que todo está commiteado
+# 1. Asegurar cambios commiteados
 git status
 
-# Cambiar a develop
+# 2. Cambiar a develop y actualizar
 git checkout develop
+git pull origin develop
 
-# Merge de la feature (con --no-ff para mantener historial)
-git merge --no-ff feature/nombre-descriptivo -m "feat: Merge feature/nombre-descriptivo"
+# 3. Merge con --no-ff (mantiene historial)
+git merge --no-ff feature/nombre-descriptivo -m "feat: descripción del cambio"
 
-# IMPORTANTE: Eliminar la rama feature
+# 4. Push a develop
+git push origin develop
+
+# 5. OBLIGATORIO: Eliminar rama local
 git branch -d feature/nombre-descriptivo
 
-# Si la rama estaba en remote, eliminarla también
-# // turbo
-git push origin --delete feature/nombre-descriptivo
+# 6. OBLIGATORIO: Eliminar rama remota (si existe)
+git push origin --delete feature/nombre-descriptivo 2>/dev/null || true
 ```
 
-## Crear un Release
+---
+
+## 🏷️ Crear un Release (Develop → Main)
 
 ```bash
+# 1. Crear rama release desde develop
 git checkout develop
+git pull origin develop
 git checkout -b release/v1.x.x
 
-# Hacer ajustes de versión, changelog, etc.
-# Cuando esté listo:
+# 2. Hacer ajustes (versión, changelog)
+# ... commits de preparación ...
 
+# 3. Merge a main
 git checkout main
+git pull origin main
 git merge --no-ff release/v1.x.x -m "release: v1.x.x"
 git tag -a v1.x.x -m "Release v1.x.x"
+git push origin main --tags
 
+# 4. Merge de vuelta a develop
 git checkout develop
-git merge --no-ff release/v1.x.x -m "chore: Merge release/v1.x.x back to develop"
+git merge --no-ff release/v1.x.x -m "chore: merge release v1.x.x to develop"
+git push origin develop
 
-# Eliminar rama de release
+# 5. OBLIGATORIO: Eliminar rama release
 git branch -d release/v1.x.x
 ```
 
-## Convención de Commits
+---
 
-| Prefijo     | Uso                          |
-|-------------|------------------------------|
-| `feat:`     | Nueva funcionalidad          |
-| `fix:`      | Corrección de bugs           |
-| `docs:`     | Solo documentación           |
-| `style:`    | Formato (no afecta lógica)   |
-| `refactor:` | Refactorización de código    |
-| `test:`     | Agregar o corregir tests     |
-| `chore:`    | Mantenimiento, dependencias  |
+## 🔥 Hotfix Urgente (Main → Main + Develop)
 
-## Reglas Importantes
+```bash
+# 1. Crear hotfix desde main
+git checkout main
+git pull origin main
+git checkout -b hotfix/descripcion-fix
 
-1. **NUNCA** hacer push directo a `main`
-2. **SIEMPRE** eliminar ramas después de merge
-3. **SIEMPRE** usar `--no-ff` en merges para mantener historial
-4. Los commits deben ser atómicos y descriptivos
+# ... hacer el fix ...
+
+# 2. Merge a main
+git checkout main
+git merge --no-ff hotfix/descripcion-fix -m "hotfix: descripción"
+git push origin main
+
+# 3. Merge a develop
+git checkout develop
+git merge --no-ff hotfix/descripcion-fix -m "hotfix: merge to develop"
+git push origin develop
+
+# 4. OBLIGATORIO: Eliminar rama hotfix
+git branch -d hotfix/descripcion-fix
+```
+
+---
+
+## 📝 Convención de Commits
+
+| Prefijo | Uso |
+|---------|-----|
+| `feat:` | Nueva funcionalidad |
+| `fix:` | Corrección de bugs |
+| `hotfix:` | Fix urgente en producción |
+| `docs:` | Solo documentación |
+| `style:` | Formato (no lógica) |
+| `refactor:` | Refactorización |
+| `chore:` | Mantenimiento |
+
+---
+
+## ⛔ REGLAS ESTRICTAS
+
+1. **NUNCA** commit directo a `main`
+2. **NUNCA** commit directo a `develop`  
+3. **SIEMPRE** crear rama hija para cualquier cambio
+4. **SIEMPRE** eliminar ramas después del merge
+5. **SIEMPRE** usar `--no-ff` en merges
+6. Las únicas ramas permanentes son: `main` y `develop`
+
+## 📋 Checklist Pre-Merge
+
+- [ ] Código probado localmente
+- [ ] Commits con prefijos correctos
+- [ ] Rama actualizada con `develop` (rebase o merge)
+- [ ] Rama lista para eliminar post-merge

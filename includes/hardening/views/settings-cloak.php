@@ -374,29 +374,7 @@ if (!empty($settings['url_cloaking_enabled'])) {
         </div>
     </div>
 
-    <!-- NEW: Login Hider Panel (Visible in Step 3) -->
-    <div class="sg-gc-panel" style="<?php echo ($step < 2) ? 'opacity: 0.5; pointer-events: none;' : ''; ?>">
-        <h3 style="margin: 0 0 16px 0; font-size: 18px; color: var(--sg-text-primary);">
-            🔐 <?php esc_html_e('Login Hider', 'spectrus-guard'); ?>
-        </h3>
-        <p style="color: var(--sg-text-secondary); margin-bottom: 20px;">
-            <?php esc_html_e('Change your login URL to prevent brute force attacks.', 'spectrus-guard'); ?>
-        </p>
 
-        <div
-            style="background: var(--sg-bg-app); padding: 16px; border-radius: 8px; border: 1px solid var(--sg-border);">
-            <label style="display: block; margin-bottom: 8px; font-weight: 600; color: var(--sg-text-secondary);">
-                <?php esc_html_e('New Login URL:', 'spectrus-guard'); ?>
-            </label>
-            <div style="display: flex; align-items: center; gap: 8px;">
-                <code
-                    style="background: transparent; color: var(--sg-text-secondary);"><?php echo home_url('/'); ?></code>
-                <input type="text" name="spectrus_shield_settings[login_slug]"
-                    value="<?php echo esc_attr($settings['login_slug'] ?? 'ghost-access'); ?>" class="sg-input-text"
-                    style="flex: 1; max-width: 200px;" placeholder="e.g. secret-entrance">
-            </div>
-        </div>
-    </div>
 
     <!-- NEW: Plugin Masking Studio (Visible in Step 3) -->
     <div class="sg-gc-panel" style="<?php echo ($step < 2) ? 'opacity: 0.5; pointer-events: none;' : ''; ?>">

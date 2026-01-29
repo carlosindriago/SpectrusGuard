@@ -85,13 +85,13 @@ class SG_Admin
                 $secret = isset($_POST['spectrus_2fa_secret']) ? sanitize_text_field($_POST['spectrus_2fa_secret']) : '';
 
                 if (empty($code)) {
-                    $redirect = add_query_arg(array('page' => 'spectrus-guard-hardening', 'tab' => 'login', 'error' => 'missing_code'), admin_url('admin.php'));
+                    $redirect = add_query_arg(array('page' => 'spectrus-guard-settings', 'tab' => 'security', 'error' => 'missing_code'), admin_url('admin.php'));
                     wp_redirect($redirect);
                     exit;
                 }
 
                 if (class_exists('Spectrus_TOTP_Engine') && !Spectrus_TOTP_Engine::verify_code($secret, $code)) {
-                    $redirect = add_query_arg(array('page' => 'spectrus-guard-hardening', 'tab' => 'login', 'error' => 'invalid_code'), admin_url('admin.php'));
+                    $redirect = add_query_arg(array('page' => 'spectrus-guard-settings', 'tab' => 'security', 'error' => 'invalid_code'), admin_url('admin.php'));
                     wp_redirect($redirect);
                     exit;
                 }
@@ -103,7 +103,7 @@ class SG_Admin
             update_user_meta($user_id, 'spectrus_2fa_method', $method);
 
             // Redirect to avoid resubmission
-            $redirect = add_query_arg(array('page' => 'spectrus-guard-hardening', 'tab' => 'login', 'updated' => 'true'), admin_url('admin.php'));
+            $redirect = add_query_arg(array('page' => 'spectrus-guard-settings', 'tab' => 'security', 'updated' => 'true'), admin_url('admin.php'));
             wp_redirect($redirect);
             exit;
         }
@@ -274,27 +274,6 @@ class SG_Admin
                 update_option('sg_cloak_plugin_map', $clean_map);
             }
 
-        } elseif ($context === 'login') {
-            // --- LOGIN SECURITY & 2FA ---
-            $sanitized['hide_login'] = !empty($input['hide_login']);
-            if (isset($input['login_slug']))
-                $sanitized['login_slug'] = sanitize_title($input['login_slug']);
-            if (isset($input['max_login_attempts']))
-                $sanitized['max_login_attempts'] = absint($input['max_login_attempts']);
-            // Lockout Time: stored in seconds, input in minutes
-            if (isset($input['login_lockout_time']))
-                $sanitized['login_lockout_time'] = absint($input['login_lockout_time']) * 60;
-
-            // 2FA Policies
-            $sanitized['enforce_2fa_global'] = !empty($input['enforce_2fa_global']);
-            $sanitized['enforce_2fa_grace'] = absint($input['enforce_2fa_grace']);
-
-            if (isset($input['enforce_2fa_roles']) && is_array($input['enforce_2fa_roles'])) {
-                $sanitized['enforce_2fa_roles'] = array_map('sanitize_text_field', $input['enforce_2fa_roles']);
-            } else {
-                $sanitized['enforce_2fa_roles'] = [];
-            }
-
         } elseif ($context === 'geo') {
             // --- GEO DEFENSE TAB ---
             $sanitized['geo_block_tor'] = !empty($input['geo_block_tor']);
@@ -324,15 +303,21 @@ class SG_Admin
      */
     public function render_dashboard()
     {
+        $stats = get_option('spectrus_shield_attack_stats', array(
+            'total_blocked' => 0,
+            'sqli_blocked' => 0,
+            'xss_blocked' => 0,
+            'rce_blocked' => 0,
+            'traversal_blocked' => 0,
+            'last_attack' => null,
+            'daily_stats' => array(),
+        ));
+
         $settings = $this->loader->get_settings();
-        $logger = $this->loader->get_logger();
-        $stats = get_option('spectrus_shield_stats', array());
+
+        // Get scanner data for Dashboard widget
+        $last_scan = get_option('spectrus_shield_last_scan', null);
         $scan_results = get_option('spectrus_shield_scan_results', array());
-        $last_scan = get_option('spectrus_shield_last_scan_time');
-
-        $active_tab = isset($_GET['tab']) ? $_GET['tab'] : 'overview';
-
-        // Overview Logic
         $threats_found = 0;
         if (!empty($scan_results)) {
             foreach ($scan_results as $result) {
@@ -341,11 +326,18 @@ class SG_Admin
                 }
             }
         }
-        $scan_status = 'never';
+
+        // Determine scan status
+        $scan_status = 'never'; // never, old, recent
+        $days_since_scan = null;
         if ($last_scan) {
             $days_since_scan = floor((time() - strtotime($last_scan)) / DAY_IN_SECONDS);
             $scan_status = ($days_since_scan > 7) ? 'old' : 'recent';
         }
+
+        // Get Recent Logs
+        $logger = new SG_Logger();
+        $recent_logs = $logger->get_logs(5);
         ?>
         <div class="wrap sg-dashboard">
             <div class="sg-dashboard-header">
@@ -356,346 +348,441 @@ class SG_Admin
                 <div class="sg-version-badge">v1.0.0</div>
             </div>
 
-            <h2 class="nav-tab-wrapper" style="margin-bottom: 20px; border-bottom: 1px solid #334155;">
-                <a href="?page=spectrus-guard&tab=overview"
-                    class="nav-tab <?php echo $active_tab == 'overview' ? 'nav-tab-active' : ''; ?>">
-                    <?php esc_html_e('Overview', 'spectrus-guard'); ?>
-                </a>
-                <a href="?page=spectrus-guard&tab=logs"
-                    class="nav-tab <?php echo $active_tab == 'logs' ? 'nav-tab-active' : ''; ?>">
-                    <?php esc_html_e('Traffic Logs', 'spectrus-guard'); ?>
-                </a>
-            </h2>
-
-            <?php if ($active_tab === 'overview'): ?>
-                <?php $recent_logs = $logger ? $logger->get_logs(5) : array(); ?>
-
-                <div class="sg-hero-panel">
-                    <div class="sg-hero-status">
-                        <div class="sg-hero-icon-wrapper">
-                            <span class="sg-hero-icon">🛡️</span>
-                            <div class="sg-hero-pulse"></div>
-                        </div>
-                        <div class="sg-hero-content">
-                            <h2><?php esc_html_e('System Protected', 'spectrus-guard'); ?></h2>
-                            <p><?php esc_html_e('WAF is active and monitoring traffic.', 'spectrus-guard'); ?></p>
-                            <?php if ($scan_status === 'recent' && $threats_found === 0): ?>
-                                <span class="sg-status-badge success">
-                                    <span class="dashicons dashicons-yes"></span>
-                                    <?php esc_html_e('Last scan clean', 'spectrus-guard'); ?>
-                                </span>
-                            <?php elseif ($threats_found > 0): ?>
-                                <span class="sg-status-badge danger">
-                                    <span class="dashicons dashicons-warning"></span>
-                                    <?php echo intval($threats_found) . ' ' . esc_html__('threats found', 'spectrus-guard'); ?>
-                                </span>
-                            <?php else: ?>
-                                <span class="sg-status-badge warning">
-                                    <span class="dashicons dashicons-calendar-alt"></span>
-                                    <?php esc_html_e('Scan recommended', 'spectrus-guard'); ?>
-                                </span>
-                            <?php endif; ?>
-                        </div>
+            <!-- Zone 1: Hero Section -->
+            <div class="sg-hero-panel">
+                <div class="sg-hero-status">
+                    <div class="sg-hero-icon-wrapper">
+                        <span class="sg-hero-icon">🛡️</span>
+                        <div class="sg-hero-pulse"></div>
                     </div>
-                    <div class="sg-hero-actions">
-                        <div class="sg-last-scan-info">
-                            <?php if ($last_scan): ?>
-                                <?php echo esc_html__('Last scan:', 'spectrus-guard'); ?>
-                                <strong><?php echo esc_html(human_time_diff(strtotime($last_scan))) . ' ago'; ?></strong>
-                            <?php else: ?>
-                                <?php esc_html_e('Never scanned', 'spectrus-guard'); ?>
-                            <?php endif; ?>
-                        </div>
-                        <a href="<?php echo esc_url(admin_url('admin.php?page=spectrus-guard-scanner')); ?>"
-                            class="sg-btn sg-btn-primary">
-                            <span class="dashicons dashicons-search"></span>
-                            <?php esc_html_e('Run New Scan', 'spectrus-guard'); ?>
-                        </a>
+                    <div class="sg-hero-content">
+                        <h2><?php esc_html_e('System Protected', 'spectrus-guard'); ?></h2>
+                        <p><?php esc_html_e('WAF is active and monitoring traffic.', 'spectrus-guard'); ?></p>
+                        <?php if ($scan_status === 'recent' && $threats_found === 0): ?>
+                            <span class="sg-status-badge success">
+                                <span class="dashicons dashicons-yes"></span>
+                                <?php esc_html_e('Last scan clean', 'spectrus-guard'); ?>
+                            </span>
+                        <?php elseif ($threats_found > 0): ?>
+                            <span class="sg-status-badge danger">
+                                <span class="dashicons dashicons-warning"></span>
+                                <?php echo intval($threats_found) . ' ' . esc_html__('threats found', 'spectrus-guard'); ?>
+                            </span>
+                        <?php else: ?>
+                            <span class="sg-status-badge warning">
+                                <span class="dashicons dashicons-calendar-alt"></span>
+                                <?php esc_html_e('Scan recommended', 'spectrus-guard'); ?>
+                            </span>
+                        <?php endif; ?>
                     </div>
                 </div>
+                <div class="sg-hero-actions">
+                    <div class="sg-last-scan-info">
+                        <?php if ($last_scan): ?>
+                            <?php echo esc_html__('Last scan:', 'spectrus-guard'); ?>
+                            <strong><?php echo esc_html(human_time_diff(strtotime($last_scan))) . ' ago'; ?></strong>
+                        <?php else: ?>
+                            <?php esc_html_e('Never scanned', 'spectrus-guard'); ?>
+                        <?php endif; ?>
+                    </div>
+                    <a href="<?php echo esc_url(admin_url('admin.php?page=spectrus-guard-scanner')); ?>"
+                        class="sg-btn sg-btn-primary">
+                        <span class="dashicons dashicons-search"></span>
+                        <?php esc_html_e('Run New Scan', 'spectrus-guard'); ?>
+                    </a>
+                </div>
+            </div>
 
-                <div class="sg-main-layout">
-                    <div class="sg-content-column">
-                        <h3 class="sg-section-title"><?php esc_html_e('Threat Intelligence', 'spectrus-guard'); ?></h3>
-                        <div class="sg-threat-intel-grid">
-                            <div class="sg-stat-card">
-                                <div class="sg-stat-icon sqli">💉</div>
-                                <div class="sg-stat-data">
-                                    <span class="sg-stat-number"><?php echo esc_html($stats['sqli_blocked'] ?? 0); ?></span>
-                                    <span class="sg-stat-label">SQL Injection</span>
-                                </div>
+            <div class="sg-main-layout">
+
+                <!-- Zone 2: Main Content (Left) -->
+                <div class="sg-content-column">
+
+                    <!-- Threat Intel Grid -->
+                    <h3 class="sg-section-title"><?php esc_html_e('Threat Intelligence', 'spectrus-guard'); ?></h3>
+                    <div class="sg-threat-intel-grid">
+                        <!-- SQLi -->
+                        <div class="sg-stat-card">
+                            <div class="sg-stat-icon sqli">💉</div>
+                            <div class="sg-stat-data">
+                                <span class="sg-stat-number"><?php echo esc_html($stats['sqli_blocked'] ?? 0); ?></span>
+                                <span class="sg-stat-label">SQL Injection</span>
                             </div>
-                            <div class="sg-stat-card">
-                                <div class="sg-stat-icon xss">⚡</div>
-                                <div class="sg-stat-data">
-                                    <span class="sg-stat-number"><?php echo esc_html($stats['xss_blocked'] ?? 0); ?></span>
-                                    <span class="sg-stat-label">XSS Attempts</span>
-                                </div>
-                            </div>
-                            <div class="sg-stat-card">
-                                <div class="sg-stat-icon rce">🔓</div>
-                                <div class="sg-stat-data">
-                                    <span class="sg-stat-number"><?php echo esc_html($stats['rce_blocked'] ?? 0); ?></span>
-                                    <span class="sg-stat-label">RCE Exploits</span>
-                                </div>
-                            </div>
-                            <div class="sg-stat-card">
-                                <div class="sg-stat-icon traversal">📁</div>
-                                <div class="sg-stat-data">
-                                    <span class="sg-stat-number"><?php echo esc_html($stats['traversal_blocked'] ?? 0); ?></span>
-                                    <span class="sg-stat-label">Path Traversal</span>
-                                </div>
+                            <div class="sg-stat-trend">
+                                <span class="trend-up">↑ 0 this week</span>
                             </div>
                         </div>
-
-                        <div class="sg-card sg-chart-card">
-                            <div class="sg-card-header">
-                                <h2><?php esc_html_e('Attack Activity (Last 30 Days)', 'spectrus-guard'); ?></h2>
+                        <!-- XSS -->
+                        <div class="sg-stat-card">
+                            <div class="sg-stat-icon xss">⚡</div>
+                            <div class="sg-stat-data">
+                                <span class="sg-stat-number"><?php echo esc_html($stats['xss_blocked'] ?? 0); ?></span>
+                                <span class="sg-stat-label">XSS Attempts</span>
                             </div>
-                            <div class="sg-card-body">
-                                <canvas id="sg-activity-chart"></canvas>
+                            <div class="sg-stat-trend">
+                                <span class="trend-flat">- 0 this week</span>
+                            </div>
+                        </div>
+                        <!-- RCE -->
+                        <div class="sg-stat-card">
+                            <div class="sg-stat-icon rce">🔓</div>
+                            <div class="sg-stat-data">
+                                <span class="sg-stat-number"><?php echo esc_html($stats['rce_blocked'] ?? 0); ?></span>
+                                <span class="sg-stat-label">RCE Exploits</span>
+                            </div>
+                            <div class="sg-stat-trend">
+                                <span class="trend-flat">- 0 this week</span>
+                            </div>
+                        </div>
+                        <!-- Traversal -->
+                        <div class="sg-stat-card">
+                            <div class="sg-stat-icon traversal">📁</div>
+                            <div class="sg-stat-data">
+                                <span class="sg-stat-number"><?php echo esc_html($stats['traversal_blocked'] ?? 0); ?></span>
+                                <span class="sg-stat-label">Path Traversal</span>
+                            </div>
+                            <div class="sg-stat-trend">
+                                <span class="trend-flat">- 0 this week</span>
                             </div>
                         </div>
                     </div>
 
-                    <div class="sg-sidebar-column">
-                        <div class="sg-card sg-actions-panel">
-                            <div class="sg-card-header">
-                                <h2><?php esc_html_e('Quick Actions', 'spectrus-guard'); ?></h2>
-                            </div>
-                            <div class="sg-action-list">
-                                <a href="<?php echo esc_url(admin_url('admin.php?page=spectrus-guard&tab=logs')); ?>"
-                                    class="sg-action-item">
-                                    <span class="dashicons dashicons-media-text"></span>
-                                    <span class="sg-action-text"><?php esc_html_e('View Firewall Logs', 'spectrus-guard'); ?></span>
-                                    <span class="sg-action-arrow">→</span>
-                                </a>
-                                <a href="<?php echo esc_url(admin_url('admin.php?page=spectrus-guard-settings')); ?>"
-                                    class="sg-action-item">
-                                    <span class="dashicons dashicons-admin-settings"></span>
-                                    <span class="sg-action-text"><?php esc_html_e('Global Settings', 'spectrus-guard'); ?></span>
-                                    <span class="sg-action-arrow">→</span>
-                                </a>
-                                <a href="<?php echo esc_url(admin_url('admin.php?page=spectrus-guard-firewall&tab=geo')); ?>"
-                                    class="sg-action-item">
-                                    <span class="dashicons dashicons-shield"></span>
-                                    <span
-                                        class="sg-action-text"><?php esc_html_e('Manage IP Whitelist', 'spectrus-guard'); ?></span>
-                                    <span class="sg-action-arrow">→</span>
-                                </a>
+                    <!-- Chart Section -->
+                    <div class="sg-card sg-chart-card">
+                        <div class="sg-card-header">
+                            <h2><?php esc_html_e('Attack Activity (Last 30 Days)', 'spectrus-guard'); ?></h2>
+                        </div>
+                        <div class="sg-card-body">
+                            <canvas id="sg-activity-chart"></canvas>
+                        </div>
+                    </div>
+
+                </div>
+
+                <!-- Zone 3: Sidebar (Right) -->
+                <div class="sg-sidebar-column">
+
+                    <!-- Quick Actions Panel -->
+                    <div class="sg-card sg-actions-panel">
+                        <div class="sg-card-header">
+                            <h2><?php esc_html_e('Quick Actions', 'spectrus-guard'); ?></h2>
+                        </div>
+                        <div class="sg-action-list">
+                            <a href="<?php echo esc_url(admin_url('admin.php?page=spectrus-guard-logs')); ?>"
+                                class="sg-action-item">
+                                <span class="dashicons dashicons-media-text"></span>
+                                <span class="sg-action-text"><?php esc_html_e('View Firewall Logs', 'spectrus-guard'); ?></span>
+                                <span class="sg-action-arrow">→</span>
+                            </a>
+                            <a href="<?php echo esc_url(admin_url('admin.php?page=spectrus-guard-settings')); ?>"
+                                class="sg-action-item">
+                                <span class="dashicons dashicons-admin-settings"></span>
+                                <span class="sg-action-text"><?php esc_html_e('Global Settings', 'spectrus-guard'); ?></span>
+                                <span class="sg-action-arrow">→</span>
+                            </a>
+                            <a href="<?php echo esc_url(admin_url('admin.php?page=spectrus-guard-settings&tab=geo')); ?>"
+                                class="sg-action-item">
+                                <span class="dashicons dashicons-shield"></span>
+                                <span
+                                    class="sg-action-text"><?php esc_html_e('Manage IP Whitelist', 'spectrus-guard'); ?></span>
+                                <span class="sg-action-arrow">→</span>
+                            </a>
+                        </div>
+                    </div>
+
+                    <!-- Rescue Mode (Compact) -->
+                    <div class="sg-card sg-rescue-panel">
+                        <div class="sg-card-header warning-header">
+                            <h2>⚠️ <?php esc_html_e('Emergency Access', 'spectrus-guard'); ?></h2>
+                        </div>
+                        <div class="sg-card-body">
+                            <p class="sg-rescue-desc">
+                                <?php esc_html_e('Use this URL if you get locked out:', 'spectrus-guard'); ?>
+                            </p>
+                            <div class="sg-rescue-input-group">
+                                <input type="text" readonly
+                                    value="<?php echo esc_url(home_url('/?spectrus_rescue=' . $settings['rescue_key'])); ?>"
+                                    class="sg-rescue-input" id="sg-rescue-url">
+                                <button type="button" class="sg-copy-btn-icon"
+                                    onclick="navigator.clipboard.writeText(document.getElementById('sg-rescue-url').value)">
+                                    <span class="dashicons dashicons-clipboard"></span>
+                                </button>
                             </div>
                         </div>
+                    </div>
 
-                        <div class="sg-card sg-rescue-panel">
-                            <div class="sg-card-header warning-header">
-                                <h2>⚠️ <?php esc_html_e('Emergency Access', 'spectrus-guard'); ?></h2>
-                            </div>
-                            <div class="sg-card-body">
-                                <p class="sg-rescue-desc">
-                                    <?php esc_html_e('Use this URL if you get locked out:', 'spectrus-guard'); ?>
-                                </p>
-                                <div class="sg-rescue-input-group">
-                                    <input type="text" readonly
-                                        value="<?php echo esc_url(home_url('/?spectrus_rescue=' . ($settings['rescue_key'] ?? ''))); ?>"
-                                        class="sg-rescue-input" id="sg-rescue-url">
-                                    <button type="button" class="sg-copy-btn-icon"
-                                        onclick="navigator.clipboard.writeText(document.getElementById('sg-rescue-url').value)">
-                                        <span class="dashicons dashicons-clipboard"></span>
-                                    </button>
-                                </div>
-                            </div>
+                    <!-- Recent Activity -->
+                    <div class="sg-card sg-recent-activity">
+                        <div class="sg-card-header">
+                            <h2><?php esc_html_e('Recent Activity', 'spectrus-guard'); ?></h2>
                         </div>
-
-                        <div class="sg-card sg-recent-activity">
-                            <div class="sg-card-header">
-                                <h2><?php esc_html_e('Recent Activity', 'spectrus-guard'); ?></h2>
-                            </div>
-                            <div class="sg-activity-list">
-                                <?php if (!empty($recent_logs)): ?>
-                                    <?php foreach ($recent_logs as $log): ?>
-                                        <div class="sg-activity-item">
-                                            <div class="sg-activity-icon <?php echo esc_attr(strtolower($log['type'])); ?>">
-                                                <?php
-                                                switch (strtolower($log['type'])) {
-                                                    case 'sqli':
-                                                        echo '💉';
-                                                        break;
-                                                    case 'xss':
-                                                        echo '⚡';
-                                                        break;
-                                                    case 'rce':
-                                                        echo '🔓';
-                                                        break;
-                                                    default:
-                                                        echo '🛡️';
-                                                }
-                                                ?>
-                                            </div>
-                                            <div class="sg-activity-details">
-                                                <span class="sg-activity-type"><?php echo esc_html($log['type']); ?></span>
-                                                <span class="sg-activity-ip"><?php echo esc_html($log['ip']); ?></span>
-                                            </div>
-                                            <div class="sg-activity-time">
-                                                <?php echo esc_html(human_time_diff(strtotime($log['timestamp']))) . ' ago'; ?>
-                                            </div>
+                        <div class="sg-activity-list">
+                            <?php if (!empty($recent_logs)): ?>
+                                <?php foreach ($recent_logs as $log): ?>
+                                    <div class="sg-activity-item">
+                                        <div class="sg-activity-icon <?php echo esc_attr(strtolower($log['type'])); ?>">
+                                            <?php
+                                            switch (strtolower($log['type'])) {
+                                                case 'sqli':
+                                                    echo '💉';
+                                                    break;
+                                                case 'xss':
+                                                    echo '⚡';
+                                                    break;
+                                                case 'rce':
+                                                    echo '🔓';
+                                                    break;
+                                                default:
+                                                    echo '🛡️';
+                                            }
+                                            ?>
                                         </div>
-                                    <?php endforeach; ?>
-                                    <a href="<?php echo esc_url(admin_url('admin.php?page=spectrus-guard&tab=logs')); ?>"
-                                        class="sg-view-all-link">
-                                        <?php esc_html_e('View All History', 'spectrus-guard'); ?> →
-                                    </a>
-                                <?php else: ?>
-                                    <div class="sg-empty-state">
-                                        <p><?php esc_html_e('No recent security events.', 'spectrus-guard'); ?></p>
+                                        <div class="sg-activity-details">
+                                            <span class="sg-activity-type"><?php echo esc_html($log['type']); ?></span>
+                                            <span class="sg-activity-ip"><?php echo esc_html($log['ip']); ?></span>
+                                        </div>
+                                        <div class="sg-activity-time">
+                                            <?php echo esc_html(human_time_diff(strtotime($log['timestamp']))) . ' ago'; ?>
+                                        </div>
                                     </div>
-                                <?php endif; ?>
-                            </div>
+                                <?php endforeach; ?>
+                                <a href="<?php echo esc_url(admin_url('admin.php?page=spectrus-guard-logs')); ?>"
+                                    class="sg-view-all-link">
+                                    <?php esc_html_e('View All History', 'spectrus-guard'); ?> →
+                                </a>
+                            <?php else: ?>
+                                <div class="sg-empty-state">
+                                    <p><?php esc_html_e('No recent security events.', 'spectrus-guard'); ?></p>
+                                </div>
+                            <?php endif; ?>
                         </div>
                     </div>
+
                 </div>
+            </div>
 
-                <script>
-                    jQuery(document).ready(function ($) {
-                        var dailyStats = <?php echo json_encode($stats['daily_stats'] ?? array()); ?>;
-                        var labels = [];
-                        var data = [];
-                        for (var i = 29; i >= 0; i--) {
-                            var date = new Date();
-                            date.setDate(date.getDate() - i);
-                            var dateStr = date.toISOString().split('T')[0];
-                            labels.push(date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }));
-                            data.push(dailyStats[dateStr] || 0);
-                        }
+        </div>
 
-                        if (typeof Chart !== 'undefined') {
-                            var ctx = document.getElementById('sg-activity-chart').getContext('2d');
-                            var gradient = ctx.createLinearGradient(0, 0, 0, 300);
-                            gradient.addColorStop(0, 'rgba(59, 130, 246, 0.2)');
-                            gradient.addColorStop(1, 'rgba(59, 130, 246, 0)');
+        <script>
+            jQuery(document).ready(functio                n($) {
+                // Chart data
+                var dailyStats = <?php echo json_encode($stats['daily_stats'] ?? array()); ?>;
+                var labels = [];
+                var data = [];
 
-                            new Chart(ctx, {
-                                type: 'line',
-                                data: {
-                                    labels: labels,
-                                    datasets: [{
-                                        label: 'Attacks Blocked',
-                                        data: data,
-                                        borderColor: '#3b82f6',
-                                        backgroundColor: gradient,
-                                        borderWidth: 2,
-                                        fill: true,
-                                        tension: 0.4
-                                    }]
-                                },
-                                options: {
-                                    responsive: true,
-                                    maintainAspectRatio: false,
-                                    plugins: { legend: { display: false } },
-                                    scales: {
-                                        y: { beginAtZero: true },
-                                        x: { grid: { display: false } }
+                // Fill in last 30 days
+                for(var i = 29; i >= 0; i--) {
+                var date = new Date();
+                date.setDate(date.getDate() - i);
+                var dateStr = date.toISOString().split('T')[0];
+                labels.push(date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }));
+                data.push(dailyStats[dateStr] || 0);
+            }
+
+            if (typeof Chart !== 'undefined') {
+                var ctx = document.getElementById('sg-activity-chart').getContext('2d');
+
+                // Create gradient
+                var gradient = ctx.createLinearGradient(0, 0, 0, 300);
+                gradient.addColorStop(0, 'rgba(59, 130, 246, 0.2)'); // Blue 500 low opacity
+                gradient.addColorStop(1, 'rgba(59, 130, 246, 0)');
+
+                new Chart(ctx, {
+                    type: 'line',
+                    data: {
+                        labels: labels,
+                        datasets: [{
+                            label: 'Attacks Blocked',
+                            data: data,
+                            borderColor: '#3b82f6', // Blue 500
+                            backgroundColor: gradient,
+                            borderWidth: 2,
+                            pointBackgroundColor: '#3b82f6',
+                            pointBorderColor: '#1e293b', // Card bg
+                            pointHoverBackgroundColor: '#fff',
+                            pointHoverBorderColor: '#3b82f6',
+                            fill: true,
+                            tension: 0.4
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        plugins: {
+                            legend: { display: false },
+                            tooltip: {
+                                backgroundColor: '#1e293b',
+                                titleColor: '#f8fafc',
+                                bodyColor: '#94a3b8',
+                                borderColor: '#334155',
+                                borderWidth: 1,
+                                padding: 10,
+                                displayColors: false,
+                                callbacks: {
+                                    label: function (context) {
+                                        return context.parsed.y + ' Attacks';
                                     }
                                 }
-                            });
-                        }
-
-                        $('.sg-copy-btn-icon').on('click', function () {
-                            var $btn = $(this);
-                            var $icon = $btn.find('.dashicons');
-                            $icon.removeClass('dashicons-clipboard').addClass('dashicons-yes');
-                            setTimeout(function () { $icon.removeClass('dashicons-yes').addClass('dashicons-clipboard'); }, 2000);
-                        });
-                    });
-                </script>
-
-            <?php elseif ($active_tab === 'logs'): ?>
-                <?php $logs = $logger ? $logger->get_logs(100) : array(); ?>
-
-                <div class="sg-main-layout">
-                    <div class="sg-content-column" style="grid-column: span 12;">
-                        <div class="sg-card">
-                            <div class="sg-card-header">
-                                <h2><?php esc_html_e('Firewall Activity Log', 'spectrus-guard'); ?></h2>
-                                <div class="sg-header-actions">
-                                    <button type="button" class="sg-btn sg-btn-danger" id="sg-clear-logs">
-                                        <span class="dashicons dashicons-trash"></span>
-                                        <?php esc_html_e('Clear Logs', 'spectrus-guard'); ?>
-                                    </button>
-                                    <button type="button" class="sg-btn sg-btn-secondary" id="sg-refresh-logs">
-                                        <span class="dashicons dashicons-update"></span>
-                                        <?php esc_html_e('Refresh', 'spectrus-guard'); ?>
-                                    </button>
-                                </div>
-                            </div>
-                            <div class="sg-card-body" style="padding: 0;">
-                                <table class="sg-logs-table">
-                                    <thead>
-                                        <tr>
-                                            <th style="width: 180px;"><?php esc_html_e('Timestamp', 'spectrus-guard'); ?></th>
-                                            <th style="width: 120px;"><?php esc_html_e('Type', 'spectrus-guard'); ?></th>
-                                            <th style="width: 150px;"><?php esc_html_e('IP Address', 'spectrus-guard'); ?></th>
-                                            <th><?php esc_html_e('Request URI', 'spectrus-guard'); ?></th>
-                                            <th><?php esc_html_e('Payload', 'spectrus-guard'); ?></th>
-                                        </tr>
-                                    </thead>
-                                    <tbody>
-                                        <?php if (empty($logs)): ?>
-                                            <tr>
-                                                <td colspan="5" style="text-align: center; padding: 40px; color: var(--sg-text-muted);">
-                                                    <div style="font-size: 48px; margin-bottom: 16px;">🛡️</div>
-                                                    <p><?php esc_html_e('No attacks detected yet. Your site is safe.', 'spectrus-guard'); ?>
-                                                    </p>
-                                                </td>
-                                            </tr>
-                                        <?php else: ?>
-                                            <?php foreach ($logs as $log): ?>
-                                                <tr>
-                                                    <td style="color: var(--sg-text-secondary); font-family: monospace;">
-                                                        <?php echo esc_html($log['timestamp']); ?>
-                                                    </td>
-                                                    <td>
-                                                        <span class="sg-badge <?php echo esc_attr(strtolower($log['type'])); ?>">
-                                                            <?php echo esc_html($log['type']); ?>
-                                                        </span>
-                                                    </td>
-                                                    <td style="font-family: monospace; color: var(--sg-primary);">
-                                                        <?php echo esc_html($log['ip']); ?>
-                                                    </td>
-                                                    <td style="font-family: monospace; color: var(--sg-text-muted);">
-                                                        <?php echo esc_html(substr($log['uri'], 0, 50)) . (strlen($log['uri']) > 50 ? '...' : ''); ?>
-                                                    </td>
-                                                    <td style="font-family: monospace; font-size: 11px; color: var(--sg-danger);">
-                                                        <?php echo esc_html(substr($log['payload'], 0, 80)) . (strlen($log['payload']) > 80 ? '...' : ''); ?>
-                                                    </td>
-                                                </tr>
-                                            <?php endforeach; ?>
-                                        <?php endif; ?>
-                                    </tbody>
-                                </table>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-
-                <script>
-                    jQuery(document).ready(function ($) {
-                        $('#sg-clear-logs').on('click', function () {
-                            if (confirm('<?php esc_html_e('Are you sure you want to delete all security logs?', 'spectrus-guard'); ?>')) {
-                                $.post(ajaxurl, {
-                                    action: 'sg_clear_logs',
-                                    nonce: SpectrusGuard.nonce
-                                }, function (response) {
-                                    if (response.success) { location.reload(); }
-                                });
                             }
-                        });
-                        $('#sg-refresh-logs').on('click', function () { location.reload(); });
-                    });
-                </script>
-            <?php endif; ?>
-        </div>
+                        },
+                        scales: {
+                            y: {
+                                beginAtZero: true,
+                                grid: {
+                                    color: 'rgba(148, 163, 184, 0.1)',
+                                    borderColor: 'transparent'
+                                },
+                                ticks: { color: '#64748b' }
+                            },
+                            x: {
+                                grid: {
+                                    display: false,
+                                    borderColor: 'transparent'
+                                },
+                                ticks: { color: '#64748b', maxTicksLimit: 10 }
+                            }
+                        }
+                    }
+                });
+            }
+
+            // Copy button interaction
+            $('.sg-copy-btn-icon').on('click', function () {
+                var $btn = $(this);
+                var $icon = $btn.find('.dashicons');
+                var originalIcon = 'dashicons-clipboard';
+
+                // Copy logic is handled by inline onclick, just do UI feedback here
+                $icon.removeClass(originalIcon).addClass('dashicons-yes');
+                $btn.addClass('success');
+
+                setTimeout(function () {
+                    $icon.removeClass('dashicons-yes').addClass(originalIcon);
+                    $btn.removeClass('success');
+                }, 2000);
+            });
+
+            // Whitelist IP
+            $('#sg-whitelist-my-ip').on('click', function () {
+                // ... (This button might not exist in new HTML, check Quick Actions)
+                // ... Actually I used a link to settings tab=whitelist in Quick Actions, so this might be obsolete or valid for another button?
+                // Let's keep it if I restore the button or for other pages.
+            });
+                                                                                                                                                                                                                                                                                                                });
+        </script>
         <?php
     }
+
+    /**
+     * Render the logs page
+     */
+    public function render_logs_page()
+    {
+        $logger = $this->loader->get_logger();
+        $logs = $logger ? $logger->get_logs(100) : array();
+        ?>
+        <div class="wrap sg-dashboard">
+            <div class="sg-dashboard-header">
+                <h1>
+                    <span class="sg-logo">🛡️</span>
+                    <?php esc_html_e('Firewall Logs', 'spectrus-guard'); ?>
+                </h1>
+                <div class="sg-header-actions">
+                    <button type="button" class="sg-btn sg-btn-danger" id="sg-clear-logs">
+                        <span class="dashicons dashicons-trash"></span>
+                        <?php esc_html_e('Clear Logs', 'spectrus-guard'); ?>
+                    </button>
+                    <button type="button" class="sg-btn sg-btn-secondary" id="sg-refresh-logs">
+                        <span class="dashicons dashicons-update"></span>
+                        <?php esc_html_e('Refresh', 'spectrus-guard'); ?>
+                    </button>
+                </div>
+            </div>
+
+            <div class="sg-main-layout">
+                <div class="sg-content-column" style="grid-column: span 12;">
+
+                    <div class="sg-card">
+                        <div class="sg-card-header">
+                            <h2><?php esc_html_e('Security Events History', 'spectrus-guard'); ?></h2>
+                        </div>
+                        <div class="sg-card-body" style="padding: 0;">
+                            <table class="sg-logs-table">
+                                <thead>
+                                    <tr>
+                                        <th style="width: 180px;"><?php esc_html_e('Timestamp', 'spectrus-guard'); ?></th>
+                                        <th style="width: 120px;"><?php esc_html_e('Type', 'spectrus-guard'); ?></th>
+                                        <th style="width: 150px;"><?php esc_html_e('IP Address', 'spectrus-guard'); ?></th>
+                                        <th><?php esc_html_e('Request URI', 'spectrus-guard'); ?></th>
+                                        <th><?php esc_html_e('Payload', 'spectrus-guard'); ?></th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <?php if (empty($logs)): ?>
+                                        <tr>
+                                            <td colspan="5" style="text-align: center; padding: 40px; color: var(--sg-text-muted);">
+                                                <div style="font-size: 48px; margin-bottom: 16px;">🛡️</div>
+                                                <p style="font-size: 16px; margin: 0;">
+                                                    <?php esc_html_e('No attacks detected yet. Your site is safe.', 'spectrus-guard'); ?>
+                                                </p>
+                                            </td>
+                                        </tr>
+                                    <?php else: ?>
+                                        <?php foreach ($logs as $log): ?>
+                                            <tr>
+                                                <td style="color: var(--sg-text-secondary); font-family: monospace;">
+                                                    <?php echo esc_html($log['timestamp']); ?>
+                                                </td>
+                                                <td>
+                                                    <span class="sg-badge <?php echo esc_attr(strtolower($log['type'])); ?>">
+                                                        <?php echo esc_html($log['type']); ?>
+                                                    </span>
+                                                </td>
+                                                <td style="font-family: monospace; color: var(--sg-primary);">
+                                                    <?php echo esc_html($log['ip']); ?>
+                                                </td>
+                                                <td style="font-family: monospace; color: var(--sg-text-muted);">
+                                                    <?php echo esc_html(substr($log['uri'], 0, 50)) . (strlen($log['uri']) > 50 ? '...' : ''); ?>
+                                                </td>
+                                                <td style="font-family: monospace; font-size: 11px; color: var(--sg-danger);">
+                                                    <?php echo esc_html(substr($log['payload'], 0, 80)) . (strlen($log['payload']) > 80 ? '...' : ''); ?>
+                                                </td>
+                                            </tr>
+                                        <?php endforeach; ?>
+                                    <?php endif; ?>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+
+                </div>
+            </div>
+        </div>
+
+        <script>
+            jQuery(document).ready(function ($) {
+                $('#sg-clear-logs').on('click', function () {
+                    if (confirm('<?php esc_html_e('Are you sure you want to delete all security logs?', 'spectrus-guard'); ?>')) {
+                        $.post(ajaxurl, {
+                            action: 'sg_clear_logs',
+                            nonce: SpectrusGuard.nonce
+                        }, function (response) {
+                            if (response.success) {
+                                location.reload();
+                            }
+                        });
+                    }
+                });
+
+                $('#sg-refresh-logs').on('click', function () {
+                    location.reload();
+                });
+            });
+        </script>
+        <?php
+    }
+
+
 
     /**
      * Render the settings page
@@ -744,6 +831,10 @@ class SG_Admin
                     class="nav-tab <?php echo $active_tab == 'general' ? 'nav-tab-active' : ''; ?>">
                     <?php esc_html_e('General', 'spectrus-guard'); ?>
                 </a>
+                <a href="?page=spectrus-guard-settings&tab=security"
+                    class="nav-tab <?php echo $active_tab == 'security' ? 'nav-tab-active' : ''; ?>">
+                    <?php esc_html_e('2FA Policy', 'spectrus-guard'); ?>
+                </a>
                 <a href="?page=spectrus-guard-settings&tab=license"
                     class="nav-tab <?php echo $active_tab == 'license' ? 'nav-tab-active' : ''; ?>">
                     <?php esc_html_e('License', 'spectrus-guard'); ?>
@@ -752,165 +843,49 @@ class SG_Admin
 
             <?php if ($active_tab === 'general'): ?>
                 <div class="sg-main-layout">
-                    <div class="sg-content-column" style="grid-column: span 12;">
-
-                        <!-- Hero Status -->
-                        <div class="sg-card"
-                            style="background: linear-gradient(135deg, rgba(30, 41, 59, 0.8) 0%, rgba(15, 23, 42, 0.9) 100%); margin-bottom: 24px; border: 1px solid #334155;">
-                            <div class="sg-card-body"
-                                style="padding: 24px; display: flex; align-items: center; justify-content: space-between;">
-                                <div style="display: flex; align-items: center; gap: 16px;">
-                                    <div
-                                        style="width: 48px; height: 48px; background: rgba(59, 130, 246, 0.1); border-radius: 12px; display: flex; align-items: center; justify-content: center;">
-                                        <span class="dashicons dashicons-shield"
-                                            style="font-size: 24px; color: #3b82f6; width: 24px; height: 24px;"></span>
-                                    </div>
-                                    <div>
-                                        <h2 style="margin: 0 0 4px 0; color: #fff; font-size: 18px;">SpectrusGuard is Active</h2>
-                                        <p style="margin: 0; color: #94a3b8;">Your site is currently protected against malicious
-                                            traffic.</p>
-                                    </div>
-                                </div>
-                                <div>
-                                    <span class="sg-badge sg-badge-success"
-                                        style="font-size: 13px; padding: 6px 12px; border-radius: 20px;">v1.0.0 Beta</span>
-                                </div>
-                            </div>
+                    <div class="sg-card" style="max-width: 600px;">
+                        <div class="sg-card-header">
+                            <h2><?php esc_html_e('Plugin Information', 'spectrus-guard'); ?></h2>
                         </div>
-
-                        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(350px, 1fr)); gap: 24px;">
-
-                            <!-- Configuration Navigation -->
-                            <div class="sg-card">
-                                <div class="sg-card-header">
-                                    <h2><?php esc_html_e('Security Modules', 'spectrus-guard'); ?></h2>
-                                </div>
-                                <div class="sg-card-body">
-                                    <p style="color: var(--sg-text-secondary); margin-bottom: 20px; font-size: 13px;">
-                                        <?php esc_html_e('Quickly access and configure your security policies.', 'spectrus-guard'); ?>
-                                    </p>
-                                    <div class="sg-nav-grid" style="display: grid; gap: 12px;">
-                                        <a href="?page=spectrus-guard-firewall"
-                                            style="display: flex; align-items: center; padding: 16px; background: rgba(59, 130, 246, 0.05); border: 1px solid rgba(59, 130, 246, 0.1); border-radius: 8px; text-decoration: none; transition: all 0.2s;">
-                                            <span class="dashicons dashicons-shield-alt"
-                                                style="font-size: 20px; width: 20px; height: 20px; margin-right: 16px; color: #3b82f6;"></span>
-                                            <div>
-                                                <strong style="display: block; color: #e2e8f0; margin-bottom: 2px;">Firewall &
-                                                    Geo-Defense</strong>
-                                                <span style="font-size: 12px; color: #94a3b8;">Configure WAF rules and Country
-                                                    Blocking</span>
-                                            </div>
-                                            <span class="dashicons dashicons-arrow-right-alt2"
-                                                style="margin-left: auto; color: #475569;"></span>
-                                        </a>
-
-                                        <a href="?page=spectrus-guard-hardening"
-                                            style="display: flex; align-items: center; padding: 16px; background: rgba(16, 185, 129, 0.05); border: 1px solid rgba(16, 185, 129, 0.1); border-radius: 8px; text-decoration: none; transition: all 0.2s;">
-                                            <span class="dashicons dashicons-lock"
-                                                style="font-size: 20px; width: 20px; height: 20px; margin-right: 16px; color: #10b981;"></span>
-                                            <div>
-                                                <strong
-                                                    style="display: block; color: #e2e8f0; margin-bottom: 2px;">Hardening</strong>
-                                                <span style="font-size: 12px; color: #94a3b8;">Login Guard, Ghost Cloak, Stealth
-                                                    Mode</span>
-                                            </div>
-                                            <span class="dashicons dashicons-arrow-right-alt2"
-                                                style="margin-left: auto; color: #475569;"></span>
-                                        </a>
-
-                                        <a href="?page=spectrus-guard-scanner"
-                                            style="display: flex; align-items: center; padding: 16px; background: rgba(245, 158, 11, 0.05); border: 1px solid rgba(245, 158, 11, 0.1); border-radius: 8px; text-decoration: none; transition: all 0.2s;">
-                                            <span class="dashicons dashicons-search"
-                                                style="font-size: 20px; width: 20px; height: 20px; margin-right: 16px; color: #f59e0b;"></span>
-                                            <div>
-                                                <strong style="display: block; color: #e2e8f0; margin-bottom: 2px;">Security
-                                                    Scanner</strong>
-                                                <span style="font-size: 12px; color: #94a3b8;">Run malware scans and file integrity
-                                                    checks</span>
-                                            </div>
-                                            <span class="dashicons dashicons-arrow-right-alt2"
-                                                style="margin-left: auto; color: #475569;"></span>
-                                        </a>
-                                    </div>
+                        <div class="sg-settings-card-body">
+                            <div class="sg-control-group">
+                                <label class="sg-control-label">SpectrusGuard Version</label>
+                                <p class="sg-control-desc">1.0.0 (Beta)</p>
+                            </div>
+                            <div class="sg-control-group">
+                                <label class="sg-control-label">Configuration</label>
+                                <p class="sg-control-desc">Use the dedicated menus for Firewall and Hardening.</p>
+                                <div style="margin-top: 10px; display: flex; gap: 10px;">
+                                    <a href="?page=spectrus-guard-firewall" class="button button-secondary">Go to Firewall</a>
+                                    <a href="?page=spectrus-guard-hardening" class="button button-secondary">Go to Hardening</a>
                                 </div>
                             </div>
-
-                            <!-- System Environment -->
-                            <div class="sg-card">
-                                <div class="sg-card-header">
-                                    <h2><?php esc_html_e('System Environment', 'spectrus-guard'); ?></h2>
-                                </div>
-                                <div class="sg-card-body">
-                                    <ul style="margin: 0; padding: 0; list-style: none;">
-                                        <li
-                                            style="display: flex; justify-content: space-between; padding: 12px 0; border-bottom: 1px solid #334155;">
-                                            <span
-                                                style="color: var(--sg-text-secondary); display: flex; align-items: center; gap: 8px;">
-                                                <span class="dashicons dashicons-wordpress" style="color: #64748b;"></span>
-                                                WordPress
-                                            </span>
-                                            <strong
-                                                style="color: #e2e8f0;"><?php echo esc_html(get_bloginfo('version')); ?></strong>
-                                        </li>
-                                        <li
-                                            style="display: flex; justify-content: space-between; padding: 12px 0; border-bottom: 1px solid #334155;">
-                                            <span
-                                                style="color: var(--sg-text-secondary); display: flex; align-items: center; gap: 8px;">
-                                                <span class="dashicons dashicons-editor-code" style="color: #64748b;"></span> PHP
-                                                Version
-                                            </span>
-                                            <strong style="color: #e2e8f0;"><?php echo esc_html(phpversion()); ?></strong>
-                                        </li>
-                                        <li
-                                            style="display: flex; justify-content: space-between; padding: 12px 0; border-bottom: 1px solid #334155;">
-                                            <span
-                                                style="color: var(--sg-text-secondary); display: flex; align-items: center; gap: 8px;">
-                                                <span class="dashicons dashicons-networking" style="color: #64748b;"></span> Server
-                                            </span>
-                                            <strong
-                                                style="color: #e2e8f0; font-size: 12px;"><?php echo esc_html(substr($_SERVER['SERVER_SOFTWARE'] ?? 'Unknown', 0, 25)); ?></strong>
-                                        </li>
-                                        <li style="display: flex; justify-content: space-between; padding: 12px 0;">
-                                            <span
-                                                style="color: var(--sg-text-secondary); display: flex; align-items: center; gap: 8px;">
-                                                <span class="dashicons dashicons-database" style="color: #64748b;"></span> Database
-                                            </span>
-                                            <strong style="color: #e2e8f0;">MySQL</strong>
-                                        </li>
-                                    </ul>
-
-                                    <div style="margin-top: 24px; padding-top: 16px; border-top: 1px solid #334155;">
-                                        <a href="?page=spectrus-guard-settings&tab=license"
-                                            style="font-size: 12px; color: #94a3b8; text-decoration: none; display: flex; align-items: center; justify-content: center; gap: 6px;">
-                                            View License Details <span class="dashicons dashicons-external"
-                                                style="font-size: 14px;"></span>
-                                        </a>
-                                    </div>
-                                </div>
-                            </div>
-
                         </div>
                     </div>
                 </div>
 
+            <?php elseif ($active_tab === 'security'): ?>
+                <form method="post" id="sg-security-form">
+                    <?php wp_nonce_field('spectrus_save_security', 'spectrus_security_nonce'); ?>
+                    <div class="sg-main-layout">
+                        <div class="sg-content-column" style="grid-column: span 12;">
+                            <?php
+                            include SG_PLUGIN_DIR . 'includes/auth/views/setup-2fa.php';
+                            ?>
+                        </div>
+                    </div>
+                </form>
+
             <?php elseif ($active_tab === 'license'): ?>
                 <div class="sg-main-layout">
-                    <div class="sg-content-column" style="grid-column: span 12; display: flex; justify-content: center;">
-                        <div class="sg-card" style="width: 100%; max-width: 600px;">
-                            <div class="sg-card-header">
-                                <h2><?php esc_html_e('License', 'spectrus-guard'); ?></h2>
-                            </div>
-                            <div class="sg-settings-card-body">
-                                <div class="sg-control-group">
-                                    <label class="sg-control-label">Community Edition</label>
-                                    <p class="sg-control-desc">You are using the free version of SpectrusGuard. Upgrade to Pro for
-                                        advanced features.</p>
-                                </div>
-                                <div style="margin-top: 20px; text-align: center;">
-                                    <button class="sg-btn sg-btn-primary" disabled>
-                                        <?php esc_html_e('Manage License', 'spectrus-guard'); ?> (Pro Only)
-                                    </button>
-                                </div>
+                    <div class="sg-card" style="max-width: 600px;">
+                        <div class="sg-card-header">
+                            <h2><?php esc_html_e('License', 'spectrus-guard'); ?></h2>
+                        </div>
+                        <div class="sg-settings-card-body">
+                            <div class="sg-control-group">
+                                <label class="sg-control-label">Community Edition</label>
+                                <p class="sg-control-desc">You are using the free version of SpectrusGuard.</p>
                             </div>
                         </div>
                     </div>
@@ -1241,6 +1216,10 @@ class SG_Admin
                     class="nav-tab <?php echo $active_tab == 'geo' ? 'nav-tab-active' : ''; ?>">
                     🌍 <?php esc_html_e('Geo-Defense', 'spectrus-guard'); ?>
                 </a>
+                <a href="?page=spectrus-guard-firewall&tab=logs"
+                    class="nav-tab <?php echo $active_tab == 'logs' ? 'nav-tab-active' : ''; ?>">
+                    📜 <?php esc_html_e('Traffic Logs', 'spectrus-guard'); ?>
+                </a>
             </h2>
 
             <?php if ($active_tab === 'waf'): ?>
@@ -1337,6 +1316,108 @@ class SG_Admin
                     ?>
                 </form>
 
+            <?php elseif ($active_tab === 'logs'): ?>
+                <!-- Logs Tab -->
+                <?php
+                $logger = $this->loader->get_logger();
+                $logs = $logger ? $logger->get_logs(100) : array();
+                ?>
+                <div class="sg-main-layout">
+                    <div class="sg-card" style="width: 100%;">
+                        <div class="sg-card-header">
+                            <h2><?php esc_html_e('Traffic Logs (Last 100 Events)', 'spectrus-guard'); ?></h2>
+                            <button id="sg-clear-logs" class="sg-btn sg-btn-danger">
+                                <span class="dashicons dashicons-trash"></span> <?php esc_html_e('Clear Logs', 'spectrus-guard'); ?>
+                            </button>
+                        </div>
+                        <div class="sg-card-body" style="padding: 0;">
+                            <?php if (empty($logs)): ?>
+                                <div style="padding: 40px; text-align: center; color: #94a3b8;">
+                                    <span class="dashicons dashicons-yes-alt"
+                                        style="font-size: 48px; width: 48px; height: 48px; margin-bottom: 16px;"></span>
+                                    <p><?php esc_html_e('No threats detected yet. Your site is safe!', 'spectrus-guard'); ?></p>
+                                </div>
+                            <?php else: ?>
+                                <div class="sg-logs-table-wrapper">
+                                    <table class="sg-logs-table">
+                                        <thead>
+                                            <tr>
+                                                <th><?php esc_html_e('Time', 'spectrus-guard'); ?></th>
+                                                <th><?php esc_html_e('IP Address', 'spectrus-guard'); ?></th>
+                                                <th><?php esc_html_e('Type', 'spectrus-guard'); ?></th>
+                                                <th><?php esc_html_e('Request', 'spectrus-guard'); ?></th>
+                                                <th><?php esc_html_e('Actions', 'spectrus-guard'); ?></th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            <?php foreach ($logs as $log):
+                                                $data = json_decode($log['data'], true);
+                                                $severity_class = 'sg-badge-info';
+                                                ?>
+                                                <tr>
+                                                    <td><?php echo esc_html($log['time']); ?></td>
+                                                    <td>
+                                                        <?php echo esc_html($log['ip']); ?>
+                                                        <?php if (!empty($data['geo_country'])): ?>
+                                                            <span title="<?php echo esc_attr($data['geo_country']); ?>">
+                                                                <?php echo isset($data['geo_flag']) ? $data['geo_flag'] : '🌍'; ?>
+                                                            </span>
+                                                        <?php endif; ?>
+                                                    </td>
+                                                    <td><span class="sg-badge sg-badge-warning"><?php echo esc_html($log['type']); ?></span>
+                                                    </td>
+                                                    <td class="code-cell">
+                                                        <code><?php echo esc_html(substr($data['request_uri'] ?? '', 0, 50)); ?>...</code>
+                                                    </td>
+                                                    <td>
+                                                        <button class="button button-small sg-whitelist-ip"
+                                                            data-ip="<?php echo esc_attr($log['ip']); ?>">
+                                                            <?php esc_html_e('Whitelist IP', 'spectrus-guard'); ?>
+                                                        </button>
+                                                    </td>
+                                                </tr>
+                                            <?php endforeach; ?>
+                                        </tbody>
+                                    </table>
+                                </div>
+                            <?php endif; ?>
+                        </div>
+                    </div>
+                </div>
+                <script>
+                    jQuery(document).ready(function ($) {
+                        $('#sg-clear-logs').on('click', function (e) {
+                            e.preventDefault();
+                            if (confirm('<?php esc_html_e('Are you sure you want to delete all security logs?', 'spectrus-guard'); ?>')) {
+                                $.post(ajaxurl, {
+                                    action: 'sg_clear_logs',
+                                    nonce: SpectrusGuard.nonce
+                                }, function (response) {
+                                    if (response.success) {
+                                        location.reload();
+                                    }
+                                });
+                            }
+                        });
+                        $('.sg-whitelist-ip').on('click', function (e) {
+                            e.preventDefault();
+                            var ip = $(this).data('ip');
+                            if (confirm('Whitelist IP ' + ip + '?')) {
+                                $.post(ajaxurl, {
+                                    action: 'sg_whitelist_ip',
+                                    ip: ip,
+                                    nonce: SpectrusGuard.nonce
+                                }, function (response) {
+                                    if (response.success) {
+                                        location.reload();
+                                    } else {
+                                        alert('Error: ' + (response.data || 'Unknown error'));
+                                    }
+                                });
+                            }
+                        });
+                    });
+                </script>
             <?php endif; ?>
         </div>
         <?php
@@ -1359,7 +1440,7 @@ class SG_Admin
                             <span class="dashicons dashicons-saved"></span>
                             <?php esc_html_e('Save Configuration', 'spectrus-guard'); ?>
                         </button>
-                    <?php elseif ($active_tab === 'stealth'): ?>
+                    <?php elseif ($active_tab === 'login' || $active_tab === 'stealth'): ?>
                         <button type="submit" form="sg-hardening-form" class="sg-btn sg-btn-primary">
                             <span class="dashicons dashicons-saved"></span> <?php esc_html_e('Save Settings', 'spectrus-guard'); ?>
                         </button>
@@ -1374,88 +1455,138 @@ class SG_Admin
                 </a>
                 <a href="?page=spectrus-guard-hardening&tab=login"
                     class="nav-tab <?php echo $active_tab == 'login' ? 'nav-tab-active' : ''; ?>">
-                            🔐 <?php esc_html_e('Login & 2FA', 'spectrus-guard'); ?>
-                        </a>
-                        <a href="?page=spectrus-guard-hardening&tab=stealth"
-                            class="nav-tab <?php echo $active_tab == 'stealth' ? 'nav-tab-active' : ''; ?>">
-                            🥷 <?php esc_html_e('Stealth Mode', 'spectrus-guard'); ?>
-                        </a>
-                    </h2>
+                    🔐 <?php esc_html_e('Login Guard', 'spectrus-guard'); ?>
+                </a>
+                <a href="?page=spectrus-guard-hardening&tab=stealth"
+                    class="nav-tab <?php echo $active_tab == 'stealth' ? 'nav-tab-active' : ''; ?>">
+                    🥷 <?php esc_html_e('Stealth Mode', 'spectrus-guard'); ?>
+                </a>
+            </h2>
 
-                    <?php if ($active_tab === 'cloak'): ?>
-                            <form method="post" action="options.php" id="sg-cloak-form">
-                                <?php
-                                settings_fields('spectrus_shield_settings_group');
-                                $settings_view = SG_PLUGIN_DIR . 'includes/hardening/views/settings-cloak.php';
-                                if (file_exists($settings_view)) {
-                                    include $settings_view;
-                                }
-                                ?>
-                            </form>
+            <?php if ($active_tab === 'cloak'): ?>
+                <form method="post" action="options.php" id="sg-cloak-form">
+                    <?php
+                    settings_fields('spectrus_shield_settings_group');
+                    $settings_view = SG_PLUGIN_DIR . 'includes/hardening/views/settings-cloak.php';
+                    if (file_exists($settings_view)) {
+                        include $settings_view;
+                    }
+                    ?>
+                </form>
 
-                    <?php elseif ($active_tab === 'login'): ?>
-                            <?php
-                            $view = SG_PLUGIN_DIR . 'includes/hardening/views/login-security.php';
-                            if (file_exists($view)) {
-                                include $view;
-                            }
-                            ?>
-
-                    <?php elseif ($active_tab === 'stealth'): ?>
-                            <form method="post" action="options.php" id="sg-hardening-form">
-                                <?php settings_fields('spectrus_shield_settings_group'); ?>
-                                <input type="hidden" name="spectrus_shield_settings[form_context]" value="stealth">
-                                <div class="sg-main-layout">
-                                    <div class="sg-card" style="width: 100%;">
-                                        <div class="sg-card-header">
-                                            <h2><?php esc_html_e('Stealth Mode', 'spectrus-guard'); ?></h2>
+            <?php elseif ($active_tab === 'login'): ?>
+                <form method="post" action="options.php" id="sg-hardening-form">
+                    <?php settings_fields('spectrus_shield_settings_group'); ?>
+                    <input type="hidden" name="spectrus_shield_settings[form_context]" value="login">
+                    <div class="sg-main-layout">
+                        <div class="sg-card" style="width: 100%;">
+                            <div class="sg-card-header">
+                                <h2><?php esc_html_e('Login Security', 'spectrus-guard'); ?></h2>
+                            </div>
+                            <div class="sg-settings-card-body">
+                                <div class="sg-control-group">
+                                    <div class="sg-control-info">
+                                        <label
+                                            class="sg-control-label"><?php esc_html_e('Hide Login Page', 'spectrus-guard'); ?></label>
+                                        <p class="sg-control-desc">
+                                            <?php esc_html_e('Disable wp-login.php and use a custom slug.', 'spectrus-guard'); ?>
+                                        </p>
+                                    </div>
+                                    <div class="sg-control-input">
+                                        <label class="sg-switch">
+                                            <input type="checkbox" name="spectrus_shield_settings[hide_login]" value="1" <?php checked($settings['hide_login'] ?? false); ?>>
+                                            <span class="sg-slider"></span>
+                                        </label>
+                                    </div>
+                                </div>
+                                <div class="sg-control-group" style="display: block;">
+                                    <label class="sg-control-label"
+                                        style="margin-bottom: 8px;"><?php esc_html_e('Custom Login Slug', 'spectrus-guard'); ?></label>
+                                    <div style="display: flex; align-items: center; gap: 8px;">
+                                        <span style="color: var(--sg-text-secondary);"><?php echo esc_url(home_url('/')); ?></span>
+                                        <input type="text" name="spectrus_shield_settings[login_slug]"
+                                            value="<?php echo esc_attr($settings['login_slug'] ?? 'sg-login'); ?>"
+                                            class="sg-input-text" style="width: auto; flex: 1;">
+                                    </div>
+                                </div>
+                                <div class="sg-control-group">
+                                    <div style="width: 100%; display: grid; grid-template-columns: 1fr 1fr; gap: 16px;">
+                                        <div>
+                                            <label
+                                                class="sg-control-label"><?php esc_html_e('Max Attempts', 'spectrus-guard'); ?></label>
+                                            <input type="number" name="spectrus_shield_settings[max_login_attempts]"
+                                                value="<?php echo esc_attr($settings['max_login_attempts'] ?? 5); ?>"
+                                                class="sg-input-text">
                                         </div>
-                                        <div class="sg-settings-card-body">
-                                            <div class="sg-control-group">
-                                                <div class="sg-control-info">
-                                                    <label
-                                                        class="sg-control-label"><?php esc_html_e('Hide WordPress Version', 'spectrus-guard'); ?></label>
-                                                </div>
-                                                <div class="sg-control-input">
-                                                    <label class="sg-switch">
-                                                        <input type="checkbox" name="spectrus_shield_settings[hide_wp_version]" value="1" <?php checked($settings['hide_wp_version'] ?? true); ?>>
-                                                        <span class="sg-slider"></span>
-                                                    </label>
-                                                </div>
-                                            </div>
-                                            <div class="sg-control-group">
-                                                <div class="sg-control-info">
-                                                    <label
-                                                        class="sg-control-label"><?php esc_html_e('Disable XML-RPC', 'spectrus-guard'); ?></label>
-                                                </div>
-                                                <div class="sg-control-input">
-                                                    <label class="sg-switch">
-                                                        <input type="checkbox" name="spectrus_shield_settings[block_xmlrpc]" value="1" <?php checked($settings['block_xmlrpc'] ?? true); ?>>
-                                                        <span class="sg-slider"></span>
-                                                    </label>
-                                                </div>
-                                            </div>
-                                            <div class="sg-control-group">
-                                                <div class="sg-control-info">
-                                                    <label
-                                                        class="sg-control-label"><?php esc_html_e('Protect REST API', 'spectrus-guard'); ?></label>
-                                                    <p class="sg-control-desc"><?php esc_html_e('Stop user enumeration.', 'spectrus-guard'); ?>
-                                                    </p>
-                                                </div>
-                                                <div class="sg-control-input">
-                                                    <label class="sg-switch">
-                                                        <input type="checkbox" name="spectrus_shield_settings[protect_api]" value="1" <?php checked($settings['protect_api'] ?? true); ?>>
-                                                        <span class="sg-slider"></span>
-                                                    </label>
-                                                </div>
-                                            </div>
+                                        <div>
+                                            <label
+                                                class="sg-control-label"><?php esc_html_e('Lockout (min)', 'spectrus-guard'); ?></label>
+                                            <input type="number" name="spectrus_shield_settings[login_lockout_time]"
+                                                value="<?php echo esc_attr(intval(($settings['login_lockout_time'] ?? 900) / 60)); ?>"
+                                                class="sg-input-text">
                                         </div>
                                     </div>
                                 </div>
-                            </form>
-                    <?php endif; ?>
-                </div>
-                <?php
+                            </div>
+                        </div>
+                    </div>
+                </form>
+
+            <?php elseif ($active_tab === 'stealth'): ?>
+                <form method="post" action="options.php" id="sg-hardening-form">
+                    <?php settings_fields('spectrus_shield_settings_group'); ?>
+                    <input type="hidden" name="spectrus_shield_settings[form_context]" value="stealth">
+                    <div class="sg-main-layout">
+                        <div class="sg-card" style="width: 100%;">
+                            <div class="sg-card-header">
+                                <h2><?php esc_html_e('Stealth Mode', 'spectrus-guard'); ?></h2>
+                            </div>
+                            <div class="sg-settings-card-body">
+                                <div class="sg-control-group">
+                                    <div class="sg-control-info">
+                                        <label
+                                            class="sg-control-label"><?php esc_html_e('Hide WordPress Version', 'spectrus-guard'); ?></label>
+                                    </div>
+                                    <div class="sg-control-input">
+                                        <label class="sg-switch">
+                                            <input type="checkbox" name="spectrus_shield_settings[hide_wp_version]" value="1" <?php checked($settings['hide_wp_version'] ?? true); ?>>
+                                            <span class="sg-slider"></span>
+                                        </label>
+                                    </div>
+                                </div>
+                                <div class="sg-control-group">
+                                    <div class="sg-control-info">
+                                        <label
+                                            class="sg-control-label"><?php esc_html_e('Disable XML-RPC', 'spectrus-guard'); ?></label>
+                                    </div>
+                                    <div class="sg-control-input">
+                                        <label class="sg-switch">
+                                            <input type="checkbox" name="spectrus_shield_settings[block_xmlrpc]" value="1" <?php checked($settings['block_xmlrpc'] ?? true); ?>>
+                                            <span class="sg-slider"></span>
+                                        </label>
+                                    </div>
+                                </div>
+                                <div class="sg-control-group">
+                                    <div class="sg-control-info">
+                                        <label
+                                            class="sg-control-label"><?php esc_html_e('Protect REST API', 'spectrus-guard'); ?></label>
+                                        <p class="sg-control-desc"><?php esc_html_e('Stop user enumeration.', 'spectrus-guard'); ?>
+                                        </p>
+                                    </div>
+                                    <div class="sg-control-input">
+                                        <label class="sg-switch">
+                                            <input type="checkbox" name="spectrus_shield_settings[protect_api]" value="1" <?php checked($settings['protect_api'] ?? true); ?>>
+                                            <span class="sg-slider"></span>
+                                        </label>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </form>
+            <?php endif; ?>
+        </div>
+        <?php
     }
 
     public function ajax_write_htaccess()
