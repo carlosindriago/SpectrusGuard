@@ -1,13 +1,13 @@
 <?php
 /**
  * Plugin Name:       SpectrusGuard: Advanced WAF & Stealth Security Suite
- * Plugin URI:        https://github.com/yourusername/spectrus-guard
+ * Plugin URI:        https://github.com/carlosindriago/SpectrusGuard/
  * Description:       Sistema de seguridad integral que intercepta ataques antes de que toquen tu web y camufla tu sitio para que los hackers ni siquiera sepan que usas WordPress.
  * Version:           1.0.0
  * Requires at least: 5.8
  * Requires PHP:      7.4
  * Author:            Carlos Indriago
- * Author URI:        https://yoursite.com
+ * Author URI:        https://github.com/carlosindriago/
  * License:           GPL v2 or later
  * License URI:       https://www.gnu.org/licenses/gpl-2.0.html
  * Text Domain:       spectrus-guard
