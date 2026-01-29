@@ -282,47 +282,99 @@ class SG_Heuristics
     {
         $matches = array();
 
-        $content = @file_get_contents($file_path);
-        if (false === $content) {
+        if (!file_exists($file_path)) {
             return $matches;
         }
 
-        // Also check the obfuscated version
-        $content_lower = strtolower($content);
+        $handle = @fopen($file_path, 'r');
+        if (false === $handle) {
+            return $matches;
+        }
 
+        // Flatten signatures to a list of checks
+        $checks = array();
         foreach ($signatures as $name => $patterns) {
             if (!is_array($patterns)) {
                 $patterns = array($patterns);
             }
-
             foreach ($patterns as $pattern) {
-                // Check if it's a regex pattern
-                if (strpos($pattern, '/') === 0) {
-                    if (@preg_match($pattern, $content, $match, PREG_OFFSET_CAPTURE)) {
-                        $line = substr_count(substr($content, 0, $match[0][1]), "\n") + 1;
-                        $matches[] = array(
-                            'file' => str_replace(ABSPATH, '', $file_path),
-                            'signature' => $name,
-                            'line' => $line,
-                            'snippet' => $this->get_snippet($content, $match[0][1]),
-                        );
-                    }
-                } else {
-                    // Plain string match
-                    $pos = stripos($content, $pattern);
-                    if (false !== $pos) {
-                        $line = substr_count(substr($content, 0, $pos), "\n") + 1;
-                        $matches[] = array(
-                            'file' => str_replace(ABSPATH, '', $file_path),
-                            'signature' => $name,
-                            'line' => $line,
-                            'snippet' => $this->get_snippet($content, $pos),
-                        );
-                    }
-                }
+                $checks[] = array(
+                    'name' => $name,
+                    'pattern' => $pattern,
+                    'is_regex' => (strpos($pattern, '/') === 0),
+                );
             }
         }
 
+        $buffer = '';
+        $global_line_offset = 0;
+        $chunk_size = 8192; // 8KB
+        $overlap_size = 1024; // 1KB overlap
+
+        while (!feof($handle) || strlen($buffer) > 0) {
+            // Read chunk if available
+            if (!feof($handle)) {
+                $chunk = fread($handle, $chunk_size);
+                if ($chunk === false) {
+                    break;
+                }
+                $buffer .= $chunk;
+            }
+
+            if (empty($buffer)) {
+                break;
+            }
+
+            $remaining_checks = array();
+
+            foreach ($checks as $check) {
+                $found = false;
+                $match_pos = false;
+
+                if ($check['is_regex']) {
+                    if (@preg_match($check['pattern'], $buffer, $match, PREG_OFFSET_CAPTURE)) {
+                        $match_pos = $match[0][1];
+                        $found = true;
+                    }
+                } else {
+                    $match_pos = stripos($buffer, $check['pattern']);
+                    if (false !== $match_pos) {
+                        $found = true;
+                    }
+                }
+
+                if ($found) {
+                    $line = $global_line_offset + substr_count(substr($buffer, 0, $match_pos), "\n") + 1;
+                    $matches[] = array(
+                        'file' => str_replace(ABSPATH, '', $file_path),
+                        'signature' => $check['name'],
+                        'line' => $line,
+                        'snippet' => $this->get_snippet($buffer, $match_pos),
+                    );
+                } else {
+                    $remaining_checks[] = $check;
+                }
+            }
+            $checks = $remaining_checks;
+
+            if (empty($checks)) {
+                break;
+            }
+
+            if (feof($handle)) {
+                break;
+            }
+
+            // Keep overlap
+            if (strlen($buffer) > $overlap_size) {
+                $discard_len = strlen($buffer) - $overlap_size;
+                $discarded = substr($buffer, 0, $discard_len);
+                $global_line_offset += substr_count($discarded, "\n");
+                $buffer = substr($buffer, -$overlap_size);
+            }
+        }
+
+        fclose($handle);
         return $matches;
     }
 
