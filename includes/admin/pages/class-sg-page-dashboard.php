@@ -88,17 +88,17 @@ class SG_Page_Dashboard
                             </p>
                             <?php if ($scan_status === 'recent' && $threats_found === 0): ?>
                                 <span class="sg-status-badge success">
-                                    <span class="dashicons dashicons-yes"></span>
+                                    <span class="dashicons dashicons-yes" aria-hidden="true"></span>
                                     <?php esc_html_e('Last scan clean', 'spectrus-guard'); ?>
                                 </span>
                             <?php elseif ($threats_found > 0): ?>
                                 <span class="sg-status-badge danger">
-                                    <span class="dashicons dashicons-warning"></span>
+                                    <span class="dashicons dashicons-warning" aria-hidden="true"></span>
                                     <?php echo intval($threats_found) . ' ' . esc_html__('threats found', 'spectrus-guard'); ?>
                                 </span>
                             <?php else: ?>
                                 <span class="sg-status-badge warning">
-                                    <span class="dashicons dashicons-calendar-alt"></span>
+                                    <span class="dashicons dashicons-calendar-alt" aria-hidden="true"></span>
                                     <?php esc_html_e('Scan recommended', 'spectrus-guard'); ?>
                                 </span>
                             <?php endif; ?>
@@ -193,7 +193,7 @@ class SG_Page_Dashboard
                                     <span class="sg-action-text">
                                         <?php esc_html_e('View Firewall Logs', 'spectrus-guard'); ?>
                                     </span>
-                                    <span class="sg-action-arrow">→</span>
+                                    <span class="sg-action-arrow" aria-hidden="true">→</span>
                                 </a>
                                 <a href="<?php echo esc_url(admin_url('admin.php?page=spectrus-guard-settings')); ?>"
                                     class="sg-action-item">
@@ -201,7 +201,7 @@ class SG_Page_Dashboard
                                     <span class="sg-action-text">
                                         <?php esc_html_e('Global Settings', 'spectrus-guard'); ?>
                                     </span>
-                                    <span class="sg-action-arrow">→</span>
+                                    <span class="sg-action-arrow" aria-hidden="true">→</span>
                                 </a>
                                 <a href="<?php echo esc_url(admin_url('admin.php?page=spectrus-guard-firewall&tab=geo')); ?>"
                                     class="sg-action-item">
@@ -209,7 +209,7 @@ class SG_Page_Dashboard
                                     <span class="sg-action-text">
                                         <?php esc_html_e('Manage IP Whitelist', 'spectrus-guard'); ?>
                                     </span>
-                                    <span class="sg-action-arrow">→</span>
+                                    <span class="sg-action-arrow" aria-hidden="true">→</span>
                                 </a>
                             </div>
                         </div>
@@ -228,9 +228,9 @@ class SG_Page_Dashboard
                                     <input type="text" readonly
                                         value="<?php echo esc_url(home_url('/?spectrus_rescue=' . ($settings['rescue_key'] ?? ''))); ?>"
                                         class="sg-rescue-input" id="sg-rescue-url">
-                                    <button type="button" class="sg-copy-btn-icon"
+                                    <button type="button" class="sg-copy-btn-icon" aria-label="<?php esc_attr_e('Copy rescue URL to clipboard', 'spectrus-guard'); ?>" title="<?php esc_attr_e('Copy rescue URL to clipboard', 'spectrus-guard'); ?>"
                                         onclick="navigator.clipboard.writeText(document.getElementById('sg-rescue-url').value)">
-                                        <span class="dashicons dashicons-clipboard"></span>
+                                        <span class="dashicons dashicons-clipboard" aria-hidden="true"></span>
                                     </button>
                                 </div>
                             </div>
