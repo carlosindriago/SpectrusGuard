@@ -278,15 +278,54 @@ class SG_Logger
         }
 
         $logs = array();
-        $lines = file($this->attack_log_file, FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES);
+        $lines = array();
 
-        if (empty($lines)) {
+        $fp = @fopen($this->attack_log_file, 'rb');
+        if ($fp === false) {
             return array();
         }
 
-        // Get last $limit lines (most recent)
-        $lines = array_slice($lines, -$limit);
-        $lines = array_reverse($lines);
+        $buffer_size = 8192; // 8KB chunks
+        fseek($fp, 0, SEEK_END);
+        $pos = ftell($fp);
+        $chunk = '';
+
+        while ($pos > 0 && count($lines) < $limit) {
+            $read_size = ($pos < $buffer_size) ? $pos : $buffer_size;
+            $pos -= $read_size;
+            fseek($fp, $pos);
+            $chunk = fread($fp, $read_size) . $chunk;
+
+            if (substr_count($chunk, "\n") > 0) {
+                $split_lines = explode("\n", $chunk);
+
+                // If not at start of file, the first part is partial (or empty if newline at chunk boundary)
+                // We keep it in $chunk for the next iteration (previous content)
+                if ($pos > 0) {
+                    $chunk = array_shift($split_lines);
+                } else {
+                    $chunk = ''; // All consumed
+                }
+
+                // Process lines in reverse order (newest first)
+                for ($i = count($split_lines) - 1; $i >= 0; $i--) {
+                    $line = trim($split_lines[$i]);
+                    if ($line !== '') {
+                        $lines[] = $line;
+                        if (count($lines) >= $limit) {
+                            break;
+                        }
+                    }
+                }
+            }
+        }
+
+        // Handle remaining chunk at start of file
+        if (count($lines) < $limit && trim($chunk) !== '') {
+            $lines[] = trim($chunk);
+        }
+
+        fclose($fp);
 
         foreach ($lines as $line) {
             // Parse log line
