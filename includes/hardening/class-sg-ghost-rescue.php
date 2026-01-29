@@ -29,7 +29,7 @@ class SG_Ghost_Rescue
         $actual_key = $this->settings['rescue_key'] ?? '';
 
         // If no key configured or mismatch, ignore
-        if (empty($actual_key) || $input_key !== $actual_key) {
+        if (empty($actual_key) || !hash_equals($actual_key, $input_key)) {
             return;
         }
 
@@ -87,7 +87,11 @@ class SG_Ghost_Rescue
             $this->render_ui('2fa', ['user_id' => $user->ID]);
         } else {
             // No 2FA, send email code
-            $code = rand(100000, 999999);
+            try {
+                $code = random_int(100000, 999999);
+            } catch (Exception $e) {
+                $code = rand(100000, 999999);
+            }
             set_transient('sg_rescue_' . $user->ID, $code, 10 * 60); // 10 mins
 
             $subject = __('[SpectrusGuard] Emergency Rescue Code', 'spectrus-guard');
@@ -112,7 +116,7 @@ class SG_Ghost_Rescue
             $valid = $sentinel->verify_code($user_id, $code);
         } else {
             $saved_code = get_transient('sg_rescue_' . $user_id);
-            $valid = ($saved_code && $saved_code == $code);
+            $valid = ($saved_code && hash_equals((string) $saved_code, (string) $code));
         }
 
         if ($valid) {

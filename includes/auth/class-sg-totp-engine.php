@@ -11,7 +11,11 @@ class Spectrus_TOTP_Engine
         $chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ234567'; // Base32 standard alphabet
         $secret = '';
         for ($i = 0; $i < $length; $i++) {
-            $secret .= $chars[rand(0, 31)];
+            try {
+                $secret .= $chars[random_int(0, 31)];
+            } catch (Exception $e) {
+                $secret .= $chars[rand(0, 31)];
+            }
         }
         return $secret;
     }
