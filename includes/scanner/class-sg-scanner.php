@@ -143,6 +143,130 @@ class SG_Scanner
     }
 
     /**
+     * Run a batch of core file verification
+     *
+     * @param int $offset Offset.
+     * @param int $limit  Limit.
+     * @return array Batch results with processed count and formatted issues.
+     */
+    public function run_core_batch($offset = 0, $limit = 500)
+    {
+        $batch_result = $this->checksum->verify_batch($offset, $limit);
+        $formatted_issues = array();
+
+        foreach ($batch_result['issues'] as $file) {
+            $formatted_issues[] = array(
+                'file' => $file['file'],
+                'status' => $file['status'],
+                'severity' => $this->get_core_file_severity($file),
+                'message' => $this->get_core_file_message($file),
+            );
+        }
+
+        return array(
+            'issues' => $formatted_issues,
+            'processed' => $batch_result['processed'],
+            'total' => $batch_result['total'],
+        );
+    }
+
+    /**
+     * Run unknown files scan
+     *
+     * @return array Formatted issues.
+     */
+    public function run_unknown_files_scan()
+    {
+        $unknown_files = $this->checksum->scan_unknown_files();
+        $formatted_issues = array();
+
+        foreach ($unknown_files as $file) {
+            $formatted_issues[] = array(
+                'file' => $file['file'],
+                'status' => $file['status'],
+                'severity' => $this->get_core_file_severity($file),
+                'message' => $this->get_core_file_message($file),
+            );
+        }
+
+        return $formatted_issues;
+    }
+
+    /**
+     * Run uploads scan
+     *
+     * @return array Issues.
+     */
+    public function run_uploads_scan()
+    {
+        $this->results['uploads_php'] = array();
+        $this->scan_uploads_directory();
+        return $this->results['uploads_php'];
+    }
+
+    /**
+     * Run suspicious files scan
+     *
+     * @return array Issues.
+     */
+    public function run_suspicious_scan()
+    {
+        $this->results['suspicious'] = array();
+        $this->scan_suspicious_files();
+        return $this->results['suspicious'];
+    }
+
+    /**
+     * Run malware scan
+     *
+     * @return array Issues.
+     */
+    public function run_malware_scan()
+    {
+        $this->results['malware'] = array();
+        $this->scan_for_malware();
+        return $this->results['malware'];
+    }
+
+    /**
+     * Save results from batch scan
+     *
+     * @param array $accumulated_results Results from all steps.
+     * @return array Final results.
+     */
+    public function save_scan_results($accumulated_results)
+    {
+        $start_time = microtime(true); // approximate
+
+        $this->results = array(
+            'scan_time' => current_time('mysql'),
+            'duration' => 0, // We can't easily calculate total duration across requests without passing it around
+            'summary' => array(
+                'total_issues' => 0,
+                'critical' => 0,
+                'high' => 0,
+                'medium' => 0,
+                'low' => 0,
+            ),
+            'core_integrity' => $accumulated_results['core_integrity'] ?? array(),
+            'uploads_php' => $accumulated_results['uploads_php'] ?? array(),
+            'suspicious' => $accumulated_results['suspicious'] ?? array(),
+            'malware' => $accumulated_results['malware'] ?? array(),
+        );
+
+        // Calculate totals
+        $this->calculate_summary();
+
+        // Cache results
+        set_transient(self::RESULTS_TRANSIENT, $this->results, self::CACHE_EXPIRATION);
+
+        // Update last scan time option
+        update_option('spectrus_shield_last_scan', current_time('mysql'));
+
+        return $this->results;
+    }
+
+    /**
      * Scan core WordPress files for modifications
      */
     private function scan_core_integrity()

@@ -133,22 +133,63 @@ class SG_Checksum
     public function verify_core_files()
     {
         $issues = array();
+        $offset = 0;
+        $limit = 500;
+
+        do {
+            $batch_result = $this->verify_batch($offset, $limit);
+
+            // Check for API errors in the first batch
+            if ($offset === 0 && !empty($batch_result['issues']) && isset($batch_result['issues'][0]['file']) && $batch_result['issues'][0]['file'] === 'API Error') {
+                return $batch_result['issues'];
+            }
+
+            $issues = array_merge($issues, $batch_result['issues']);
+            $processed = $batch_result['processed'];
+            $offset += $processed;
+
+        } while ($processed >= $limit);
+
+        // Also check for unknown files in core directories
+        $unknown = $this->scan_unknown_files();
+        $issues = array_merge($issues, $unknown);
+
+        return $issues;
+    }
+
+    /**
+     * Verify a batch of core files
+     *
+     * @param int $offset Offset.
+     * @param int $limit  Limit.
+     * @return array Batch results.
+     */
+    public function verify_batch($offset = 0, $limit = 500)
+    {
+        $issues = array();
 
         // Get checksums
         $checksums = $this->fetch_checksums();
 
         if (is_wp_error($checksums)) {
             return array(
-                array(
-                    'file' => 'API Error',
-                    'status' => 'error',
-                    'error' => $checksums->get_error_message(),
+                'issues' => array(
+                    array(
+                        'file' => 'API Error',
+                        'status' => 'error',
+                        'error' => $checksums->get_error_message(),
+                    ),
                 ),
+                'processed' => 0,
+                'total' => 0,
             );
         }
 
+        $total = count($checksums);
+        $slice = array_slice($checksums, $offset, $limit, true);
+
         // Check each file
-        foreach ($checksums as $file => $expected_hash) {
+        foreach ($slice as $file => $expected_hash) {
             $file_path = ABSPATH . $file;
 
             // Skip wp-content files (they're customizable)
@@ -179,11 +220,25 @@ class SG_Checksum
             }
         }
 
-        // Also check for unknown files in core directories
-        $unknown = $this->find_unknown_core_files($checksums);
-        $issues = array_merge($issues, $unknown);
+        return array(
+            'issues' => $issues,
+            'processed' => count($slice),
+            'total' => $total,
+        );
+    }
 
-        return $issues;
+    /**
+     * Scan for unknown files in core directories
+     *
+     * @return array Unknown files.
+     */
+    public function scan_unknown_files()
+    {
+        $checksums = $this->fetch_checksums();
+        if (is_wp_error($checksums)) {
+            return array();
+        }
+        return $this->find_unknown_core_files($checksums);
     }
 
     /**

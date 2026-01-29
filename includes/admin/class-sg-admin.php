@@ -1149,13 +1149,130 @@ class SG_Admin
             wp_send_json_error(array('message' => __('Scanner not available.', 'spectrus-guard')));
         }
 
-        // Run fresh scan
-        $results = $scanner->run_full_scan(true);
+        $step = isset($_POST['step']) ? sanitize_text_field($_POST['step']) : 'init';
+        $offset = isset($_POST['offset']) ? absint($_POST['offset']) : 0;
+        $limit = 500;
 
-        wp_send_json_success(array(
-            'message' => __('Scan completed successfully.', 'spectrus-guard'),
-            'results' => $scanner->get_display_results(),
-        ));
+        // Step 1: Initialization
+        if ($step === 'init') {
+            $scanner->clear_cache();
+            delete_transient('spectrus_shield_scan_partial');
+
+            wp_send_json_success(array(
+                'step' => 'core_integrity',
+                'offset' => 0,
+                'message' => __('Starting core file verification...', 'spectrus-guard'),
+                'progress' => 5,
+            ));
+            return;
+        }
+
+        // Retrieve partial results
+        $current_results = get_transient('spectrus_shield_scan_partial');
+        if (!$current_results || !is_array($current_results)) {
+            $current_results = array(
+                'core_integrity' => array(),
+                'uploads_php' => array(),
+                'suspicious' => array(),
+                'malware' => array(),
+            );
+        }
+
+        // Step 2: Core Integrity (Batched)
+        if ($step === 'core_integrity') {
+            $result = $scanner->run_core_batch($offset, $limit);
+
+            $current_results['core_integrity'] = array_merge($current_results['core_integrity'], $result['issues']);
+            set_transient('spectrus_shield_scan_partial', $current_results, DAY_IN_SECONDS);
+
+            $processed = $result['processed'];
+            $total = $result['total'];
+            $new_offset = $offset + $processed;
+
+            if ($processed < $limit || ($total > 0 && $new_offset >= $total)) {
+                // Done with core files batching
+                wp_send_json_success(array(
+                    'step' => 'core_unknown',
+                    'offset' => 0,
+                    'message' => __('Checking for unknown files in core directories...', 'spectrus-guard'),
+                    'progress' => 40,
+                ));
+            } else {
+                // Continue batching
+                $progress = 5 + (($total > 0) ? round(($new_offset / $total) * 35) : 0);
+                wp_send_json_success(array(
+                    'step' => 'core_integrity',
+                    'offset' => $new_offset,
+                    'message' => sprintf(__('Scanning core files... (%d/%d)', 'spectrus-guard'), $new_offset, $total),
+                    'progress' => $progress,
+                ));
+            }
+            return;
+        }
+
+        // Step 3: Unknown Files in Core
+        if ($step === 'core_unknown') {
+            $issues = $scanner->run_unknown_files_scan();
+            $current_results['core_integrity'] = array_merge($current_results['core_integrity'], $issues);
+            set_transient('spectrus_shield_scan_partial', $current_results, DAY_IN_SECONDS);
+
+            wp_send_json_success(array(
+                'step' => 'uploads_check',
+                'offset' => 0,
+                'message' => __('Scanning uploads directory for PHP files...', 'spectrus-guard'),
+                'progress' => 50,
+            ));
+            return;
+        }
+
+        // Step 4: Uploads Directory
+        if ($step === 'uploads_check') {
+            $issues = $scanner->run_uploads_scan();
+            $current_results['uploads_php'] = $issues;
+            set_transient('spectrus_shield_scan_partial', $current_results, DAY_IN_SECONDS);
+
+            wp_send_json_success(array(
+                'step' => 'suspicious_check',
+                'offset' => 0,
+                'message' => __('Checking for suspicious files...', 'spectrus-guard'),
+                'progress' => 65,
+            ));
+            return;
+        }
+
+        // Step 5: Suspicious Files
+        if ($step === 'suspicious_check') {
+            $issues = $scanner->run_suspicious_scan();
+            $current_results['suspicious'] = $issues;
+            set_transient('spectrus_shield_scan_partial', $current_results, DAY_IN_SECONDS);
+
+            wp_send_json_success(array(
+                'step' => 'malware_scan',
+                'offset' => 0,
+                'message' => __('Scanning for malware signatures...', 'spectrus-guard'),
+                'progress' => 80,
+            ));
+            return;
+        }
+
+        // Step 6: Malware Scan and Finalize
+        if ($step === 'malware_scan') {
+            $issues = $scanner->run_malware_scan();
+            $current_results['malware'] = $issues;
+
+            // Finalize
+            $scanner->save_scan_results($current_results);
+            delete_transient('spectrus_shield_scan_partial');
+
+            wp_send_json_success(array(
+                'step' => 'finish',
+                'offset' => 0,
+                'message' => __('Scan completed successfully.', 'spectrus-guard'),
+                'progress' => 100,
+                'results' => $scanner->get_display_results(),
+            ));
+            return;
+        }
     }
 
     /**
@@ -1305,38 +1422,6 @@ class SG_Admin
             </div>
         </div>
 
-        <script>
-            jQuery(document).ready(function ($) {
-                $('#sg-run-scan').on('click', function () {
-                    var $btn = $(this);
-                    $btn.prop('disabled', true).addClass('loading');
-                    // Hide results, show progress
-                    $('.sg-threat-intel-grid, .sg-card:not(#sg-scan-progress)').fadeOut();
-                    $('#sg-scan-progress').fadeIn();
-
-                    $.ajax({
-                        url: ajaxurl,
-                        type: 'POST',
-                        data: {
-                            action: 'sg_run_scan',
-                            nonce: SpectrusGuard.nonce
-                        },
-                        success: function (response) {
-                            if (response.success) {
-                                location.reload();
-                            } else {
-                                alert(response.data.message || 'Scan failed');
-                                location.reload(); // Reload anyway to reset state
-                            }
-                        },
-                        error: function () {
-                            alert('<?php esc_html_e('An error occurred during the scan.', 'spectrus-guard'); ?>');
-                            location.reload();
-                        }
-                    });
-                });
-            });
-        </script>
         <?php
     }
 

@@ -41,8 +41,66 @@
                 location.reload();
             });
 
+            // Run scan button
+            $('#sg-run-scan').on('click', this.handleRunScan);
+
             // Toggle sections
             $(document).on('click', '.sg-toggle-section', this.handleToggleSection);
+        },
+
+        /**
+         * Handle run scan
+         */
+        handleRunScan: function (e) {
+            e.preventDefault();
+            var $btn = $(this);
+            $btn.prop('disabled', true).addClass('loading');
+
+            // Hide results, show progress
+            $('.sg-threat-intel-grid, .sg-card:not(#sg-scan-progress)').fadeOut();
+            $('#sg-scan-progress').fadeIn();
+
+            var $progressText = $('#sg-scan-progress h3');
+
+            SpectrusGuardAdmin.runScanStep('init', 0, $progressText);
+        },
+
+        /**
+         * Recursive scan step
+         */
+        runScanStep: function (step, offset, $progressText) {
+            $.ajax({
+                url: SpectrusGuard.ajax_url,
+                type: 'POST',
+                data: {
+                    action: 'sg_run_scan',
+                    nonce: SpectrusGuard.nonce,
+                    step: step,
+                    offset: offset
+                },
+                success: function (response) {
+                    if (response.success) {
+                        var data = response.data;
+
+                        if (data.message) {
+                            $progressText.text(data.message);
+                        }
+
+                        if (data.step === 'finish') {
+                            location.reload();
+                        } else {
+                            SpectrusGuardAdmin.runScanStep(data.step, data.offset, $progressText);
+                        }
+                    } else {
+                        alert(response.data.message || SpectrusGuard.i18n.error);
+                        location.reload();
+                    }
+                },
+                error: function () {
+                    alert(SpectrusGuard.i18n.error);
+                    location.reload();
+                }
+            });
         },
 
         /**
