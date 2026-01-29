@@ -60,9 +60,15 @@ SpectrusGuard 2.0 adopts a **Page Controller Pattern** for robust scalability an
 
 ```tree
 spectrus-guard/
-├── spectrus-guard.php            # Bootshrapper
+├── spectrus-guard.php            # Bootstraper
+├── mu-loader/
+│   └── spectrus-waf.php          # Early WAF Execution
+├── assets/
+│   ├── css/admin.css             # Immersive Mode Styles
+│   └── js/admin.js               # Admin Interactions
 ├── includes/
 │   ├── class-sg-loader.php       # Dependency Injection Container
+│   ├── class-sg-logger.php       # Logging Utilities
 │   ├── admin/
 │   │   ├── class-sg-admin.php    # Main Router
 │   │   └── pages/                # Page Controllers
@@ -71,16 +77,31 @@ spectrus-guard/
 │   │       ├── class-sg-page-scanner.php
 │   │       ├── class-sg-page-hardening.php
 │   │       └── class-sg-page-settings.php
+│   ├── auth/                     # Authentication & 2FA
+│   │   ├── class-sg-2fa-handler.php
+│   │   ├── class-sg-totp-engine.php
+│   │   └── views/
 │   ├── geo/                      # Geo-Defense Engine
 │   │   ├── class-sg-geo-engine.php
-│   │   └── class-sg-maxmind-reader.php
-│   ├── waf/                      # Firewall Core
-│   └── hardening/                # Security Modules
-├── assets/
-│   └── css/
-│       └── admin.css             # Immersive Mode Styles
-└── mu-loader/
-    └── ghost-waf.php             # Early Execution WAF
+│   │   ├── class-sg-geo-updater.php
+│   │   ├── class-sg-maxmind-reader.php
+│   │   └── countries.json
+│   ├── hardening/                # Security Modules
+│   │   ├── class-sg-stealth.php
+│   │   ├── class-sg-api-guard.php
+│   │   ├── class-sg-login-guard.php
+│   │   ├── class-sg-url-cloaker.php
+│   │   ├── class-sg-cloak-engine.php
+│   │   ├── class-sg-ghost-rescue.php
+│   │   └── views/
+│   ├── scanner/                  # Malware & Integrity Scanner
+│   │   ├── class-sg-scanner.php
+│   │   ├── class-sg-heuristics.php
+│   │   ├── class-sg-checksum.php
+│   │   └── signatures.php
+│   └── waf/                      # Firewall Core
+│       ├── class-sg-firewall.php
+│       └── rules.json
 ```
 
 ## 🔐 Security Standards
