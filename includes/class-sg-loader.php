@@ -112,7 +112,12 @@ class SG_Loader
             'hide_login' => false,
             'login_slug' => 'sg-login',
             'url_cloaking_enabled' => false,
+            // Geo-Blocking defaults (Sprint 9)
+            'geo_blocked_countries' => array(),
+            'geo_block_tor' => false,
+            'geo_action' => '403',
         );
+
 
         $this->settings = wp_parse_args(
             get_option('spectrus_shield_settings', array()),
@@ -178,6 +183,22 @@ class SG_Loader
             require_once $scanner_file;
         }
 
+        // Geo Module (Sprint 9 - Geo-Blocking & IP Intelligence)
+        $geo_engine_file = SG_PLUGIN_DIR . 'includes/geo/class-sg-geo-engine.php';
+        if (file_exists($geo_engine_file)) {
+            require_once $geo_engine_file;
+        }
+
+        $geo_updater_file = SG_PLUGIN_DIR . 'includes/geo/class-sg-geo-updater.php';
+        if (file_exists($geo_updater_file)) {
+            require_once $geo_updater_file;
+            // Schedule auto-updates for geo databases
+            if (class_exists('SG_Geo_Updater')) {
+                $updater = new SG_Geo_Updater();
+                $updater->schedule_updates();
+            }
+        }
+
         // Admin (load only in admin context)
         if (is_admin()) {
             $admin_file = SG_PLUGIN_DIR . 'includes/admin/class-sg-admin.php';
@@ -185,6 +206,7 @@ class SG_Loader
                 require_once $admin_file;
             }
         }
+
     }
 
     /**
@@ -325,7 +347,7 @@ class SG_Loader
             'SpectrusGuard',
             array(
                 'ajax_url' => admin_url('admin-ajax.php'),
-                'nonce' => wp_create_nonce('spectrus_shield_nonce'),
+                'nonce' => wp_create_nonce('sg_nonce'),
                 'i18n' => array(
                     'scanning' => __('Scanning...', 'spectrus-guard'),
                     'complete' => __('Scan Complete', 'spectrus-guard'),

@@ -229,6 +229,10 @@ class SpectrusGuard_MU_Guard
             return;
         }
 
+        // === GEO-BLOCKING CHECK (Sprint 9) ===
+        // Check geo-blocking BEFORE pattern analysis
+        $this->check_geo_blocking($settings);
+
         // Collect request data
         $request_data = $this->collect_request_data();
 
@@ -246,6 +250,7 @@ class SpectrusGuard_MU_Guard
             }
         }
     }
+
 
     /**
      * Collect all request data for analysis
@@ -532,8 +537,179 @@ class SpectrusGuard_MU_Guard
     }
 
     /**
+     * Check geo-blocking rules (Sprint 9)
+     *
+     * Implements fail-open: if no database is available, access is allowed.
+     * Respects whitelist IPs (already checked in is_rescue_mode).
+     *
+     * @param array $settings Plugin settings
+     */
+    private function check_geo_blocking($settings)
+    {
+        // Check if geo-blocking is configured
+        $blocked_countries = isset($settings['geo_blocked_countries']) ? (array) $settings['geo_blocked_countries'] : array();
+        $block_tor = isset($settings['geo_block_tor']) ? (bool) $settings['geo_block_tor'] : false;
+
+        // Early exit if nothing to block
+        if (empty($blocked_countries) && !$block_tor) {
+            return;
+        }
+
+        // Load geo engine if available
+        $geo_engine_file = $this->plugin_dir . 'includes/geo/class-sg-geo-engine.php';
+        if (!file_exists($geo_engine_file)) {
+            // Fail-open: no geo module, allow access
+            return;
+        }
+
+        require_once $geo_engine_file;
+
+        if (!class_exists('SG_Geo_Engine')) {
+            return;
+        }
+
+        $geo_engine = new SG_Geo_Engine();
+
+        // Check if database is available
+        if (!$geo_engine->is_database_available()) {
+            // Fail-open: no database, allow access
+            return;
+        }
+
+        $client_ip = $this->get_client_ip();
+
+        // 1. Check Tor exit nodes
+        if ($block_tor && $geo_engine->is_tor_exit_node($client_ip)) {
+            $action = isset($settings['geo_action']) ? $settings['geo_action'] : '403';
+            $this->log_geo_block($client_ip, 'TOR', $action);
+            $this->execute_geo_action($action, 'TOR');
+        }
+
+        // 2. Check country blocking
+        if (!empty($blocked_countries)) {
+            $country = $geo_engine->get_country($client_ip);
+
+            if ($country && in_array($country, $blocked_countries, true)) {
+                $action = isset($settings['geo_action']) ? $settings['geo_action'] : '403';
+                $this->log_geo_block($client_ip, $country, $action);
+                $this->execute_geo_action($action, $country);
+            }
+        }
+    }
+
+    /**
+     * Execute the configured geo-blocking action
+     *
+     * @param string $action Action type (403, captcha, redirect)
+     * @param string $country_code Country code or 'TOR'
+     */
+    private function execute_geo_action($action, $country_code)
+    {
+        switch ($action) {
+            case 'captcha':
+                // For now, fall through to 403
+                // Future: implement CAPTCHA challenge
+            case '403':
+            default:
+                header('HTTP/1.1 403 Forbidden');
+                header('X-SpectrusGuard-Block: geo-' . strtolower($country_code));
+                echo '<!DOCTYPE html><html><head><title>Access Denied</title>';
+                echo '<style>body{font-family:sans-serif;text-align:center;padding:50px;background:#1a1a2e;color:#fff;}';
+                echo 'h1{color:#e94560;}</style></head><body>';
+                echo '<h1>🛡️ Access Denied</h1>';
+                echo '<p>Your access has been restricted by geographic security policy.</p>';
+                echo '<p style="color:#666;font-size:12px;">SpectrusGuard Geo-Defense</p>';
+                echo '</body></html>';
+                exit;
+
+            case 'redirect':
+                // Redirect to a custom page (could be configurable)
+                header('HTTP/1.1 302 Found');
+                header('Location: /access-denied/');
+                exit;
+        }
+    }
+
+    /**
+     * Log a geo-block event
+     *
+     * @param string $ip Client IP
+     * @param string $country Country code or 'TOR'
+     * @param string $action Action taken
+     */
+    private function log_geo_block($ip, $country, $action)
+    {
+        global $wpdb;
+
+        if (!isset($wpdb) || !$wpdb) {
+            return;
+        }
+
+        // Update geo-block statistics
+        $stats_option = 'spectrus_geo_stats';
+        $stats_row = $wpdb->get_row(
+            $wpdb->prepare(
+                "SELECT option_value FROM {$wpdb->options} WHERE option_name = %s LIMIT 1",
+                $stats_option
+            )
+        );
+
+        $stats = array();
+        if ($stats_row && !empty($stats_row->option_value)) {
+            $stats = maybe_unserialize($stats_row->option_value);
+            if (!is_array($stats)) {
+                $stats = array();
+            }
+        }
+
+        // Increment country counter
+        if (!isset($stats['countries'])) {
+            $stats['countries'] = array();
+        }
+        if (!isset($stats['countries'][$country])) {
+            $stats['countries'][$country] = 0;
+        }
+        $stats['countries'][$country]++;
+
+        // Total blocks
+        if (!isset($stats['total'])) {
+            $stats['total'] = 0;
+        }
+        $stats['total']++;
+
+        // Last block time
+        $stats['last_block'] = time();
+
+        // Save stats
+        $serialized = maybe_serialize($stats);
+        if ($stats_row) {
+            $wpdb->update(
+                $wpdb->options,
+                array('option_value' => $serialized),
+                array('option_name' => $stats_option)
+            );
+        } else {
+            $wpdb->insert(
+                $wpdb->options,
+                array(
+                    'option_name' => $stats_option,
+                    'option_value' => $serialized,
+                    'autoload' => 'no'
+                )
+            );
+        }
+
+        // Also log to main attack log if logging is enabled
+        $log_attacks = isset($this->settings['log_attacks']) ? $this->settings['log_attacks'] : true;
+        if ($log_attacks) {
+            $this->log_attack('geo', $country . ' (' . $action . ')');
+        }
+    }
+
+    /**
      * Get client IP address (handling proxies)
      *
+
      * @return string
      */
     private function get_client_ip()
