@@ -88,6 +88,33 @@ function sg_requirements_notice()
 }
 
 /**
+ * Create whitelist database table
+ */
+function sg_create_whitelist_table()
+{
+    global $wpdb;
+
+    $table_name = $wpdb->prefix . 'spectrus_whitelist';
+    $charset_collate = $wpdb->get_charset_collate();
+
+    $sql = "CREATE TABLE IF NOT EXISTS $table_name (
+        id bigint(20) NOT NULL AUTO_INCREMENT,
+        file_path varchar(512) NOT NULL,
+        file_hash varchar(64) NOT NULL,
+        whitelisted_at datetime DEFAULT CURRENT_TIMESTAMP NOT NULL,
+        whitelisted_by bigint(20) NOT NULL,
+        notes text DEFAULT NULL,
+        PRIMARY KEY  (id),
+        KEY file_path (file_path),
+        KEY file_hash (file_hash),
+        KEY whitelisted_by (whitelisted_by)
+    ) $charset_collate;";
+
+    require_once(ABSPATH . 'wp-admin/includes/upgrade.php');
+    dbDelta($sql);
+}
+
+/**
  * Plugin activation hook
  */
 function sg_activate()
@@ -153,6 +180,9 @@ function sg_activate()
 
     add_option('spectrus_shield_settings', $default_options);
     add_option('spectrus_shield_version', SG_VERSION);
+
+    // Create whitelist database table
+    sg_create_whitelist_table();
 
     // Flush rewrite rules
     flush_rewrite_rules();

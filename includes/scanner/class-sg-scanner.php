@@ -6,7 +6,7 @@
  * Uses transients for caching results and supports batch processing.
  *
  * @package SpectrusGuard
- * @since   1.0.0
+ * @since   3.0.0
  */
 
 // Prevent direct access
@@ -23,6 +23,13 @@ class SG_Scanner
 {
 
     /**
+     * Maximum files per directory to scan
+     *
+     * @var int
+     */
+    const MAX_FILES_PER_DIR = 5000;
+
+    /**
      * Checksum scanner instance
      *
      * @var SG_Checksum
@@ -35,6 +42,13 @@ class SG_Scanner
      * @var SG_Heuristics
      */
     private $heuristics;
+
+    /**
+     * Whitelist instance
+     *
+     * @var SG_Whitelist|null
+     */
+    private $whitelist;
 
     /**
      * Scan results
@@ -58,6 +72,13 @@ class SG_Scanner
     const CACHE_EXPIRATION = DAY_IN_SECONDS;
 
     /**
+     * Transient key for scan progress
+     *
+     * @var string
+     */
+    const PROGRESS_TRANSIENT = 'spectrus_shield_scan_progress';
+
+    /**
      * Severity levels
      */
     const SEVERITY_CRITICAL = 'critical';
@@ -72,6 +93,11 @@ class SG_Scanner
     public function __construct()
     {
         $this->load_dependencies();
+
+        // Initialize whitelist if class exists
+        if (class_exists('SG_Whitelist')) {
+            $this->whitelist = new SG_Whitelist();
+        }
     }
 
     /**
@@ -105,6 +131,9 @@ class SG_Scanner
 
         $start_time = microtime(true);
 
+        // Initialize progress tracking
+        $this->update_progress(0, __('Initializing scanner...', 'spectrus-guard'));
+
         $this->results = array(
             'scan_time' => current_time('mysql'),
             'duration' => 0,
@@ -121,16 +150,25 @@ class SG_Scanner
             'malware' => array(),
         );
 
-        // Run all scans
+        // Run all scans with progress updates
+        $this->update_progress(5, __('Starting security scan...', 'spectrus-guard'));
         $this->scan_core_integrity();
+
+        $this->update_progress(30, __('Checking uploads directory...', 'spectrus-guard'));
         $this->scan_uploads_directory();
+
+        $this->update_progress(55, __('Analyzing suspicious files...', 'spectrus-guard'));
         $this->scan_suspicious_files();
+
+        $this->update_progress(80, __('Scanning for malware signatures...', 'spectrus-guard'));
         $this->scan_for_malware();
 
         // Calculate totals
+        $this->update_progress(95, __('Calculating summary...', 'spectrus-guard'));
         $this->calculate_summary();
 
         // Record duration
+        $this->update_progress(98, __('Finalizing scan...', 'spectrus-guard'));
         $this->results['duration'] = round(microtime(true) - $start_time, 2);
 
         // Cache results
@@ -147,9 +185,17 @@ class SG_Scanner
      */
     private function scan_core_integrity()
     {
+        $this->update_progress(8, __('Fetching WordPress core checksums...', 'spectrus-guard'));
         $modified_files = $this->checksum->verify_core_files();
 
+        $this->update_progress(15, sprintf(__('Verifying %d core files...', 'spectrus-guard'), count($modified_files)));
+        $checked = 0;
         foreach ($modified_files as $file) {
+            $checked++;
+            if ($checked % 10 === 0) {
+                $this->update_progress(15 + min(10, ($checked / count($modified_files)) * 10), sprintf(__('Checking core files... (%d/%d)', 'spectrus-guard'), $checked, count($modified_files)));
+            }
+
             $this->results['core_integrity'][] = array(
                 'file' => $file['file'],
                 'status' => $file['status'], // 'modified', 'missing', 'unknown'
@@ -164,9 +210,24 @@ class SG_Scanner
      */
     private function scan_uploads_directory()
     {
+        $this->update_progress(32, __('Scanning uploads directory for PHP files...', 'spectrus-guard'));
         $php_files = $this->heuristics->scan_uploads_for_php();
 
+        $this->update_progress(40, sprintf(__('Found %d PHP files in uploads', 'spectrus-guard'), count($php_files)));
+        $checked = 0;
         foreach ($php_files as $file) {
+            $checked++;
+            if ($checked % 5 === 0) {
+                $this->update_progress(40 + min(10, ($checked / max(1, count($php_files))) * 10), sprintf(__('Analyzing uploads... (%d/%d)', 'spectrus-guard'), $checked, count($php_files)));
+            }
+
+            // Check if file is whitelisted
+            $file_hash = file_exists($file) ? hash_file('sha256', $file) : null;
+            if ($this->whitelist && $this->whitelist->check($file, $file_hash)) {
+                // Skip whitelisted files
+                continue;
+            }
+
             $this->results['uploads_php'][] = array(
                 'file' => $file,
                 'severity' => self::SEVERITY_CRITICAL,
@@ -181,8 +242,17 @@ class SG_Scanner
     private function scan_suspicious_files()
     {
         // Hidden files
+        $this->update_progress(58, __('Scanning for hidden files...', 'spectrus-guard'));
         $hidden_files = $this->heuristics->scan_hidden_files();
+        $this->update_progress(62, sprintf(__('Found %d hidden files', 'spectrus-guard'), count($hidden_files)));
+
+        $checked = 0;
         foreach ($hidden_files as $file) {
+            $checked++;
+            if ($checked % 10 === 0) {
+                $this->update_progress(62 + min(5, ($checked / max(1, count($hidden_files))) * 5), sprintf(__('Checking hidden files... (%d/%d)', 'spectrus-guard'), $checked, count($hidden_files)));
+            }
+
             $this->results['suspicious'][] = array(
                 'file' => $file,
                 'type' => 'hidden',
@@ -192,8 +262,17 @@ class SG_Scanner
         }
 
         // Dangerous permissions
+        $this->update_progress(68, __('Checking file permissions...', 'spectrus-guard'));
         $perm_issues = $this->heuristics->scan_dangerous_permissions();
+        $this->update_progress(72, sprintf(__('Found %d files with dangerous permissions', 'spectrus-guard'), count($perm_issues)));
+
+        $checked = 0;
         foreach ($perm_issues as $file) {
+            $checked++;
+            if ($checked % 10 === 0) {
+                $this->update_progress(72 + min(5, ($checked / max(1, count($perm_issues))) * 5), sprintf(__('Checking permissions... (%d/%d)', 'spectrus-guard'), $checked, count($perm_issues)));
+            }
+
             $this->results['suspicious'][] = array(
                 'file' => $file['file'],
                 'type' => 'permissions',
@@ -212,21 +291,51 @@ class SG_Scanner
      */
     private function scan_for_malware()
     {
+        $this->update_progress(82, __('Loading malware signatures database...', 'spectrus-guard'));
         $signatures = sg_get_malware_signatures();
+
         $directories = array(
-            WP_CONTENT_DIR . '/plugins',
-            WP_CONTENT_DIR . '/themes',
-            WP_CONTENT_DIR . '/uploads',
+            WP_CONTENT_DIR . '/plugins' => __('plugins', 'spectrus-guard'),
+            WP_CONTENT_DIR . '/themes' => __('themes', 'spectrus-guard'),
+            WP_CONTENT_DIR . '/uploads' => __('uploads', 'spectrus-guard'),
         );
 
-        foreach ($directories as $dir) {
+        $plugin_dir = $this->get_plugin_dir();
+        $total_dirs = count($directories);
+        $current_dir = 0;
+
+        foreach ($directories as $dir => $dir_name) {
+            $current_dir++;
+            $this->update_progress(82 + (($current_dir - 1) * 5), sprintf(__('Scanning %s directory for malware...', 'spectrus-guard'), $dir_name));
+
             if (!is_dir($dir)) {
                 continue;
             }
 
             $matches = $this->heuristics->scan_for_signatures($dir, $signatures);
 
+            $this->update_progress(82 + (($current_dir - 1) * 5) + 2, sprintf(__('Found %d potential malware patterns in %s', 'spectrus-guard'), count($matches), $dir_name));
+
+            $checked = 0;
             foreach ($matches as $match) {
+                $checked++;
+                if ($checked % 5 === 0) {
+                    $this->update_progress(82 + (($current_dir - 1) * 5) + 2 + min(3, ($checked / max(1, count($matches))) * 3), sprintf(__('Analyzing patterns... (%d/%d)', 'spectrus-guard'), $checked, count($matches)));
+                }
+
+                // Skip files in this plugin's directory (self-exclusion)
+                $full_path = ABSPATH . ltrim($match['file'], '/');
+                if ($this->is_plugin_file($full_path)) {
+                    continue;
+                }
+
+                // Check if file is whitelisted
+                $file_hash = file_exists($full_path) ? hash_file('sha256', $full_path) : null;
+                if ($this->whitelist && $this->whitelist->check($full_path, $file_hash)) {
+                    // Skip whitelisted files
+                    continue;
+                }
+
                 $this->results['malware'][] = array(
                     'file' => $match['file'],
                     'signature' => $match['signature'],
@@ -262,6 +371,39 @@ class SG_Scanner
                 $this->results['summary'][$severity]++;
             }
         }
+    }
+
+    /**
+     * Update scan progress
+     *
+     * @param int    $percentage Progress percentage (0-100).
+     * @param string $message    Current activity message.
+     */
+    private function update_progress($percentage, $message)
+    {
+        set_transient(self::PROGRESS_TRANSIENT, array(
+            'percentage' => min(100, max(0, $percentage)),
+            'message' => $message,
+            'timestamp' => current_time('mysql'),
+        ), 300); // 5 minutes expiration
+    }
+
+    /**
+     * Clear progress tracking
+     */
+    public function clear_progress()
+    {
+        delete_transient(self::PROGRESS_TRANSIENT);
+    }
+
+    /**
+     * Get current progress
+     *
+     * @return array|null Progress data or null.
+     */
+    public function get_progress()
+    {
+        return get_transient(self::PROGRESS_TRANSIENT);
     }
 
     /**
@@ -314,13 +456,90 @@ class SG_Scanner
     }
 
     /**
-     * Get cached scan results
+     * Get plugin directory path for exclusion
      *
-     * @return array|false Results or false if no cache.
+     * @return string Plugin directory path.
      */
-    public function get_cached_results()
+    private function get_plugin_dir()
     {
-        return get_transient(self::RESULTS_TRANSIENT);
+        return trailingslashit(SG_PLUGIN_DIR);
+    }
+
+    /**
+     * Check if file is in plugin directory
+     *
+     * @param string $file_path File path to check.
+     * @return bool True if file is in plugin directory.
+     */
+    private function is_plugin_file($file_path)
+    {
+        $plugin_dir = $this->get_plugin_dir();
+
+        // Check if file path starts with plugin directory
+        return strpos($file_path, $plugin_dir) === 0;
+    }
+
+    /**
+     * Get all PHP files in WordPress installation
+     *
+     * @return array Array of PHP file paths.
+     */
+    private function get_all_php_files()
+    {
+        $php_files = array();
+        $directories = array(
+            ABSPATH . 'wp-content/plugins/',
+            ABSPATH . 'wp-content/themes/',
+            ABSPATH . 'wp-content/mu-plugins/',
+            ABSPATH . 'wp-content/uploads/',
+        );
+
+        foreach ($directories as $dir) {
+            if (!is_dir($dir)) {
+                continue;
+            }
+
+            $php_files = array_merge($php_files, $this->scan_directory_for_php($dir));
+        }
+
+        return $php_files;
+    }
+
+    /**
+     * Scan a directory recursively for PHP files
+     *
+     * @param string $directory Directory to scan.
+     * @return array Array of PHP file paths.
+     */
+    private function scan_directory_for_php($directory)
+    {
+        $php_files = array();
+        $iterator = new RecursiveIteratorIterator(
+            new RecursiveDirectoryIterator($directory, RecursiveDirectoryIterator::SKIP_DOTS),
+            RecursiveIteratorIterator::SELF_FIRST
+        );
+
+        $count = 0;
+        foreach ($iterator as $file) {
+            if (++$count > self::MAX_FILES_PER_DIR) {
+                break;
+            }
+
+            if (!$file->isFile()) {
+                continue;
+            }
+
+            $extension = strtolower(pathinfo($file->getFilename(), PATHINFO_EXTENSION));
+
+            // Solo archivos PHP y variantes ofuscadas
+            if (!in_array($extension, array('php', 'phtml', 'php5', 'php7', 'phps'), true)) {
+                continue;
+            }
+
+            $php_files[] = $file->getPathname();
+        }
+
+        return $php_files;
     }
 
     /**
@@ -330,7 +549,18 @@ class SG_Scanner
      */
     public function clear_cache()
     {
+        delete_transient(self::PROGRESS_TRANSIENT);
         return delete_transient(self::RESULTS_TRANSIENT);
+    }
+
+    /**
+     * Get cached scan results
+     *
+     * @return array|false Cached results or false.
+     */
+    private function get_cached_results()
+    {
+        return get_transient(self::RESULTS_TRANSIENT);
     }
 
     /**

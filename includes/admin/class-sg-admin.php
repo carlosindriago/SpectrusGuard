@@ -18,6 +18,8 @@ if (!defined('ABSPATH')) {
 require_once SG_PLUGIN_DIR . 'includes/admin/pages/class-sg-page-dashboard.php';
 require_once SG_PLUGIN_DIR . 'includes/admin/pages/class-sg-page-firewall.php';
 require_once SG_PLUGIN_DIR . 'includes/admin/pages/class-sg-page-scanner.php';
+require_once SG_PLUGIN_DIR . 'includes/admin/pages/class-sg-page-quarantine.php';
+require_once SG_PLUGIN_DIR . 'includes/admin/pages/class-sg-page-whitelist.php';
 require_once SG_PLUGIN_DIR . 'includes/admin/pages/class-sg-page-hardening.php';
 require_once SG_PLUGIN_DIR . 'includes/admin/pages/class-sg-page-settings.php';
 
@@ -49,6 +51,8 @@ class SG_Admin
     private $page_dashboard;
     private $page_firewall;
     private $page_scanner;
+    private $page_quarantine;
+    private $page_whitelist;
     private $page_hardening;
     private $page_settings;
 
@@ -65,6 +69,8 @@ class SG_Admin
         $this->page_dashboard = new SG_Page_Dashboard($loader);
         $this->page_firewall = new SG_Page_Firewall($loader);
         $this->page_scanner = new SG_Page_Scanner($loader);
+        $this->page_quarantine = new SG_Page_Quarantine($loader);
+        $this->page_whitelist = new SG_Page_Whitelist($loader);
         $this->page_hardening = new SG_Page_Hardening($loader);
         $this->page_settings = new SG_Page_Settings($loader);
 
@@ -115,6 +121,26 @@ class SG_Admin
             'manage_options',
             'spectrus-guard-scanner',
             array($this->page_scanner, 'render') // Delegate to Scanner Controller
+        );
+
+        // 3.5. Quarantine (Vault)
+        add_submenu_page(
+            'spectrus-guard',
+            __('Quarantine Vault', 'spectrus-guard'),
+            __('Quarantine', 'spectrus-guard'),
+            'manage_options',
+            'spectrus-guard-quarantine',
+            array($this->page_quarantine, 'render') // Delegate to Quarantine Controller
+        );
+
+        // 3.6. Whitelist Management
+        add_submenu_page(
+            'spectrus-guard',
+            __('Whitelist Management', 'spectrus-guard'),
+            __('Whitelist', 'spectrus-guard'),
+            'manage_options',
+            'spectrus-guard-whitelist',
+            array($this->page_whitelist, 'render') // Delegate to Whitelist Controller
         );
 
         // 4. Hardening (Cloak + Login + Stealth)
