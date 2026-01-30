@@ -183,6 +183,12 @@ class SG_Loader
             require_once $scanner_file;
         }
 
+        // Whitelist Module (load if exists)
+        $whitelist_file = SG_PLUGIN_DIR . 'includes/whitelist/class-sg-whitelist.php';
+        if (file_exists($whitelist_file)) {
+            require_once $whitelist_file;
+        }
+
         // Geo Module (Sprint 9 - Geo-Blocking & IP Intelligence)
         $geo_engine_file = SG_PLUGIN_DIR . 'includes/geo/class-sg-geo-engine.php';
         if (file_exists($geo_engine_file)) {
@@ -318,6 +324,9 @@ class SG_Loader
             return;
         }
 
+        // Debug: Log current hook
+        error_log('SpectrusGuard: Current hook = ' . $hook);
+
         // Base styles (always load on our pages)
         wp_enqueue_style(
             'spectrus-guard-admin',
@@ -359,22 +368,25 @@ class SG_Loader
             )
         );
 
-        // Scanner-specific assets
-        if ($hook === 'toplevel_page_spectrus-guard-scanner' ||
-            $hook === 'spectrus-guard_page_spectrus-guard-scanner') {
+        // Scanner-specific assets (temporarily load on all plugin pages)
+        // TODO: Restrict to scanner page only once hook is verified
+        // if ($hook === 'toplevel_page_spectrus-guard-scanner' ||
+        //     $hook === 'spectrus-guard_page_spectrus-guard-scanner') {
+        if (strpos($hook, 'spectrus-guard') !== false) {
 
             wp_enqueue_script(
                 'spectrus-guard-scanner',
                 SG_PLUGIN_URL . 'assets/js/admin/scanner.js',
-                array('jquery'),
+                array('jquery', 'spectrus-guard-admin'),
                 SG_VERSION,
                 true
             );
 
             // Localize scanner script with scanner-specific data
+            // Note: We extend SpectrusGuard object, not replace it
             wp_localize_script(
                 'spectrus-guard-scanner',
-                'SpectrusGuard',
+                'SpectrusGuardScanner',
                 array(
                     'ajax_url' => admin_url('admin-ajax.php'),
                     'nonce' => wp_create_nonce('spectrus_guard_nonce'),
@@ -445,6 +457,29 @@ class SG_Loader
                         'threat_default_action' => __('Review the file and determine if it is legitimate', 'spectrus-guard'),
                     ),
                 )
+            );
+        }
+
+        // Quarantine & Whitelist page assets (temporarily load on all plugin pages until hook is verified)
+        // TODO: Restrict to specific pages once hook is verified
+        // Debug: Log current hook
+        error_log('SpectrusGuard: Current hook = ' . $hook . ' (looking for: spectrus-guard_page_spectrus-guard-quarantine or spectrus-guard-whitelist)');
+
+        if (strpos($hook, 'spectrus-guard') !== false) {
+            wp_enqueue_script(
+                'spectrus-guard-quarantine',
+                SG_PLUGIN_URL . 'assets/js/admin/quarantine.js',
+                array('jquery', 'spectrus-guard-admin'),
+                SG_VERSION,
+                true
+            );
+
+            wp_enqueue_script(
+                'spectrus-guard-whitelist',
+                SG_PLUGIN_URL . 'assets/js/admin/whitelist.js',
+                array('jquery', 'spectrus-guard-admin'),
+                SG_VERSION,
+                true
             );
         }
     }

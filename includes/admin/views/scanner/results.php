@@ -63,10 +63,14 @@ if (!defined('ABSPATH')) {
             <h2>
                 <?php esc_html_e('Vulnerabilities Found', 'spectrus-guard'); ?>
             </h2>
+            <button type="button" class="sg-btn sg-btn-primary" onclick="document.getElementById('sg-run-scan').click()">
+                <span class="dashicons dashicons-search"></span>
+                <?php esc_html_e('Run New Scan', 'spectrus-guard'); ?>
+            </button>
         </div>
         <div class="sg-card-body" style="padding: 0;">
             <?php if (!empty($results['issues'])): ?>
-                <table class="sg-logs-table">
+                <table class="sg-logs-table" id="sg-issues-table">
                     <thead>
                         <tr>
                             <th style="width: 100px;">
@@ -81,26 +85,69 @@ if (!defined('ABSPATH')) {
                             <th>
                                 <?php esc_html_e('Issue Description', 'spectrus-guard'); ?>
                             </th>
+                            <th style="width: 260px;">
+                                <?php esc_html_e('Actions', 'spectrus-guard'); ?>
+                            </th>
                         </tr>
                     </thead>
                     <tbody>
-                        <?php foreach ($results['issues'] as $issue): ?>
-                            <tr>
+                        <?php foreach ($results['issues'] as $index => $issue): ?>
+                            <?php
+                            $can_delete = $issue['category'] !== 'core';
+                            $severity_colors = array(
+                                'critical' => '#e94560',
+                                'high' => '#ff8e53',
+                                'medium' => '#ffc107',
+                                'low' => '#6c757d',
+                                'info' => '#17a2b8'
+                            );
+                            $color = isset($severity_colors[$issue['severity']]) ? $severity_colors[$issue['severity']] : '#6c757d';
+                            ?>
+                            <tr id="threat-<?php echo esc_attr($index); ?>">
                                 <td>
-                                    <span
-                                        class="sg-badge sg-badge-<?php echo esc_attr(strtolower($issue['severity'])); ?>">
+                                    <span class="sg-badge sg-badge-<?php echo esc_attr(strtolower($issue['severity'])); ?>">
                                         <?php echo esc_html(ucfirst($issue['severity'])); ?>
                                     </span>
                                 </td>
-                                <td><span class="sg-tag">
+                                <td>
+                                    <span class="sg-tag">
                                         <?php echo esc_html(ucfirst($issue['category'])); ?>
                                     </span>
                                 </td>
-                                <td style="font-family: monospace; color: var(--sg-text-muted);">
+                                <td style="font-family: monospace; color: var(--sg-text-muted); word-break: break-all;">
                                     <?php echo esc_html($issue['file']); ?>
                                 </td>
                                 <td style="color: var(--sg-text-primary);">
                                     <?php echo esc_html($issue['message']); ?>
+                                </td>
+                                <td>
+                                    <?php if ($can_delete): ?>
+                                        <div style="display: flex; gap: 8px; flex-wrap: wrap;">
+                                            <button type="button" class="sg-btn sg-btn-whitelist sg-btn-sm"
+                                                data-file="<?php echo esc_attr($issue['file']); ?>"
+                                                data-index="<?php echo esc_attr($index); ?>"
+                                                style="background: rgba(34, 197, 94, 0.15); border: 1px solid rgba(34, 197, 94, 0.4); color: #22c55e; padding: 8px 16px; font-size: 12px; border-radius: 6px; font-weight: 600;">
+                                                ✓ Whitelist
+                                            </button>
+                                            <button type="button" class="sg-btn sg-btn-quarantine sg-btn-sm"
+                                                data-file="<?php echo esc_attr($issue['file']); ?>"
+                                                data-index="<?php echo esc_attr($index); ?>"
+                                                style="background: rgba(255, 193, 7, 0.15); border: 1px solid rgba(255, 193, 7, 0.4); color: #ffc107; padding: 8px 16px; font-size: 12px; border-radius: 6px; font-weight: 600;">
+                                                🔒 Quarantine
+                                            </button>
+                                            <button type="button" class="sg-btn sg-btn-delete sg-btn-sm"
+                                                data-file="<?php echo esc_attr($issue['file']); ?>"
+                                                data-index="<?php echo esc_attr($index); ?>"
+                                                style="background: rgba(233, 69, 96, 0.15); border: 1px solid rgba(233, 69, 96, 0.4); color: #e94560; padding: 8px 16px; font-size: 12px; border-radius: 6px; font-weight: 600;">
+                                                🗑️ Delete
+                                            </button>
+                                        </div>
+                                    <?php else: ?>
+                                        <button type="button" class="sg-btn sg-btn-sm" disabled
+                                            style="background: rgba(255,255,255,0.05); color: var(--sg-text-secondary); padding: 8px 16px; font-size: 12px; border-radius: 6px; opacity: 0.5;">
+                                            ⚠️ Restore from WordPress core
+                                        </button>
+                                    <?php endif; ?>
                                 </td>
                             </tr>
                         <?php endforeach; ?>

@@ -1086,3 +1086,46 @@ input:checked+.sg-slider:before {
     box-shadow: 0 0 0 1px var(--sg-primary) !important;
     outline: none;
 }
+
+/* Scanner Threat Action Buttons */
+.sg-btn-quarantine,
+.sg-btn-delete {
+    cursor: pointer !important;
+    transition: all 0.3s ease !important;
+    font-weight: 600 !important;
+    text-transform: uppercase !important;
+    letter-spacing: 0.5px !important;
+    border-radius: 8px !important;
+    border: 1px solid transparent !important;
+    background: transparent !important;
+}
+
+.sg-btn-quarantine:hover,
+.sg-btn-delete:hover {
+    transform: translateY(-2px) !important;
+    box-shadow: 0 8px 20px rgba(0, 0, 0, 0.25) !important;
+}
+
+.sg-btn-quarantine:active,
+.sg-btn-delete:active {
+    transform: translateY(0) !important;
+    box-shadow: none !important;
+}
+
+.sg-btn-quarantine:hover {
+    background: rgba(255, 193, 7, 0.25) !important;
+    border-color: rgba(255, 193, 7, 0.6) !important;
+}
+
+.sg-btn-delete:hover {
+    background: rgba(233, 69, 96, 0.25) !important;
+    border-color: rgba(233, 69, 96, 0.6) !important;
+}
+
+.sg-btn-quarantine:disabled,
+.sg-btn-delete:disabled {
+    opacity: 0.4 !important;
+    cursor: not-allowed !important;
+    transform: none !important;
+    box-shadow: none !important;
+}
