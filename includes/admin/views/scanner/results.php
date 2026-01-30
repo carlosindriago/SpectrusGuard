@@ -126,18 +126,21 @@ if (!defined('ABSPATH')) {
                                             <button type="button" class="sg-btn sg-btn-whitelist sg-btn-sm"
                                                 data-file="<?php echo esc_attr($issue['file']); ?>"
                                                 data-index="<?php echo esc_attr($index); ?>"
+                                                aria-label="<?php echo esc_attr(sprintf(__('Whitelist %s', 'spectrus-guard'), $issue['file'])); ?>"
                                                 style="background: rgba(34, 197, 94, 0.15); border: 1px solid rgba(34, 197, 94, 0.4); color: #22c55e; padding: 8px 16px; font-size: 12px; border-radius: 6px; font-weight: 600;">
                                                 ✓ Whitelist
                                             </button>
                                             <button type="button" class="sg-btn sg-btn-quarantine sg-btn-sm"
                                                 data-file="<?php echo esc_attr($issue['file']); ?>"
                                                 data-index="<?php echo esc_attr($index); ?>"
+                                                aria-label="<?php echo esc_attr(sprintf(__('Quarantine %s', 'spectrus-guard'), $issue['file'])); ?>"
                                                 style="background: rgba(255, 193, 7, 0.15); border: 1px solid rgba(255, 193, 7, 0.4); color: #ffc107; padding: 8px 16px; font-size: 12px; border-radius: 6px; font-weight: 600;">
                                                 🔒 Quarantine
                                             </button>
                                             <button type="button" class="sg-btn sg-btn-delete sg-btn-sm"
                                                 data-file="<?php echo esc_attr($issue['file']); ?>"
                                                 data-index="<?php echo esc_attr($index); ?>"
+                                                aria-label="<?php echo esc_attr(sprintf(__('Delete %s', 'spectrus-guard'), $issue['file'])); ?>"
                                                 style="background: rgba(233, 69, 96, 0.15); border: 1px solid rgba(233, 69, 96, 0.4); color: #e94560; padding: 8px 16px; font-size: 12px; border-radius: 6px; font-weight: 600;">
                                                 🗑️ Delete
                                             </button>

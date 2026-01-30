@@ -351,18 +351,21 @@
                 html += '<button type="button" class="sg-btn sg-btn-whitelist" ' +
                     'data-file="' + $('<div/>').text(issue.file).html() + '" ' +
                     'data-index="' + index + '" ' +
+                    'aria-label="Whitelist ' + $('<div/>').text(issue.file).html() + '" ' +
                     'style="background: rgba(34, 197, 94, 0.15); border: 1px solid rgba(34, 197, 94, 0.4); color: #22c55e; padding: 10px 20px; font-size: 13px; border-radius: 8px; font-weight: 600; transition: all 0.3s ease;">' +
                     '✓ Whitelist' +
                     '</button>' +
                     '<button type="button" class="sg-btn sg-btn-quarantine" ' +
                     'data-file="' + $('<div/>').text(issue.file).html() + '" ' +
                     'data-index="' + index + '" ' +
+                    'aria-label="Quarantine ' + $('<div/>').text(issue.file).html() + '" ' +
                     'style="background: rgba(255, 193, 7, 0.15); border: 1px solid rgba(255, 193, 7, 0.4); color: #ffc107; padding: 10px 20px; font-size: 13px; border-radius: 8px; font-weight: 600; transition: all 0.3s ease;">' +
                     '🔒 ' + (SpectrusGuardScanner.i18n.quarantine || 'Quarantine') +
                     '</button>' +
                     '<button type="button" class="sg-btn sg-btn-delete" ' +
                     'data-file="' + $('<div/>').text(issue.file).html() + '" ' +
                     'data-index="' + index + '" ' +
+                    'aria-label="Delete ' + $('<div/>').text(issue.file).html() + '" ' +
                     'style="background: rgba(233, 69, 96, 0.15); border: 1px solid rgba(233, 69, 96, 0.4); color: #e94560; padding: 10px 20px; font-size: 13px; border-radius: 8px; font-weight: 600; transition: all 0.3s ease;">' +
                     '🗑️ ' + (SpectrusGuardScanner.i18n.delete || 'Delete') +
                     '</button>';
@@ -572,7 +575,9 @@
                 return;
             }
 
-            $btn.prop('disabled', true);
+            var originalText = $btn.html();
+            $btn.prop('disabled', true)
+                .html('<span class="dashicons dashicons-update dashicons-spin"></span> ' + ((SpectrusGuardScanner.i18n && SpectrusGuardScanner.i18n.deleting) || 'Deleting...'));
 
             $.ajax({
                 url: SpectrusGuardScanner.ajax_url || SpectrusGuard.ajax_url,
@@ -594,7 +599,7 @@
                     SpectrusGuardAdmin.showNotice('error', (SpectrusGuardScanner.i18n && SpectrusGuardScanner.i18n.delete_failed) || 'Failed to delete file.');
                 },
                 complete: function () {
-                    $btn.prop('disabled', false);
+                    $btn.prop('disabled', false).html(originalText);
                 }
             });
         },
@@ -610,7 +615,9 @@
                 return;
             }
 
-            $btn.prop('disabled', true);
+            var originalText = $btn.html();
+            $btn.prop('disabled', true)
+                .html('<span class="dashicons dashicons-update dashicons-spin"></span> ' + ((SpectrusGuardScanner.i18n && SpectrusGuardScanner.i18n.quarantining) || 'Quarantining...'));
 
             $.ajax({
                 url: SpectrusGuardScanner.ajax_url || SpectrusGuard.ajax_url,
@@ -643,7 +650,7 @@
                     SpectrusGuardAdmin.showNotice('error', (SpectrusGuardScanner.i18n && SpectrusGuardScanner.i18n.quarantine_failed) || 'Failed to quarantine file.');
                 },
                 complete: function () {
-                    $btn.prop('disabled', false);
+                    $btn.prop('disabled', false).html(originalText);
                 }
             });
         },
@@ -671,7 +678,9 @@
                 return; // User cancelled
             }
 
-            $btn.prop('disabled', true);
+            var originalText = $btn.html();
+            $btn.prop('disabled', true)
+                .html('<span class="dashicons dashicons-update dashicons-spin"></span> ' + ((SpectrusGuardScanner.i18n && SpectrusGuardScanner.i18n.whitelisting) || 'Whitelisting...'));
 
             $.ajax({
                 url: SpectrusGuardScanner.ajax_url || SpectrusGuard.ajax_url,
@@ -697,12 +706,12 @@
                         });
                     } else {
                         SpectrusGuardAdmin.showNotice('error', response.data.message);
-                        $btn.prop('disabled', false);
+                        $btn.prop('disabled', false).html(originalText);
                     }
                 },
                 error: function () {
                     SpectrusGuardAdmin.showNotice('error', 'Failed to whitelist file.');
-                    $btn.prop('disabled', false);
+                    $btn.prop('disabled', false).html(originalText);
                 }
             });
         },
