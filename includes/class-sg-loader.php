@@ -318,6 +318,7 @@ class SG_Loader
             return;
         }
 
+        // Base styles (always load on our pages)
         wp_enqueue_style(
             'spectrus-guard-admin',
             SG_PLUGIN_URL . 'assets/css/admin.css',
@@ -325,7 +326,7 @@ class SG_Loader
             SG_VERSION
         );
 
-        // Enqueue Chart.js
+        // Enqueue Chart.js for dashboard
         wp_enqueue_script(
             'chart-js',
             'https://cdn.jsdelivr.net/npm/chart.js',
@@ -334,6 +335,7 @@ class SG_Loader
             true
         );
 
+        // Base admin script (always load on our pages)
         wp_enqueue_script(
             'spectrus-guard-admin',
             SG_PLUGIN_URL . 'assets/js/admin.js',
@@ -342,19 +344,109 @@ class SG_Loader
             true
         );
 
+        // Localize base script with common data
         wp_localize_script(
-                'spectrus-guard-admin',
+            'spectrus-guard-admin',
             'SpectrusGuard',
             array(
                 'ajax_url' => admin_url('admin-ajax.php'),
                 'nonce' => wp_create_nonce('spectrus_guard_nonce'),
                 'i18n' => array(
-                    'scanning' => __('Scanning...', 'spectrus-guard'),
-                    'complete' => __('Scan Complete', 'spectrus-guard'),
+                    'copied' => __('Copied!', 'spectrus-guard'),
                     'error' => __('An error occurred', 'spectrus-guard'),
+                    'confirm_clear' => __('Are you sure you want to clear all logs?', 'spectrus-guard'),
                 ),
             )
         );
+
+        // Scanner-specific assets
+        if ($hook === 'toplevel_page_spectrus-guard-scanner' ||
+            $hook === 'spectrus-guard_page_spectrus-guard-scanner') {
+
+            wp_enqueue_script(
+                'spectrus-guard-scanner',
+                SG_PLUGIN_URL . 'assets/js/admin/scanner.js',
+                array('jquery'),
+                SG_VERSION,
+                true
+            );
+
+            // Localize scanner script with scanner-specific data
+            wp_localize_script(
+                'spectrus-guard-scanner',
+                'SpectrusGuard',
+                array(
+                    'ajax_url' => admin_url('admin-ajax.php'),
+                    'nonce' => wp_create_nonce('spectrus_guard_nonce'),
+                    'i18n' => array(
+                        // Scan-related strings
+                        'scan_complete' => __('Scan Complete!', 'spectrus-guard'),
+                        'scan_failed' => __('Scan failed', 'spectrus-guard'),
+                        'scan_error' => __('An error occurred during scan.', 'spectrus-guard'),
+                        'scanning' => __('Scanning...', 'spectrus-guard'),
+
+                        // Results-related strings
+                        'security_issues_found' => __('Security Issues Found', 'spectrus-guard'),
+                        'we_found_issues' => __('We found', 'spectrus-guard'),
+                        'potential_security_issues' => __('potential security issues', 'spectrus-guard'),
+                        'site_clean' => __('Your Site is Clean!', 'spectrus-guard'),
+                        'clean_scan_message' => __('Great news! The scan didn\'t detect any security issues. Your WordPress installation appears to be secure.', 'spectrus-guard'),
+                        'what_we_checked' => __('What We Checked', 'spectrus-guard'),
+                        'check_core' => __('WordPress core file integrity', 'spectrus-guard'),
+                        'check_uploads' => __('PHP files in uploads directory', 'spectrus-guard'),
+                        'check_suspicious' => __('Hidden and suspicious files', 'spectrus-guard'),
+                        'check_permissions' => __('File permissions', 'spectrus-guard'),
+                        'check_malware' => __('Known malware signatures', 'spectrus-guard'),
+                        'what_threats_mean' => __('What These Threats Mean', 'spectrus-guard'),
+                        'threats_detected' => __('threats detected', 'spectrus-guard'),
+                        'recommended_actions' => __('Recommended Actions:', 'spectrus-guard'),
+                        'affected_files' => __('Affected Files', 'spectrus-guard'),
+                        'continue' => __('Continue', 'spectrus-guard'),
+                        'return_scanner' => __('Return to Scanner', 'spectrus-guard'),
+
+                        // Action buttons
+                        'quarantine' => __('Quarantine', 'spectrus-guard'),
+                        'delete' => __('Delete', 'spectrus-guard'),
+                        'restore_core' => __('Restore from WordPress core', 'spectrus-guard'),
+
+                        // Confirmation dialogs
+                        'confirm_delete' => __('Are you sure you want to delete this file?', 'spectrus-guard'),
+                        'confirm_quarantine' => __('Are you sure you want to quarantine this file?', 'spectrus-guard'),
+                        'delete_failed' => __('Failed to delete file.', 'spectrus-guard'),
+                        'quarantine_failed' => __('Failed to quarantine file.', 'spectrus-guard'),
+
+                        // Threat explanations
+                        'threat_core_title' => __('WordPress Core Integrity', 'spectrus-guard'),
+                        'threat_core_desc' => __('Modified or missing WordPress core files can indicate a compromised installation. Attackers may alter core files to maintain persistent access, execute malicious code, or redirect traffic.', 'spectrus-guard'),
+                        'threat_core_action1' => __('Restore the modified files from a clean WordPress installation', 'spectrus-guard'),
+                        'threat_core_action2' => __('Check your WordPress version and update if needed', 'spectrus-guard'),
+                        'threat_core_action3' => __('Review the file modifications to understand what was changed', 'spectrus-guard'),
+
+                        'threat_uploads_title' => __('PHP Files in Uploads', 'spectrus-guard'),
+                        'threat_uploads_desc' => __('PHP files in the uploads directory are almost always malicious. The uploads folder should only contain media files (images, videos, documents). Attackers upload PHP scripts here to create backdoors and maintain access to your site.', 'spectrus-guard'),
+                        'threat_uploads_action1' => __('Delete all PHP files from the uploads directory', 'spectrus-guard'),
+                        'threat_uploads_action2' => __('Review the file contents to understand what the backdoor does', 'spectrus-guard'),
+                        'threat_uploads_action3' => __('Check your access logs to see how the file was uploaded', 'spectrus-guard'),
+
+                        'threat_suspicious_title' => __('Suspicious Files', 'spectrus-guard'),
+                        'threat_suspicious_desc' => __('Hidden files or files with dangerous permissions may indicate malware activity. Hidden files are often used to store malicious code, while world-writable permissions can allow attackers to modify files.', 'spectrus-guard'),
+                        'threat_suspicious_action1' => __('Review hidden files to determine if they are legitimate', 'spectrus-guard'),
+                        'threat_suspicious_action2' => __('Fix dangerous file permissions (should be 644 for files, 755 for directories)', 'spectrus-guard'),
+                        'threat_suspicious_action3' => __('Delete files you don\'t recognize', 'spectrus-guard'),
+
+                        'threat_malware_title' => __('Malware Detected', 'spectrus-guard'),
+                        'threat_malware_desc' => __('Malware signatures were detected in your files. These patterns match known malicious code used by attackers for backdoors, shell access, data theft, spam campaigns, or cryptocurrency mining.', 'spectrus-guard'),
+                        'threat_malware_action1' => __('Review the infected files and the malware patterns detected', 'spectrus-guard'),
+                        'threat_malware_action2' => __('Delete or clean the infected files immediately', 'spectrus-guard'),
+                        'threat_malware_action3' => __('Scan from a clean computer to detect malware on your local system', 'spectrus-guard'),
+                        'threat_malware_action4' => __('Change all passwords (WordPress, FTP, database, hosting)', 'spectrus-guard'),
+
+                        'threat_default_desc' => __('Potential security issue detected.', 'spectrus-guard'),
+                        'threat_default_action' => __('Review the file and determine if it is legitimate', 'spectrus-guard'),
+                    ),
+                )
+            );
+        }
     }
 
     /**
