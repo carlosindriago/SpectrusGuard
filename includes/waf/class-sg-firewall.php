@@ -424,38 +424,52 @@ class SG_Firewall
     /**
      * Get the client's real IP address
      *
-     * Handles proxies and load balancers.
+     * Handles proxies and load balancers securely.
      *
      * @return string Client IP address.
      */
     public function get_client_ip()
     {
-        $ip_keys = array(
-            'HTTP_CF_CONNECTING_IP', // Cloudflare
-            'HTTP_X_FORWARDED_FOR',  // Proxy
-            'HTTP_X_REAL_IP',        // Nginx proxy
-            'HTTP_CLIENT_IP',        // Client IP
-            'REMOTE_ADDR',           // Standard
+        // Check Cloudflare first
+        if (!empty($_SERVER['HTTP_CF_CONNECTING_IP']) && filter_var($_SERVER['HTTP_CF_CONNECTING_IP'], FILTER_VALIDATE_IP)) {
+            return $_SERVER['HTTP_CF_CONNECTING_IP'];
+        }
+
+        $remote_addr = $_SERVER['REMOTE_ADDR'] ?? '0.0.0.0';
+
+        // Check if REMOTE_ADDR is a private/reserved IP (indicating a proxy)
+        $is_public = filter_var(
+            $remote_addr,
+            FILTER_VALIDATE_IP,
+            FILTER_FLAG_NO_PRIV_RANGE | FILTER_FLAG_NO_RES_RANGE
         );
 
-        foreach ($ip_keys as $key) {
-            if (!empty($_SERVER[$key])) {
-                $ip = $_SERVER[$key];
+        // If REMOTE_ADDR is private/reserved, we trust standard proxy headers
+        if ($is_public === false) {
+            $ip_keys = array(
+                'HTTP_X_FORWARDED_FOR',  // Proxy
+                'HTTP_X_REAL_IP',        // Nginx proxy
+            );
 
-                // Handle comma-separated IPs (X-Forwarded-For)
-                if (strpos($ip, ',') !== false) {
-                    $ips = explode(',', $ip);
-                    $ip = trim($ips[0]);
-                }
+            foreach ($ip_keys as $key) {
+                if (!empty($_SERVER[$key])) {
+                    $ip = $_SERVER[$key];
 
-                // Validate IP
-                if (filter_var($ip, FILTER_VALIDATE_IP)) {
-                    return $ip;
+                    // Handle comma-separated IPs (X-Forwarded-For)
+                    if (strpos($ip, ',') !== false) {
+                        $ips = explode(',', $ip);
+                        $ip = trim($ips[0]);
+                    }
+
+                    // Validate IP
+                    if (filter_var($ip, FILTER_VALIDATE_IP)) {
+                        return $ip;
+                    }
                 }
             }
         }
 
-        return '0.0.0.0';
+        return $remote_addr;
     }
 
     /**
