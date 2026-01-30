@@ -356,281 +356,18 @@ class SG_Scanner
      */
     private function calculate_summary()
     {
-        $all_issues = array_merge(
-            $this->results['core_integrity'],
-            $this->results['uploads_php'],
-            $this->results['suspicious'],
-            $this->results['malware']
-        );
+        // Use the grouped results logic to ensure counts match the display list
+        // Pass $this->results as the raw source
+        $grouped_issues = $this->group_raw_results($this->results);
 
-        foreach ($all_issues as $issue) {
+        foreach ($grouped_issues as $file_data) {
             $this->results['summary']['total_issues']++;
 
-            $severity = $issue['severity'] ?? self::SEVERITY_LOW;
+            $severity = $file_data['severity'] ?? self::SEVERITY_LOW;
             if (isset($this->results['summary'][$severity])) {
                 $this->results['summary'][$severity]++;
             }
         }
-    }
-
-    /**
-     * Update scan progress
-     *
-     * @param int    $percentage Progress percentage (0-100).
-     * @param string $message    Current activity message.
-     */
-    private function update_progress($percentage, $message)
-    {
-        set_transient(self::PROGRESS_TRANSIENT, array(
-            'percentage' => min(100, max(0, $percentage)),
-            'message' => $message,
-            'timestamp' => current_time('mysql'),
-        ), 300); // 5 minutes expiration
-    }
-
-    /**
-     * Clear progress tracking
-     */
-    public function clear_progress()
-    {
-        delete_transient(self::PROGRESS_TRANSIENT);
-    }
-
-    /**
-     * Get current progress
-     *
-     * @return array|null Progress data or null.
-     */
-    public function get_progress()
-    {
-        return get_transient(self::PROGRESS_TRANSIENT);
-    }
-
-    /**
-     * Get severity for core file issue
-     *
-     * @param array $file File data.
-     * @return string Severity level.
-     */
-    private function get_core_file_severity($file)
-    {
-        // Critical files
-        $critical_patterns = array(
-            'wp-config.php',
-            'wp-includes/version.php',
-            'wp-includes/class-wp.php',
-            'wp-admin/includes/file.php',
-        );
-
-        foreach ($critical_patterns as $pattern) {
-            if (strpos($file['file'], $pattern) !== false) {
-                return self::SEVERITY_CRITICAL;
-            }
-        }
-
-        if ($file['status'] === 'modified') {
-            return self::SEVERITY_HIGH;
-        }
-
-        return self::SEVERITY_MEDIUM;
-    }
-
-    /**
-     * Get message for core file issue
-     *
-     * @param array $file File data.
-     * @return string Message.
-     */
-    private function get_core_file_message($file)
-    {
-        switch ($file['status']) {
-            case 'modified':
-                return __('Core file has been modified from original', 'spectrus-guard');
-            case 'missing':
-                return __('Core file is missing', 'spectrus-guard');
-            case 'unknown':
-                return __('Unknown file in WordPress core directory', 'spectrus-guard');
-            default:
-                return __('File integrity issue detected', 'spectrus-guard');
-        }
-    }
-
-    /**
-     * Get plugin directory path for exclusion
-     *
-     * @return string Plugin directory path.
-     */
-    private function get_plugin_dir()
-    {
-        return trailingslashit(SG_PLUGIN_DIR);
-    }
-
-    /**
-     * Check if file is in plugin directory
-     *
-     * @param string $file_path File path to check.
-     * @return bool True if file is in plugin directory.
-     */
-    private function is_plugin_file($file_path)
-    {
-        $plugin_dir = $this->get_plugin_dir();
-
-        // Check if file path starts with plugin directory
-        return strpos($file_path, $plugin_dir) === 0;
-    }
-
-    /**
-     * Get all PHP files in WordPress installation
-     *
-     * @return array Array of PHP file paths.
-     */
-    private function get_all_php_files()
-    {
-        $php_files = array();
-        $directories = array(
-            ABSPATH . 'wp-content/plugins/',
-            ABSPATH . 'wp-content/themes/',
-            ABSPATH . 'wp-content/mu-plugins/',
-            ABSPATH . 'wp-content/uploads/',
-        );
-
-        foreach ($directories as $dir) {
-            if (!is_dir($dir)) {
-                continue;
-            }
-
-            $php_files = array_merge($php_files, $this->scan_directory_for_php($dir));
-        }
-
-        return $php_files;
-    }
-
-    /**
-     * Scan a directory recursively for PHP files
-     *
-     * @param string $directory Directory to scan.
-     * @return array Array of PHP file paths.
-     */
-    private function scan_directory_for_php($directory)
-    {
-        $php_files = array();
-        $iterator = new RecursiveIteratorIterator(
-            new RecursiveDirectoryIterator($directory, RecursiveDirectoryIterator::SKIP_DOTS),
-            RecursiveIteratorIterator::SELF_FIRST
-        );
-
-        $count = 0;
-        foreach ($iterator as $file) {
-            if (++$count > self::MAX_FILES_PER_DIR) {
-                break;
-            }
-
-            if (!$file->isFile()) {
-                continue;
-            }
-
-            $extension = strtolower(pathinfo($file->getFilename(), PATHINFO_EXTENSION));
-
-            // Solo archivos PHP y variantes ofuscadas
-            if (!in_array($extension, array('php', 'phtml', 'php5', 'php7', 'phps'), true)) {
-                continue;
-            }
-
-            $php_files[] = $file->getPathname();
-        }
-
-        return $php_files;
-    }
-
-    /**
-     * Clear cached results
-     *
-     * @return bool True on success.
-     */
-    public function clear_cache()
-    {
-        delete_transient(self::PROGRESS_TRANSIENT);
-        return delete_transient(self::RESULTS_TRANSIENT);
-    }
-
-    /**
-     * Get cached scan results
-     *
-     * @return array|false Cached results or false.
-     */
-    private function get_cached_results()
-    {
-        return get_transient(self::RESULTS_TRANSIENT);
-    }
-
-    /**
-     * Get last scan time
-     *
-     * @return string|null Last scan time or null.
-     */
-    public function get_last_scan_time()
-    {
-        return get_option('spectrus_shield_last_scan', null);
-    }
-
-    /**
-     * Check if a fresh scan is needed
-     *
-     * @return bool True if scan is older than cache expiration.
-     */
-    public function needs_fresh_scan()
-    {
-        $last_scan = $this->get_last_scan_time();
-
-        if (!$last_scan) {
-            return true;
-        }
-
-        $last_scan_time = strtotime($last_scan);
-        return (time() - $last_scan_time) > self::CACHE_EXPIRATION;
-    }
-
-    /**
-     * Schedule automatic scans
-     */
-    public function schedule_daily_scan()
-    {
-        if (!wp_next_scheduled('spectrus_shield_daily_scan')) {
-            wp_schedule_event(time(), 'daily', 'spectrus_shield_daily_scan');
-        }
-    }
-
-    /**
-     * Unschedule automatic scans
-     */
-    public function unschedule_scans()
-    {
-        wp_clear_scheduled_hook('spectrus_shield_daily_scan');
-    }
-
-    /**
-     * Get results formatted for display
-     *
-     * @return array Formatted results.
-     */
-    public function get_display_results()
-    {
-        $results = $this->get_cached_results();
-
-        if (!$results) {
-            return array(
-                'has_results' => false,
-                'message' => __('No scan results available. Run a scan to check your site.', 'spectrus-guard'),
-            );
-        }
-
-        return array(
-            'has_results' => true,
-            'scan_time' => $results['scan_time'],
-            'duration' => $results['duration'],
-            'summary' => $results['summary'],
-            'issues' => $this->flatten_issues($results),
-        );
     }
 
     /**
@@ -640,6 +377,41 @@ class SG_Scanner
      * @return array Flattened issues.
      */
     private function flatten_issues($results)
+    {
+        // Reuse the same grouping logic
+        $grouped = $this->group_raw_results($results);
+
+        // Format for display
+        $issues = array();
+        foreach ($grouped as $file => $data) {
+            // Unique values
+            $unique_cats = array_unique($data['categories']);
+            $unique_msgs = array_unique($data['messages']);
+
+            $issues[] = array(
+                'file' => $file,
+                'severity' => $data['severity'],
+                'category' => implode(', ', array_map('ucfirst', $unique_cats)),
+                // Join messages with a newline (will be handled by view)
+                'message' => implode("\n", $unique_msgs),
+            );
+        }
+
+        // Sort by severity
+        usort($issues, function ($a, $b) {
+            return $this->get_severity_value($a['severity']) - $this->get_severity_value($b['severity']);
+        });
+
+        return $issues;
+    }
+
+    /**
+     * Helper: Group raw results by file path
+     *
+     * @param array $results Raw results array.
+     * @return array Grouped results.
+     */
+    private function group_raw_results($results)
     {
         $grouped = array();
 
@@ -669,41 +441,28 @@ class SG_Scanner
         };
 
         // Process distinct result sets
-        foreach ($results['core_integrity'] as $issue) {
-            $process_item($issue, 'core');
+        if (!empty($results['core_integrity'])) {
+            foreach ($results['core_integrity'] as $issue) {
+                $process_item($issue, 'core');
+            }
         }
-        foreach ($results['uploads_php'] as $issue) {
-            $process_item($issue, 'uploads');
+        if (!empty($results['uploads_php'])) {
+            foreach ($results['uploads_php'] as $issue) {
+                $process_item($issue, 'uploads');
+            }
         }
-        foreach ($results['suspicious'] as $issue) {
-            $process_item($issue, 'suspicious');
+        if (!empty($results['suspicious'])) {
+            foreach ($results['suspicious'] as $issue) {
+                $process_item($issue, 'suspicious');
+            }
         }
-        foreach ($results['malware'] as $issue) {
-            $process_item($issue, 'malware');
-        }
-
-        // Flatten back to array
-        $issues = array();
-        foreach ($grouped as $file => $data) {
-            // Unique values
-            $unique_cats = array_unique($data['categories']);
-            $unique_msgs = array_unique($data['messages']);
-
-            $issues[] = array(
-                'file' => $file,
-                'severity' => $data['severity'],
-                'category' => implode(', ', array_map('ucfirst', $unique_cats)),
-                // Join messages with a newline (will be handled by view)
-                'message' => implode("\n", $unique_msgs),
-            );
+        if (!empty($results['malware'])) {
+            foreach ($results['malware'] as $issue) {
+                $process_item($issue, 'malware');
+            }
         }
 
-        // Sort by severity
-        usort($issues, function ($a, $b) {
-            return $this->get_severity_value($a['severity']) - $this->get_severity_value($b['severity']);
-        });
-
-        return $issues;
+        return $grouped;
     }
 
     /**
