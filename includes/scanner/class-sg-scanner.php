@@ -634,51 +634,93 @@ class SG_Scanner
     }
 
     /**
-     * Flatten all issues into a single array for display
+     * Flatten all issues into a single array for display, grouped by file
      *
      * @param array $results Scan results.
      * @return array Flattened issues.
      */
     private function flatten_issues($results)
     {
-        $issues = array();
+        $grouped = array();
 
-        // Core integrity
+        // Helper to process raw items
+        $process_item = function ($item, $category) use (&$grouped) {
+            $key = $item['file'];
+            if (!isset($grouped[$key])) {
+                $grouped[$key] = array(
+                    'file' => $key,
+                    'severity' => $item['severity'],
+                    'severity_val' => $this->get_severity_value($item['severity']),
+                    'categories' => array(),
+                    'messages' => array(),
+                );
+            }
+
+            // Update severity if this new item is higher (lower value)
+            $current_val = $this->get_severity_value($item['severity']);
+            if ($current_val < $grouped[$key]['severity_val']) {
+                $grouped[$key]['severity'] = $item['severity'];
+                $grouped[$key]['severity_val'] = $current_val;
+            }
+
+            // Add details
+            $grouped[$key]['categories'][] = $category;
+            $grouped[$key]['messages'][] = $item['message'];
+        };
+
+        // Process distinct result sets
         foreach ($results['core_integrity'] as $issue) {
-            $issue['category'] = 'core';
-            $issues[] = $issue;
+            $process_item($issue, 'core');
         }
-
-        // Uploads PHP
         foreach ($results['uploads_php'] as $issue) {
-            $issue['category'] = 'uploads';
-            $issues[] = $issue;
+            $process_item($issue, 'uploads');
         }
-
-        // Suspicious
         foreach ($results['suspicious'] as $issue) {
-            $issue['category'] = 'suspicious';
-            $issues[] = $issue;
+            $process_item($issue, 'suspicious');
+        }
+        foreach ($results['malware'] as $issue) {
+            $process_item($issue, 'malware');
         }
 
-        // Malware
-        foreach ($results['malware'] as $issue) {
-            $issue['category'] = 'malware';
-            $issues[] = $issue;
+        // Flatten back to array
+        $issues = array();
+        foreach ($grouped as $file => $data) {
+            // Unique values
+            $unique_cats = array_unique($data['categories']);
+            $unique_msgs = array_unique($data['messages']);
+
+            $issues[] = array(
+                'file' => $file,
+                'severity' => $data['severity'],
+                'category' => implode(', ', array_map('ucfirst', $unique_cats)),
+                // Join messages with a newline (will be handled by view)
+                'message' => implode("\n", $unique_msgs),
+            );
         }
 
         // Sort by severity
         usort($issues, function ($a, $b) {
-            $order = array(
-                self::SEVERITY_CRITICAL => 0,
-                self::SEVERITY_HIGH => 1,
-                self::SEVERITY_MEDIUM => 2,
-                self::SEVERITY_LOW => 3,
-                self::SEVERITY_INFO => 4,
-            );
-            return ($order[$a['severity']] ?? 5) - ($order[$b['severity']] ?? 5);
+            return $this->get_severity_value($a['severity']) - $this->get_severity_value($b['severity']);
         });
 
         return $issues;
+    }
+
+    /**
+     * Get numeric value for severity (lower is more critical)
+     *
+     * @param string $severity Severity slug.
+     * @return int Numeric weight.
+     */
+    private function get_severity_value($severity)
+    {
+        $order = array(
+            self::SEVERITY_CRITICAL => 1,
+            self::SEVERITY_HIGH => 2,
+            self::SEVERITY_MEDIUM => 3,
+            self::SEVERITY_LOW => 4,
+            self::SEVERITY_INFO => 5,
+        );
+        return isset($order[$severity]) ? $order[$severity] : 99;
     }
 }

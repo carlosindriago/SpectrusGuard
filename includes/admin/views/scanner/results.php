@@ -118,7 +118,7 @@ if (!defined('ABSPATH')) {
                                     <?php echo esc_html($issue['file']); ?>
                                 </td>
                                 <td style="color: var(--sg-text-primary);">
-                                    <?php echo esc_html($issue['message']); ?>
+                                    <?php echo nl2br(esc_html($issue['message'])); ?>
                                 </td>
                                 <td>
                                     <?php if ($can_delete): ?>
