@@ -1,0 +1,138 @@
+<?php
+/**
+ * Scan Results Template
+ *
+ * Template for displaying scan results or empty state.
+ *
+ * @package SpectrusGuard
+ * @since   1.0.0
+ */
+
+if (!defined('ABSPATH')) {
+    exit;
+}
+
+/** @var array|null $results */
+?>
+
+<?php if ($results && $results['has_results']): ?>
+
+    <!-- Summary Cards -->
+    <div class="sg-threat-intel-grid" style="margin-bottom: 24px;">
+        <div class="sg-stat-card <?php echo $results['summary']['critical'] > 0 ? 'danger-border' : ''; ?>">
+            <div class="sg-stat-icon critical">🚨</div>
+            <div class="sg-stat-data">
+                <span class="sg-stat-number">
+                    <?php echo esc_html($results['summary']['critical']); ?>
+                </span>
+                <span class="sg-stat-label">Critical Issues</span>
+            </div>
+        </div>
+        <div class="sg-stat-card <?php echo $results['summary']['high'] > 0 ? 'warning-border' : ''; ?>">
+            <div class="sg-stat-icon high">🔥</div>
+            <div class="sg-stat-data">
+                <span class="sg-stat-number">
+                    <?php echo esc_html($results['summary']['high']); ?>
+                </span>
+                <span class="sg-stat-label">High Priority</span>
+            </div>
+        </div>
+        <div class="sg-stat-card">
+            <div class="sg-stat-icon medium">⚠️</div>
+            <div class="sg-stat-data">
+                <span class="sg-stat-number">
+                    <?php echo esc_html($results['summary']['medium']); ?>
+                </span>
+                <span class="sg-stat-label">Medium Priority</span>
+            </div>
+        </div>
+        <div class="sg-stat-card">
+            <div class="sg-stat-icon low">ℹ️</div>
+            <div class="sg-stat-data">
+                <span class="sg-stat-number">
+                    <?php echo esc_html($results['summary']['low']); ?>
+                </span>
+                <span class="sg-stat-label">Low Priority</span>
+            </div>
+        </div>
+    </div>
+
+    <!-- Issues List -->
+    <div class="sg-card">
+        <div class="sg-card-header">
+            <h2>
+                <?php esc_html_e('Vulnerabilities Found', 'spectrus-guard'); ?>
+            </h2>
+        </div>
+        <div class="sg-card-body" style="padding: 0;">
+            <?php if (!empty($results['issues'])): ?>
+                <table class="sg-logs-table">
+                    <thead>
+                        <tr>
+                            <th style="width: 100px;">
+                                <?php esc_html_e('Severity', 'spectrus-guard'); ?>
+                            </th>
+                            <th style="width: 120px;">
+                                <?php esc_html_e('Category', 'spectrus-guard'); ?>
+                            </th>
+                            <th>
+                                <?php esc_html_e('Location', 'spectrus-guard'); ?>
+                            </th>
+                            <th>
+                                <?php esc_html_e('Issue Description', 'spectrus-guard'); ?>
+                            </th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <?php foreach ($results['issues'] as $issue): ?>
+                            <tr>
+                                <td>
+                                    <span
+                                        class="sg-badge sg-badge-<?php echo esc_attr(strtolower($issue['severity'])); ?>">
+                                        <?php echo esc_html(ucfirst($issue['severity'])); ?>
+                                    </span>
+                                </td>
+                                <td><span class="sg-tag">
+                                        <?php echo esc_html(ucfirst($issue['category'])); ?>
+                                    </span>
+                                </td>
+                                <td style="font-family: monospace; color: var(--sg-text-muted);">
+                                    <?php echo esc_html($issue['file']); ?>
+                                </td>
+                                <td style="color: var(--sg-text-primary);">
+                                    <?php echo esc_html($issue['message']); ?>
+                                </td>
+                            </tr>
+                        <?php endforeach; ?>
+                    </tbody>
+                </table>
+            <?php else: ?>
+                <div style="padding: 40px; text-align: center;">
+                    <div style="font-size: 48px; margin-bottom: 16px;">✅</div>
+                    <h3 style="margin: 0;">
+                        <?php esc_html_e('Clean Scan!', 'spectrus-guard'); ?>
+                    </h3>
+                    <p style="color: var(--sg-text-secondary);">
+                        <?php esc_html_e('No vulnerabilities detected in the last scan.', 'spectrus-guard'); ?>
+                    </p>
+                </div>
+            <?php endif; ?>
+        </div>
+    </div>
+
+<?php else: ?>
+    <!-- Empty State -->
+    <div class="sg-card" style="text-align: center; padding: 60px 20px;">
+        <div style="font-size: 64px; margin-bottom: 24px; opacity: 0.5;">🔍</div>
+        <h2>
+            <?php esc_html_e('No Scan Results Yet', 'spectrus-guard'); ?>
+        </h2>
+        <p style="color: var(--sg-text-secondary); max-width: 500px; margin: 0 auto 24px;">
+            <?php esc_html_e('Run your first security scan to detect malware, backdoors, and configuration issues on your WordPress site.', 'spectrus-guard'); ?>
+        </p>
+        <button type="button" class="sg-btn sg-btn-primary sg-btn-lg"
+            onclick="document.getElementById('sg-run-scan').click();">
+            <?php esc_html_e('Start Initial Scan', 'spectrus-guard'); ?>
+        </button>
+    </div>
+<?php endif; ?>
