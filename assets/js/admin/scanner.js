@@ -688,12 +688,7 @@
 
                         // Fade out the threat row
                         $('#threat-' + $btn.data('index')).fadeOut(300, function () {
-                            // Show info about whitelist
-                            var $info = $('<div style="margin-top: 16px; padding: 12px; background: rgba(34, 197, 94, 0.1); border: 1px solid rgba(34, 197, 94, 0.3); border-radius: 8px; text-align: center;">' +
-                                '<span style="color: #22c55e; font-weight: 600;">✓ File whitelisted successfully</span>' +
-                                '<br><span style="color: var(--sg-text-secondary); font-size: 13px;">Manage whitelisted files in: SpectrusGuard → Whitelist</span>' +
-                                '</div>');
-                            $(this).after($info).remove();
+                            $(this).remove();
                         });
                     } else {
                         SpectrusGuardAdmin.showNotice('error', response.data.message);
