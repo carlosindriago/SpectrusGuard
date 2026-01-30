@@ -169,37 +169,62 @@
         },
 
         /**
-         * Show admin notice
+         * Show admin notice (Toast style)
          */
         showNotice: function (type, message) {
-            var $notice = $(
-                '<div class="notice notice-' + type + ' is-dismissible sg-notice">' +
-                '<p>' + message + '</p>' +
-                '<button type="button" class="notice-dismiss">' +
-                '<span class="screen-reader-text">Dismiss</span>' +
-                '</button>' +
+            // Ensure container exists
+            var $container = $('.sg-toast-container');
+            if ($container.length === 0) {
+                $container = $('<div class="sg-toast-container"></div>');
+                $('body').append($container);
+            }
+
+            // Icons map
+            var icons = {
+                'success': '✅',
+                'error': '🚨',
+                'warning': '⚠️',
+                'info': 'ℹ️'
+            };
+
+            var icon = icons[type] || 'ℹ️';
+
+            var $toast = $(
+                '<div class="sg-toast ' + type + '">' +
+                '<div class="sg-toast-icon">' + icon + '</div>' +
+                '<div class="sg-toast-content">' +
+                '<div class="sg-toast-message">' + message + '</div>' +
+                '</div>' +
+                '<button type="button" class="sg-toast-close">&times;</button>' +
                 '</div>'
             );
 
-            // Remove existing notices
-            $('.sg-notice').remove();
+            // Append to container
+            $container.append($toast);
 
-            // Insert at top of content
-            $('.wrap h1').first().after($notice);
+            // Trigger animation
+            requestAnimationFrame(function () {
+                $toast.addClass('show');
+            });
 
-            // Auto dismiss after 5 seconds
-            setTimeout(function () {
-                $notice.fadeOut(300, function () {
-                    $(this).remove();
-                });
+            // Auto dismiss
+            var dismissTimeout = setTimeout(function () {
+                dismissToast($toast);
             }, 5000);
 
-            // Dismiss button handler
-            $notice.find('.notice-dismiss').on('click', function () {
-                $notice.fadeOut(300, function () {
-                    $(this).remove();
-                });
+            // Click to dismiss
+            $toast.on('click', function () {
+                dismissToast($toast);
             });
+
+            // Helper to dismiss
+            function dismissToast($t) {
+                clearTimeout(dismissTimeout);
+                $t.removeClass('show');
+                setTimeout(function () {
+                    $t.remove();
+                }, 300); // Wait for transition
+            }
         },
 
         /**
