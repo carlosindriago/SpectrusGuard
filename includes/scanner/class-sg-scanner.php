@@ -371,6 +371,266 @@ class SG_Scanner
     }
 
     /**
+     * Update scan progress
+     *
+     * @param int    $percentage Progress percentage (0-100).
+     * @param string $message    Current activity message.
+     */
+    private function update_progress($percentage, $message)
+    {
+        set_transient(self::PROGRESS_TRANSIENT, array(
+            'percentage' => min(100, max(0, $percentage)),
+            'message' => $message,
+            'timestamp' => current_time('mysql'),
+        ), 300); // 5 minutes expiration
+    }
+
+    /**
+     * Clear progress tracking
+     */
+    public function clear_progress()
+    {
+        delete_transient(self::PROGRESS_TRANSIENT);
+    }
+
+    /**
+     * Get current progress
+     *
+     * @return array|null Progress data or null.
+     */
+    public function get_progress()
+    {
+        return get_transient(self::PROGRESS_TRANSIENT);
+    }
+
+    /**
+     * Get severity for core file issue
+     *
+     * @param array $file File data.
+     * @return string Severity level.
+     */
+    private function get_core_file_severity($file)
+    {
+        // Critical files
+        $critical_patterns = array(
+            'wp-config.php',
+            'wp-includes/version.php',
+            'wp-includes/class-wp.php',
+            'wp-admin/includes/file.php',
+        );
+
+        foreach ($critical_patterns as $pattern) {
+            if (strpos($file['file'], $pattern) !== false) {
+                return self::SEVERITY_CRITICAL;
+            }
+        }
+
+        if ($file['status'] === 'modified') {
+            return self::SEVERITY_HIGH;
+        }
+
+        return self::SEVERITY_MEDIUM;
+    }
+
+    /**
+     * Get message for core file issue
+     *
+     * @param array $file File data.
+     * @return string Message.
+     */
+    private function get_core_file_message($file)
+    {
+        switch ($file['status']) {
+            case 'modified':
+                return __('Core file has been modified from original', 'spectrus-guard');
+            case 'missing':
+                return __('Core file is missing', 'spectrus-guard');
+            case 'unknown':
+                return __('Unknown file in WordPress core directory', 'spectrus-guard');
+            default:
+                return __('File integrity issue detected', 'spectrus-guard');
+        }
+    }
+
+    /**
+     * Get plugin directory path for exclusion
+     *
+     * @return string Plugin directory path.
+     */
+    private function get_plugin_dir()
+    {
+        return trailingslashit(SG_PLUGIN_DIR);
+    }
+
+    /**
+     * Check if file is in plugin directory
+     *
+     * @param string $file_path File path to check.
+     * @return bool True if file is in plugin directory.
+     */
+    private function is_plugin_file($file_path)
+    {
+        $plugin_dir = $this->get_plugin_dir();
+
+        // Check if file path starts with plugin directory
+        return strpos($file_path, $plugin_dir) === 0;
+    }
+
+    /**
+     * Get all PHP files in WordPress installation
+     *
+     * @return array Array of PHP file paths.
+     */
+    private function get_all_php_files()
+    {
+        $php_files = array();
+        $directories = array(
+            ABSPATH . 'wp-content/plugins/',
+            ABSPATH . 'wp-content/themes/',
+            ABSPATH . 'wp-content/mu-plugins/',
+            ABSPATH . 'wp-content/uploads/',
+        );
+
+        foreach ($directories as $dir) {
+            if (!is_dir($dir)) {
+                continue;
+            }
+
+            $php_files = array_merge($php_files, $this->scan_directory_for_php($dir));
+        }
+
+        return $php_files;
+    }
+
+    /**
+     * Scan a directory recursively for PHP files
+     *
+     * @param string $directory Directory to scan.
+     * @return array Array of PHP file paths.
+     */
+    private function scan_directory_for_php($directory)
+    {
+        $php_files = array();
+        $iterator = new RecursiveIteratorIterator(
+            new RecursiveDirectoryIterator($directory, RecursiveDirectoryIterator::SKIP_DOTS),
+            RecursiveIteratorIterator::SELF_FIRST
+        );
+
+        $count = 0;
+        foreach ($iterator as $file) {
+            if (++$count > self::MAX_FILES_PER_DIR) {
+                break;
+            }
+
+            if (!$file->isFile()) {
+                continue;
+            }
+
+            $extension = strtolower(pathinfo($file->getFilename(), PATHINFO_EXTENSION));
+
+            // Solo archivos PHP y variantes ofuscadas
+            if (!in_array($extension, array('php', 'phtml', 'php5', 'php7', 'phps'), true)) {
+                continue;
+            }
+
+            $php_files[] = $file->getPathname();
+        }
+
+        return $php_files;
+    }
+
+    /**
+     * Clear cached results
+     *
+     * @return bool True on success.
+     */
+    public function clear_cache()
+    {
+        delete_transient(self::PROGRESS_TRANSIENT);
+        return delete_transient(self::RESULTS_TRANSIENT);
+    }
+
+    /**
+     * Get cached scan results
+     *
+     * @return array|false Cached results or false.
+     */
+    private function get_cached_results()
+    {
+        return get_transient(self::RESULTS_TRANSIENT);
+    }
+
+    /**
+     * Get last scan time
+     *
+     * @return string|null Last scan time or null.
+     */
+    public function get_last_scan_time()
+    {
+        return get_option('spectrus_shield_last_scan', null);
+    }
+
+    /**
+     * Check if a fresh scan is needed
+     *
+     * @return bool True if scan is older than cache expiration.
+     */
+    public function needs_fresh_scan()
+    {
+        $last_scan = $this->get_last_scan_time();
+
+        if (!$last_scan) {
+            return true;
+        }
+
+        $last_scan_time = strtotime($last_scan);
+        return (time() - $last_scan_time) > self::CACHE_EXPIRATION;
+    }
+
+    /**
+     * Schedule automatic scans
+     */
+    public function schedule_daily_scan()
+    {
+        if (!wp_next_scheduled('spectrus_shield_daily_scan')) {
+            wp_schedule_event(time(), 'daily', 'spectrus_shield_daily_scan');
+        }
+    }
+
+    /**
+     * Unschedule automatic scans
+     */
+    public function unschedule_scans()
+    {
+        wp_clear_scheduled_hook('spectrus_shield_daily_scan');
+    }
+
+    /**
+     * Get results formatted for display
+     *
+     * @return array Formatted results.
+     */
+    public function get_display_results()
+    {
+        $results = $this->get_cached_results();
+
+        if (!$results) {
+            return array(
+                'has_results' => false,
+                'message' => __('No scan results available. Run a scan to check your site.', 'spectrus-guard'),
+            );
+        }
+
+        return array(
+            'has_results' => true,
+            'scan_time' => $results['scan_time'],
+            'duration' => $results['duration'],
+            'summary' => $results['summary'],
+            'issues' => $this->flatten_issues($results),
+        );
+    }
+
+    /**
      * Flatten all issues into a single array for display, grouped by file
      *
      * @param array $results Scan results.
