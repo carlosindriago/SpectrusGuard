@@ -201,15 +201,22 @@
                     'info': 'ℹ️'
                 };
 
-                var icon = icons[type] || 'ℹ️';
+                // Custom styles for Error type (Red background, Bold white text)
+                var containerStyle = 'color: #ffffff;';
+                var messageStyle = 'color: #ffffff; font-weight: 500;';
+
+                if (type === 'error') {
+                    containerStyle += ' background: #e94560; border-left-color: #ffffff;';
+                    messageStyle = 'color: #ffffff; font-weight: 700; font-size: 15px;';
+                }
 
                 var $toast = $(
-                    '<div class="sg-toast ' + type + '">' +
+                    '<div class="sg-toast ' + type + '" style="' + containerStyle + '">' +
                     '<div class="sg-toast-icon">' + icon + '</div>' +
                     '<div class="sg-toast-content">' +
-                    '<div class="sg-toast-message">' + message + '</div>' +
+                    '<div class="sg-toast-message" style="' + messageStyle + '">' + message + '</div>' + // Explicit styles
                     '</div>' +
-                    '<button type="button" class="sg-toast-close">&times;</button>' +
+                    '<button type="button" class="sg-toast-close" style="color: rgba(255,255,255,0.8);">&times;</button>' +
                     '</div>'
                 );
 
@@ -230,9 +237,12 @@
                 };
 
                 // Auto dismiss
+                // longer duration for errors
+                var duration = (type === 'error' || type === 'warning') ? 10000 : 5000;
+
                 var dismissTimeout = setTimeout(function () {
                     dismissToast($toast);
-                }, 5000);
+                }, duration);
 
                 // Click to dismiss
                 $toast.on('click', function () {

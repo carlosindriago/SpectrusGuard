@@ -155,6 +155,8 @@
          */
         showResults: function (results) {
             var $progressPanel = $('#sg-scan-progress');
+            var $progressBar = $('#sg-progress-bar');
+            var $progressLabel = $('#sg-progress-label');
 
             console.log('showResults called with:', results);
 
@@ -167,6 +169,10 @@
 
             console.log('Found issues:', results.issues.length);
 
+            // 1. Change progress bar to RED
+            $progressBar.css('background', '#e94560'); // Red color
+            $progressLabel.css('color', '#e94560').text((SpectrusGuardScanner.i18n && SpectrusGuardScanner.i18n.threats_found) || 'Threats Found!');
+
             // Group issues by category
             var grouped = {};
             $.each(results.issues, function (i, issue) {
@@ -176,17 +182,26 @@
                 grouped[issue.category].push(issue);
             });
 
+            // 2. Show Report Modal instead of Toast/Alert
+            this.showReportModal(results, grouped);
+
             // Build results HTML
             var html = this.buildResultsHTML(results, grouped);
 
             console.log('HTML generated, length:', html.length);
 
-            // Hide all progress elements
+            // Hide all progress elements (spinner, log) but KEEP the red bar for impact?
+            // User said "also the bar must turn red". 
+            // The current logic hides header/section. I will hide them to show results.
             $progressPanel.find('#sg-progress-header').fadeOut();
+            // $progressPanel.find('#sg-progress-section').fadeOut(); // Maybe keep it? No, duplicate info.
             $progressPanel.find('#sg-progress-section').fadeOut();
             $progressPanel.find('#sg-activity-log').fadeOut();
 
-            // Add results content
+            // Remove any existing results content to prevent duplicates logic
+            $('#sg-results-content').remove();
+
+            // Add new results content
             $progressPanel.append('<div id="sg-results-content" style="display: none;">' + html + '</div>');
             $('#sg-results-content').fadeIn();
 
@@ -714,6 +729,81 @@
             } else {
                 alert(message);
             }
+        },
+        /**
+         * Show Scan Report Modal
+         */
+        showReportModal: function (results, grouped) {
+            // Remove existing modal if any
+            $('.sg-modal-backdrop').remove();
+
+            var totalIssues = results.summary.total_issues;
+            var critical = results.summary.critical;
+            var high = results.summary.high;
+
+            var riskLevel = 'Medium';
+            var riskColor = '#ffc107'; // Yellow
+            if (critical > 0 || high > 0) {
+                riskLevel = 'Critical';
+                riskColor = '#e94560'; // Red
+            } else if (totalIssues === 0) {
+                riskLevel = 'Safe';
+                riskColor = '#10b981'; // Green
+            }
+
+            var affectedCategories = [];
+            if (grouped['malware']) affectedCategories.push('Malware');
+            if (grouped['uploads']) affectedCategories.push('Uploads');
+            if (grouped['core']) affectedCategories.push('Core Modified');
+            if (grouped['suspicious']) affectedCategories.push('Suspicious Files');
+
+            var modalHtml = '<div class="sg-modal-backdrop">' +
+                '<div class="sg-modal">' +
+                '<div class="sg-modal-header">' +
+                '<div class="sg-modal-icon">🚨</div>' +
+                '<h2 class="sg-modal-title">Security Threats Detected</h2>' +
+                '<p class="sg-modal-subtitle">Immediate attention required to secure your site.</p>' +
+                '</div>' +
+                '<div class="sg-modal-body">' +
+                '<div class="sg-report-grid">' +
+                '<div class="sg-report-item">' +
+                '<div class="sg-report-value" style="color: #e94560;">' + totalIssues + '</div>' +
+                '<div class="sg-report-label">Threats Found</div>' +
+                '</div>' +
+                '<div class="sg-report-item">' +
+                '<div class="sg-report-value" style="color: ' + riskColor + ';">' + riskLevel + '</div>' +
+                '<div class="sg-report-label">Risk Level</div>' +
+                '</div>' +
+                '</div>' +
+                '<div style="background: rgba(102, 126, 234, 0.05); padding: 16px; border-radius: 12px; margin-bottom: 8px;">' +
+                '<div style="font-weight: 600; color: var(--sg-text-primary); margin-bottom: 8px;">Compromised Areas:</div>' +
+                '<div style="color: var(--sg-text-secondary); line-height: 1.6;">' +
+                (affectedCategories.length ? affectedCategories.join(', ') : 'None') +
+                '</div>' +
+                '</div>' +
+                '</div>' +
+                '<div class="sg-modal-footer">' +
+                '<button type="button" class="sg-btn sg-btn-primary sg-btn-lg" id="sg-modal-accept" style="width: 100%; justify-content: center;">' +
+                'View Detailed Results' +
+                '</button>' +
+                '</div>' +
+                '</div>' +
+                '</div>';
+
+            $('body').append(modalHtml);
+
+            // Animate in
+            requestAnimationFrame(function () {
+                $('.sg-modal-backdrop').addClass('show');
+            });
+
+            // Bind close
+            $('#sg-modal-accept').on('click', function () {
+                $('.sg-modal-backdrop').removeClass('show');
+                setTimeout(function () {
+                    $('.sg-modal-backdrop').remove();
+                }, 300);
+            });
         }
     };
 
