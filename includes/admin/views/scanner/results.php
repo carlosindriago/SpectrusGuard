@@ -63,10 +63,6 @@ if (!defined('ABSPATH')) {
             <h2>
                 <?php esc_html_e('Vulnerabilities Found', 'spectrus-guard'); ?>
             </h2>
-            <button type="button" class="sg-btn sg-btn-primary" onclick="document.getElementById('sg-run-scan').click()">
-                <span class="dashicons dashicons-search"></span>
-                <?php esc_html_e('Run New Scan', 'spectrus-guard'); ?>
-            </button>
         </div>
         <div class="sg-card-body" style="padding: 0;">
             <?php if (!empty($results['issues'])): ?>
