@@ -54,3 +54,29 @@ wp-config.php
 
 # Plugin specific
 /languages/*.mo
+
+# AI Assistant Config Files (LOCAL ONLY - never commit)
+.claude/
+.cursor/
+.aider/
+.cursorrules
+.claude-settings.json
+.ai-config/
+.aicomposer/
+.copilot/
+.continue/
+.tabby/
+
+# AI Prompts & Context
+.prompts/
+.ai-context/
+.ai-prompts/
+
+# AI Agent Sessions & Cache
+.agent/sessions/
+.agent/cache/
+.agent/tmp/
+.agent/.history/
+
+# Keep AI workflows documentation (intentionally committed)
+!.agent/workflows/
