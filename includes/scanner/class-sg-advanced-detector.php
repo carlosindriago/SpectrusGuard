@@ -169,8 +169,7 @@ class SG_Advanced_Detector
         $threats = array_merge($threats, $upload_threats);
 
         // 10. Cryptocurrency Mining Detection (JS files)
-        $extension = pathinfo($file_path, PATHINFO_EXTENSION);
-        if ($extension === 'js') {
+        if (strpos($file_path, '.js') !== false || pathinfo($file_path, PATHINFO_EXTENSION) === 'js') {
             $crypto_threats = $this->detect_crypto_mining($file_path, $content);
             $threats = array_merge($threats, $crypto_threats);
         }
@@ -444,26 +443,26 @@ class SG_Advanced_Detector
     {
         $threats = array();
 
-        // Pattern: echo $_GET/$_POST without sanitization
+        // Pattern: echo/print with user input without sanitization
         $xss_patterns = array(
-            '/echo\s+\$_(GET|POST|REQUEST|COOKIE)\s*\[/i',
-            '/print\s+\$_(GET|POST|REQUEST|COOKIE)\s*\[/i',
-            '/print_r\s*\(\s*\$_(GET|POST|REQUEST|COOKIE)\s*\[/i',
+            '/echo\s+[^;]*\$_(GET|POST|REQUEST|COOKIE)\[/i',
+            '/echo\s+["\'][^"\']*.\$_(GET|POST|REQUEST|COOKIE)\[/i',
+            '/print\s+[^;]*\$_(GET|POST|REQUEST|COOKIE)\[/i',
         );
 
         foreach ($xss_patterns as $pattern) {
             if (preg_match($pattern, $content, $match, PREG_OFFSET_CAPTURE)) {
                 // Check if there's sanitization nearby
-                $snippet = substr($content, max(0, $match[0][1] - 100), 200);
-                $has_sanitization = preg_match('/(esc_html|esc_attr|esc_url|sanitize_|wp_kses)/i', $snippet);
+                $snippet = substr($content, max(0, $match[0][1] - 150), 300);
+                $has_sanitization = preg_match('/(esc_html|esc_attr|esc_url|htmlspecialchars|sanitize_|wp_kses)/i', $snippet);
 
                 if (!$has_sanitization) {
                     $line = substr_count(substr($content, 0, $match[0][1]), "\n") + 1;
                     $threats[] = array(
-                        'file' => str_replace(ABSPATH, '', $file_path),
+                        'file' => defined('ABSPATH') ? str_replace(ABSPATH, '', $file_path) : $file_path,
                         'type' => 'xss_vulnerability',
-                        'severity' => 'CRITICAL',
-                        'description' => 'Unsanitized output of user input (XSS vulnerability)',
+                        'severity' => 'HIGH',
+                        'description' => 'XSS: Unescaped user input in output',
                         'line' => $line,
                     );
                 }
@@ -587,11 +586,11 @@ class SG_Advanced_Detector
     {
         $threats = array();
 
-        // Pattern 1: $wpdb->query() without $wpdb->prepare()
-        if (preg_match('/\$wpdb->query\s*\(\s*["\'].*\$\w+/s', $content, $match, PREG_OFFSET_CAPTURE)) {
+        // Pattern 1: $wpdb->query() with variable (not using prepare)
+        if (preg_match('/\$wpdb->query\s*\(\s*\$/s', $content, $match, PREG_OFFSET_CAPTURE)) {
             // Check for prepare() in a reasonable proximity
-            $start = max(0, $match[0][1] - 500);
-            $snippet = substr($content, $start, 1000);
+            $start = max(0, $match[0][1] - 800);
+            $snippet = substr($content, $start, 1600);
 
             if (!preg_match('/\$wpdb->prepare\s*\(/', $snippet)) {
                 $line = substr_count(substr($content, 0, $match[0][1]), "\n") + 1;
@@ -599,10 +598,22 @@ class SG_Advanced_Detector
                     'file' => defined('ABSPATH') ? str_replace(ABSPATH, '', $file_path) : $file_path,
                     'type' => 'sql_injection',
                     'severity' => 'CRITICAL',
-                    'description' => 'SQL Injection: Direct variable interpolation in query without prepare()',
+                    'description' => 'SQL Injection: Direct variable in query without prepare()',
                     'line' => $line,
                 );
             }
+        }
+
+        // Pattern 1b: SQL string concatenation with variables
+        if (preg_match('/\$sql\s*=\s*["\'][^"\']*(INSERT|SELECT|UPDATE|DELETE)[^"\']*.\s*\$/is', $content, $match, PREG_OFFSET_CAPTURE)) {
+            $line = substr_count(substr($content, 0, $match[0][1]), "\n") + 1;
+            $threats[] = array(
+                'file' => defined('ABSPATH') ? str_replace(ABSPATH, '', $file_path) : $file_path,
+                'type' => 'sql_injection',
+                'severity' => 'CRITICAL',
+                'description' => 'SQL Injection: Variable concatenation in SQL query',
+                'line' => $line,
+            );
         }
 
         // Pattern 2: Direct $_GET/$_POST in SQL queries
