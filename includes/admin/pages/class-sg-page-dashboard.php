@@ -117,7 +117,7 @@ class SG_Page_Dashboard
                         </div>
                         <a href="<?php echo esc_url(admin_url('admin.php?page=spectrus-guard-scanner')); ?>"
                             class="sg-btn sg-btn-primary">
-                            <span class="dashicons dashicons-search"></span>
+                            <span class="dashicons dashicons-search" aria-hidden="true"></span>
                             <?php esc_html_e('Run New Scan', 'spectrus-guard'); ?>
                         </a>
                     </div>
@@ -189,7 +189,7 @@ class SG_Page_Dashboard
                             <div class="sg-action-list">
                                 <a href="<?php echo esc_url(admin_url('admin.php?page=spectrus-guard&tab=logs')); ?>"
                                     class="sg-action-item">
-                                    <span class="dashicons dashicons-media-text"></span>
+                                    <span class="dashicons dashicons-media-text" aria-hidden="true"></span>
                                     <span class="sg-action-text">
                                         <?php esc_html_e('View Firewall Logs', 'spectrus-guard'); ?>
                                     </span>
@@ -197,7 +197,7 @@ class SG_Page_Dashboard
                                 </a>
                                 <a href="<?php echo esc_url(admin_url('admin.php?page=spectrus-guard-settings')); ?>"
                                     class="sg-action-item">
-                                    <span class="dashicons dashicons-admin-settings"></span>
+                                    <span class="dashicons dashicons-admin-settings" aria-hidden="true"></span>
                                     <span class="sg-action-text">
                                         <?php esc_html_e('Global Settings', 'spectrus-guard'); ?>
                                     </span>
@@ -205,7 +205,7 @@ class SG_Page_Dashboard
                                 </a>
                                 <a href="<?php echo esc_url(admin_url('admin.php?page=spectrus-guard-firewall&tab=geo')); ?>"
                                     class="sg-action-item">
-                                    <span class="dashicons dashicons-shield"></span>
+                                    <span class="dashicons dashicons-shield" aria-hidden="true"></span>
                                     <span class="sg-action-text">
                                         <?php esc_html_e('Manage IP Whitelist', 'spectrus-guard'); ?>
                                     </span>
@@ -358,11 +358,11 @@ class SG_Page_Dashboard
                                 </h2>
                                 <div class="sg-header-actions">
                                     <button type="button" class="sg-btn sg-btn-danger" id="sg-clear-logs">
-                                        <span class="dashicons dashicons-trash"></span>
+                                        <span class="dashicons dashicons-trash" aria-hidden="true"></span>
                                         <?php esc_html_e('Clear Logs', 'spectrus-guard'); ?>
                                     </button>
                                     <button type="button" class="sg-btn sg-btn-secondary" id="sg-refresh-logs">
-                                        <span class="dashicons dashicons-update"></span>
+                                        <span class="dashicons dashicons-update" aria-hidden="true"></span>
                                         <?php esc_html_e('Refresh', 'spectrus-guard'); ?>
                                     </button>
                                 </div>
