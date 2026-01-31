@@ -790,6 +790,10 @@ class SG_Advanced_Detector
 
         return $threats;
     }
+
+    /**
+     * Detect Local File Inclusion (LFI) vulnerabilities
+     *
      * @param string $file_path File path.
      * @param string $content File content.
      * @return array Threats found.
@@ -811,9 +815,9 @@ class SG_Advanced_Detector
                 // Check if there's path validation nearby
                 $start = max(0, $match[0][1] - 300);
                 $snippet = substr($content, $start, 600);
-                
+
                 $has_validation = preg_match('/realpath|basename|pathinfo|str_replace|preg_replace|sanitize_file_name/i', $snippet);
-                
+
                 if (!$has_validation) {
                     $line = substr_count(substr($content, 0, $match[0][1]), "\n") + 1;
                     $threats[] = array(
@@ -843,16 +847,16 @@ class SG_Advanced_Detector
 
         // Pattern 1: User input in file operations without sanitization
         $file_ops = array('file_get_contents', 'fopen', 'readfile', 'file', 'is_file', 'is_dir', 'scandir');
-        
+
         foreach ($file_ops as $func) {
             $pattern = '/' . $func . '\s*\([^)]*\$_(GET|POST|REQUEST|COOKIE)\[/i';
             if (preg_match($pattern, $content, $match, PREG_OFFSET_CAPTURE)) {
                 // Check for path sanitization
                 $start = max(0, $match[0][1] - 400);
                 $snippet = substr($content, $start, 800);
-                
+
                 $has_sanitization = preg_match('/realpath|basename|pathinfo|str_replace.*\.\.|preg_replace.*\.\./i', $snippet);
-                
+
                 if (!$has_sanitization) {
                     $line = substr_count(substr($content, 0, $match[0][1]), "\n") + 1;
                     $threats[] = array(
@@ -952,10 +956,12 @@ class SG_Advanced_Detector
             // Check if user input is used in email headers
             $start = $match[0][1];
             $snippet = substr($content, $start, 1000);
-            
+
             // Look for user input in headers
-            if (preg_match('/\$_(GET|POST|REQUEST|COOKIE)\[/i', $snippet) && 
-                !preg_match('/sanitize_email|sanitize_text_field|str_replace.*\\\\r|str_replace.*\\\\n/i', $snippet)) {
+            if (
+                preg_match('/\$_(GET|POST|REQUEST|COOKIE)\[/i', $snippet) &&
+                !preg_match('/sanitize_email|sanitize_text_field|str_replace.*\\\\r|str_replace.*\\\\n/i', $snippet)
+            ) {
                 $line = substr_count(substr($content, 0, $match[0][1]), "\n") + 1;
                 $threats[] = array(
                     'file' => defined('ABSPATH') ? str_replace(ABSPATH, '', $file_path) : $file_path,
@@ -994,9 +1000,9 @@ class SG_Advanced_Detector
                 // Check for URL validation
                 $start = max(0, $match[0][1] - 400);
                 $snippet = substr($content, $start, 800);
-                
+
                 $has_validation = preg_match('/wp_http_validate_url|filter_var.*FILTER_VALIDATE_URL|parse_url|whitelist/i', $snippet);
-                
+
                 if (!$has_validation) {
                     $line = substr_count(substr($content, 0, $match[0][1]), "\n") + 1;
                     $threats[] = array(
@@ -1039,9 +1045,9 @@ class SG_Advanced_Detector
                 // Check for escapeshellcmd/escapeshellarg
                 $start = max(0, $match[0][1] - 300);
                 $snippet = substr($content, $start, 600);
-                
+
                 $has_escaping = preg_match('/escapeshellcmd|escapeshellarg/i', $snippet);
-                
+
                 if (!$has_escaping) {
                     $line = substr_count(substr($content, 0, $match[0][1]), "\n") + 1;
                     $threats[] = array(
@@ -1083,6 +1089,8 @@ class SG_Advanced_Detector
 
         return $threats;
     }
+
+    /**
      * Check if file is in plugins or themes directory
      *
      * @param string $file_path File path.
