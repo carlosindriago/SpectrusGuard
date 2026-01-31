@@ -172,58 +172,78 @@
          * Show admin notice (Toast style)
          */
         showNotice: function (type, message) {
-            // Ensure container exists
-            var $container = $('.sg-toast-container');
-            if ($container.length === 0) {
-                $container = $('<div class="sg-toast-container"></div>');
-                $('body').append($container);
-            }
+            try {
+                console.log('SpectrusGuard showNotice:', type, message);
 
-            // Icons map
-            var icons = {
-                'success': '✅',
-                'error': '🚨',
-                'warning': '⚠️',
-                'info': 'ℹ️'
-            };
+                // Default messages if empty
+                if (!message) {
+                    if (type === 'success') {
+                        message = 'Operation successful';
+                    } else if (type === 'error') {
+                        message = 'An error occurred';
+                    } else {
+                        message = 'Notification';
+                    }
+                }
 
-            var icon = icons[type] || 'ℹ️';
+                // Ensure container exists
+                var $container = $('.sg-toast-container');
+                if ($container.length === 0) {
+                    $container = $('<div class="sg-toast-container"></div>');
+                    $('body').append($container);
+                }
 
-            var $toast = $(
-                '<div class="sg-toast ' + type + '">' +
-                '<div class="sg-toast-icon">' + icon + '</div>' +
-                '<div class="sg-toast-content">' +
-                '<div class="sg-toast-message">' + message + '</div>' +
-                '</div>' +
-                '<button type="button" class="sg-toast-close">&times;</button>' +
-                '</div>'
-            );
+                // Icons map
+                var icons = {
+                    'success': '✅',
+                    'error': '🚨',
+                    'warning': '⚠️',
+                    'info': 'ℹ️'
+                };
 
-            // Append to container
-            $container.append($toast);
+                var icon = icons[type] || 'ℹ️';
 
-            // Trigger animation
-            requestAnimationFrame(function () {
-                $toast.addClass('show');
-            });
+                var $toast = $(
+                    '<div class="sg-toast ' + type + '">' +
+                    '<div class="sg-toast-icon">' + icon + '</div>' +
+                    '<div class="sg-toast-content">' +
+                    '<div class="sg-toast-message">' + message + '</div>' +
+                    '</div>' +
+                    '<button type="button" class="sg-toast-close">&times;</button>' +
+                    '</div>'
+                );
 
-            // Auto dismiss
-            var dismissTimeout = setTimeout(function () {
-                dismissToast($toast);
-            }, 5000);
+                // Append to container
+                $container.append($toast);
 
-            // Click to dismiss
-            $toast.on('click', function () {
-                dismissToast($toast);
-            });
+                // Trigger animation
+                requestAnimationFrame(function () {
+                    $toast.addClass('show');
+                });
 
-            // Helper to dismiss
-            function dismissToast($t) {
-                clearTimeout(dismissTimeout);
-                $t.removeClass('show');
-                setTimeout(function () {
-                    $t.remove();
-                }, 300); // Wait for transition
+                // Helper to dismiss (hoisted or defined here)
+                var dismissToast = function ($t) {
+                    $t.removeClass('show');
+                    setTimeout(function () {
+                        $t.remove();
+                    }, 300); // Wait for transition
+                };
+
+                // Auto dismiss
+                var dismissTimeout = setTimeout(function () {
+                    dismissToast($toast);
+                }, 5000);
+
+                // Click to dismiss
+                $toast.on('click', function () {
+                    clearTimeout(dismissTimeout);
+                    dismissToast($toast);
+                });
+
+            } catch (e) {
+                console.error('SpectrusGuard Toast Error:', e);
+                // Fallback
+                alert(message || 'Notification');
             }
         },
 

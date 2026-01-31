@@ -568,6 +568,8 @@
             var self = this;
             var filePath = $btn.data('file');
 
+            console.log('deleteThreat clicked:', filePath);
+
             if (!confirm((SpectrusGuardScanner.i18n && SpectrusGuardScanner.i18n.confirm_delete) || 'Are you sure you want to delete this file?')) {
                 return;
             }
@@ -583,14 +585,18 @@
                     file_path: filePath
                 },
                 success: function (response) {
+                    console.log('deleteThreat response:', response);
                     if (response.success) {
                         SpectrusGuardAdmin.showNotice('success', response.data.message);
-                        $('#threat-' + $btn.data('index')).fadeOut();
+                        $('#threat-' + $btn.data('index')).fadeOut(300, function () {
+                            $(this).remove();
+                        });
                     } else {
                         SpectrusGuardAdmin.showNotice('error', response.data.message);
                     }
                 },
-                error: function () {
+                error: function (xhr, status, error) {
+                    console.error('deleteThreat error:', error);
                     SpectrusGuardAdmin.showNotice('error', (SpectrusGuardScanner.i18n && SpectrusGuardScanner.i18n.delete_failed) || 'Failed to delete file.');
                 },
                 complete: function () {
@@ -605,6 +611,8 @@
         quarantineThreat: function ($btn) {
             var self = this;
             var filePath = $btn.data('file');
+
+            console.log('quarantineThreat clicked:', filePath);
 
             if (!confirm((SpectrusGuardScanner.i18n && SpectrusGuardScanner.i18n.confirm_quarantine) || 'Are you sure you want to quarantine this file?')) {
                 return;
@@ -621,25 +629,20 @@
                     file_path: filePath
                 },
                 success: function (response) {
+                    console.log('quarantineThreat response:', response);
                     if (response.success) {
                         SpectrusGuardAdmin.showNotice('success', response.data.message);
 
                         // Fade out the threat row
                         $('#threat-' + $btn.data('index')).fadeOut(300, function () {
-                            // Show link to quarantine page
-                            var $quarantineLink = $('<div style="margin-top: 16px; padding: 12px; background: rgba(102, 126, 234, 0.1); border: 1px solid rgba(102, 126, 234, 0.3); border-radius: 8px; text-align: center;">' +
-                                '<a href="' + (SpectrusGuardScanner.ajax_url || SpectrusGuard.ajax_url).replace('/admin-ajax.php', '/admin.php?page=spectrus-guard-quarantine') + '" style="color: #667eea; font-weight: 600; text-decoration: none;">' +
-                                '<span class="dashicons dashicons-lock" style="margin-right: 8px;"></span>' +
-                                'View Quarantine Vault →' +
-                                '</a>' +
-                                '</div>');
-                            $(this).after($quarantineLink).remove();
+                            $(this).remove();
                         });
                     } else {
                         SpectrusGuardAdmin.showNotice('error', response.data.message);
                     }
                 },
-                error: function () {
+                error: function (xhr, status, error) {
+                    console.error('quarantineThreat error:', error);
                     SpectrusGuardAdmin.showNotice('error', (SpectrusGuardScanner.i18n && SpectrusGuardScanner.i18n.quarantine_failed) || 'Failed to quarantine file.');
                 },
                 complete: function () {
