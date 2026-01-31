@@ -44,6 +44,13 @@ class SG_Scanner
     private $heuristics;
 
     /**
+     * Advanced detector instance
+     *
+     * @var SG_Advanced_Detector
+     */
+    private $advanced_detector;
+
+    /**
      * Whitelist instance
      *
      * @var SG_Whitelist|null
@@ -107,10 +114,12 @@ class SG_Scanner
     {
         require_once SG_PLUGIN_DIR . 'includes/scanner/class-sg-checksum.php';
         require_once SG_PLUGIN_DIR . 'includes/scanner/class-sg-heuristics.php';
+        require_once SG_PLUGIN_DIR . 'includes/scanner/class-sg-advanced-detector.php';
         require_once SG_PLUGIN_DIR . 'includes/scanner/signatures.php';
 
         $this->checksum = new SG_Checksum();
         $this->heuristics = new SG_Heuristics();
+        $this->advanced_detector = new SG_Advanced_Detector();
     }
 
     /**
@@ -148,6 +157,7 @@ class SG_Scanner
             'uploads_php' => array(),
             'suspicious' => array(),
             'malware' => array(),
+            'advanced_threats' => array(), // NEW: Advanced detector results
         );
 
         // Run all scans with progress updates
@@ -162,6 +172,9 @@ class SG_Scanner
 
         $this->update_progress(80, __('Scanning for malware signatures...', 'spectrus-guard'));
         $this->scan_for_malware();
+
+        $this->update_progress(85, __('Running advanced detection (tokenizer)...', 'spectrus-guard'));
+        $this->scan_with_advanced_detector();
 
         // Calculate totals
         $this->update_progress(95, __('Calculating summary...', 'spectrus-guard'));
@@ -352,6 +365,69 @@ class SG_Scanner
     }
 
     /**
+     * Run advanced detection using tokenizer
+     */
+    private function scan_with_advanced_detector()
+    {
+        $this->update_progress(86, __('Initializing advanced detector...', 'spectrus-guard'));
+
+        $directories = array(
+            WP_CONTENT_DIR . '/plugins' => __('plugins', 'spectrus-guard'),
+            WP_CONTENT_DIR . '/themes' => __('themes', 'spectrus-guard'),
+        );
+
+        $plugin_dir = $this->get_plugin_dir();
+        $total_dirs = count($directories);
+        $current_dir = 0;
+
+        foreach ($directories as $dir => $dir_name) {
+            $current_dir++;
+            $this->update_progress(86 + (($current_dir - 1) * 4), sprintf(__('Scanning %s with advanced detection...', 'spectrus-guard'), $dir_name));
+
+            if (!is_dir($dir)) {
+                continue;
+            }
+
+            // Get all PHP files in directory
+            $php_files = $this->scan_directory_for_php($dir);
+
+            $this->update_progress(86 + (($current_dir - 1) * 4) + 1, sprintf(__('Analyzing %d files in %s...', 'spectrus-guard'), count($php_files), $dir_name));
+
+            $checked = 0;
+            foreach ($php_files as $file_path) {
+                $checked++;
+
+                // Skip this plugin's files
+                if ($this->is_plugin_file($file_path)) {
+                    continue;
+                }
+
+                // Check if whitelisted
+                $file_hash = file_exists($file_path) ? hash_file('sha256', $file_path) : null;
+                if ($this->whitelist && $this->whitelist->check($file_path, $file_hash)) {
+                    continue;
+                }
+
+                // Update progress every 20 files
+                if ($checked % 20 === 0) {
+                    $this->update_progress(
+                        86 + (($current_dir - 1) * 4) + 1 + min(3, ($checked / max(1, count($php_files))) * 3),
+                        sprintf(__('Advanced scan: %d/%d files in %s', 'spectrus-guard'), $checked, count($php_files), $dir_name)
+                    );
+                }
+
+                // Run advanced detection
+                $threats = $this->advanced_detector->scan_file($file_path);
+
+                foreach ($threats as $threat) {
+                    $this->results['advanced_threats'][] = $threat;
+                }
+            }
+        }
+    }
+
+    /**
+
      * Calculate summary totals
      */
     private function calculate_summary()
@@ -719,6 +795,11 @@ class SG_Scanner
         if (!empty($results['malware'])) {
             foreach ($results['malware'] as $issue) {
                 $process_item($issue, 'malware');
+            }
+        }
+        if (!empty($results['advanced_threats'])) {
+            foreach ($results['advanced_threats'] as $issue) {
+                $process_item($issue, 'advanced');
             }
         }
 
