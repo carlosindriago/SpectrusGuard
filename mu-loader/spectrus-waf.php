@@ -357,21 +357,28 @@ class SpectrusGuard_MU_Guard
             return '';
         }
 
-        // URL decode multiple times
         $decoded = $value;
-        for ($i = 0; $i < 3; $i++) {
-            $new = urldecode($decoded);
-            if ($new === $decoded) {
-                break;
+
+        // URL decode multiple times
+        if (strpos($decoded, '%') !== false) {
+            for ($i = 0; $i < 3; $i++) {
+                $new = urldecode($decoded);
+                if ($new === $decoded) {
+                    break;
+                }
+                $decoded = $new;
             }
-            $decoded = $new;
         }
 
         // HTML entity decode
-        $decoded = html_entity_decode($decoded, ENT_QUOTES, 'UTF-8');
+        if (strpos($decoded, '&') !== false) {
+            $decoded = html_entity_decode($decoded, ENT_QUOTES, 'UTF-8');
+        }
 
         // Remove null bytes
-        $decoded = str_replace(chr(0), '', $decoded);
+        if (strpos($decoded, "\0") !== false) {
+            $decoded = str_replace(chr(0), '', $decoded);
+        }
 
         return $decoded;
     }
