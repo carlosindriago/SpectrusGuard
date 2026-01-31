@@ -777,25 +777,17 @@ class SG_Advanced_Detector
         );
 
         foreach ($sensitive_constants as $constant) {
-            $patterns = array(
-                '/echo\s+' . $constant . '/i',
-                '/print\s+' . $constant . '/i',
-                '/print_r\s*\([^)]*' . $constant . '/i',
-                '/var_dump\s*\([^)]*' . $constant . '/i',
-            );
-
-            foreach ($patterns as $pattern) {
-                if (preg_match($pattern, $content, $match, PREG_OFFSET_CAPTURE)) {
-                    $line = substr_count(substr($content, 0, $match[0][1]), "\n") + 1;
-                    $threats[] = array(
-                        'file' => defined('ABSPATH') ? str_replace(ABSPATH, '', $file_path) : $file_path,
-                        'type' => 'information_disclosure',
-                        'severity' => 'CRITICAL',
-                        'description' => sprintf('Information Disclosure: Database credentials exposed (%s)', $constant),
-                        'line' => $line,
-                    );
-                    break;
-                }
+            // Lookfor output functions with these constants
+            if (preg_match('/(?:echo|print|var_dump|print_r)\s*[^;]* . $constant . '/i', $content, $match, PREG_OFFSET_CAPTURE)) {
+                $line = substr_count(substr($content, 0, $match[0][1]), "\n") + 1;
+                $threats[] = array(
+                    'file' => defined('ABSPATH') ? str_replace(ABSPATH, '', $file_path) : $file_path,
+                    'type' => 'information_disclosure',
+                    'severity' => 'CRITICAL',
+                    'description' => sprintf('Info Disclosure: DB credentials exposed (%s)', $constant),
+                    'line' => $line,
+                );
+                break;
             }
         }
 
@@ -813,33 +805,34 @@ class SG_Advanced_Detector
     {
         $threats = array();
 
-        // Pattern: include/require with user input
+        // Pattern 1: include/require with user input
         $lfi_patterns = array(
-            '/include\s*\(\s*\$_(GET|POST|REQUEST|COOKIE)\[/i',
-            '/include_once\s*\(\s*\$_(GET|POST|REQUEST|COOKIE)\[/i',
-            '/require\s*\(\s*\$_(GET|POST|REQUEST|COOKIE)\[/i',
-            '/require_once\s*\(\s*\$_(GET|POST|REQUEST|COOKIE)\[/i',
+            '/(?:include|require)(?:_once)?\s*\([^)]*\$_(GET|POST|REQUEST|COOKIE)\[/i',
         );
 
         foreach ($lfi_patterns as $pattern) {
             if (preg_match($pattern, $content, $match, PREG_OFFSET_CAPTURE)) {
-                // Check if there's path validation nearby
-                $start = max(0, $match[0][1] - 300);
-                $snippet = substr($content, $start, 600);
-
-                $has_validation = preg_match('/realpath|basename|pathinfo|str_replace|preg_replace|sanitize_file_name/i', $snippet);
-
-                if (!$has_validation) {
-                    $line = substr_count(substr($content, 0, $match[0][1]), "\n") + 1;
-                    $threats[] = array(
-                        'file' => defined('ABSPATH') ? str_replace(ABSPATH, '', $file_path) : $file_path,
-                        'type' => 'lfi',
-                        'severity' => 'CRITICAL',
-                        'description' => 'Local File Inclusion: User input directly in include/require',
-                        'line' => $line,
-                    );
-                }
+                $line = substr_count(substr($content, 0, $match[0][1]), "\n") + 1;
+                $threats[] = array(
+                    'file' => defined('ABSPATH') ? str_replace(ABSPATH, '', $file_path) : $file_path,
+                    'type' => 'lfi',
+                    'severity' => 'CRITICAL',
+                    'description' => 'LFI: User input in include/require',
+                    'line' => $line,
+                );
             }
+        }
+
+        // Pattern 2: include with concatenation
+        if (preg_match('/(?:include|require)(?:_once)?\s*\([^)]*\.\s*["\'][^"\']*.php/i', $content, $match, PREG_OFFSET_CAPTURE)) {
+            $line = substr_count(substr($content, 0, $match[0][1]), "\n") + 1;
+            $threats[] = array(
+                'file' => defined('ABSPATH') ? str_replace(ABSPATH, '', $file_path) : $file_path,
+                'type' => 'lfi',
+                'severity' => 'HIGH',
+                'description' => 'LFI: Dynamic file inclusion with concatenation',
+                'line' => $line,
+            );
         }
 
         return $threats;
@@ -895,20 +888,30 @@ class SG_Advanced_Detector
     {
         $threats = array();
 
-        // Pattern: file_put_contents/fwrite with user-controlled path
-        $write_patterns = array(
-            '/file_put_contents\s*\(\s*\$_(GET|POST|REQUEST|COOKIE)\[/i',
-            '/fwrite\s*\([^,]*,\s*\$_(GET|POST|REQUEST|COOKIE)\[/i',
-        );
-
-        foreach ($write_patterns as $pattern) {
-            if (preg_match($pattern, $content, $match, PREG_OFFSET_CAPTURE)) {
+        // Pattern: file operations with user input
+        if (preg_match('/file_put_contents\s*\(/i', $content, $match, PREG_OFFSET_CAPTURE)) {
+            $snippet = substr($content, $match[0][1], 200);
+            if (preg_match('/\$_(GET|POST|REQUEST|COOKIE)/', $snippet)) {
                 $line = substr_count(substr($content, 0, $match[0][1]), "\n") + 1;
                 $threats[] = array(
                     'file' => defined('ABSPATH') ? str_replace(ABSPATH, '', $file_path) : $file_path,
                     'type' => 'arbitrary_file_write',
                     'severity' => 'CRITICAL',
-                    'description' => 'Arbitrary File Write: User controls file path/content',
+                    'description' => 'Arbitrary File Write: file_put_contents with user input',
+                    'line' => $line,
+                );
+            }
+        }
+
+        if (preg_match('/fwrite\s*\(/i', $content, $match, PREG_OFFSET_CAPTURE)) {
+            $snippet = substr($content, $match[0][1], 200);
+            if (preg_match('/\$_(GET|POST|REQUEST|COOKIE)/', $snippet)) {
+                $line = substr_count(substr($content, 0, $match[0][1]), "\n") + 1;
+                $threats[] = array(
+                    'file' => defined('ABSPATH') ? str_replace(ABSPATH, '', $file_path) : $file_path,
+                    'type' => 'arbitrary_file_write',
+                    'severity' => 'CRITICAL',
+                    'description' => 'Arbitrary File Write: fwrite with user input',
                     'line' => $line,
                 );
             }
@@ -928,21 +931,30 @@ class SG_Advanced_Detector
     {
         $threats = array();
 
-        // Pattern: unlink/rmdir with user input
-        $delete_patterns = array(
-            '/unlink\s*\(\s*\$_(GET|POST|REQUEST|COOKIE)\[/i',
-            '/rmdir\s*\(\s*\$_(GET|POST|REQUEST|COOKIE)\[/i',
-            '/wp_delete_file\s*\(\s*\$_(GET|POST|REQUEST|COOKIE)\[/i',
-        );
-
-        foreach ($delete_patterns as $pattern) {
-            if (preg_match($pattern, $content, $match, PREG_OFFSET_CAPTURE)) {
+        // Pattern: file deletion with user input 
+        if (preg_match('/unlink\s*\(/i', $content, $match, PREG_OFFSET_CAPTURE)) {
+            $snippet = substr($content, $match[0][1], 200);
+            if (preg_match('/\$_(GET|POST|REQUEST|COOKIE)/', $snippet)) {
                 $line = substr_count(substr($content, 0, $match[0][1]), "\n") + 1;
                 $threats[] = array(
                     'file' => defined('ABSPATH') ? str_replace(ABSPATH, '', $file_path) : $file_path,
                     'type' => 'arbitrary_file_delete',
                     'severity' => 'CRITICAL',
-                    'description' => 'Arbitrary File Delete: User controls file path',
+                    'description' => 'Arbitrary File Delete: unlink with user input',
+                    'line' => $line,
+                );
+            }
+        }
+
+        if (preg_match('/(?:rmdir|wp_delete_file)\s*\(/i', $content, $match, PREG_OFFSET_CAPTURE)) {
+            $snippet = substr($content, $match[0][1], 200);
+            if (preg_match('/\$_(GET|POST|REQUEST|COOKIE)/', $snippet)) {
+                $line = substr_count(substr($content, 0, $match[0][1]), "\n") + 1;
+                $threats[] = array(
+                    'file' => defined('ABSPATH') ? str_replace(ABSPATH, '', $file_path) : $file_path,
+                    'type' => 'arbitrary_file_delete',
+                    'severity' => 'CRITICAL',
+                    'description' => 'Arbitrary File Delete: User-controlled path',
                     'line' => $line,
                 );
             }
@@ -998,32 +1010,33 @@ class SG_Advanced_Detector
     {
         $threats = array();
 
-        // Pattern: HTTP requests with user-controlled URLs
-        $ssrf_patterns = array(
-            '/wp_remote_get\s*\(\s*\$_(GET|POST|REQUEST|COOKIE)\[/i',
-            '/wp_remote_post\s*\(\s*\$_(GET|POST|REQUEST|COOKIE)\[/i',
-            '/curl_setopt\s*\([^,]*,\s*CURLOPT_URL\s*,\s*\$_(GET|POST|REQUEST|COOKIE)\[/i',
-            '/file_get_contents\s*\(\s*["\']https?:\/\/["\'].*\$_(GET|POST|REQUEST|COOKIE)\[/i',
-        );
+        // Pattern: Remote requests with user input
+        if (preg_match('/(?:wp_remote_get|wp_remote_post)\s*\(/i', $content, $match, PREG_OFFSET_CAPTURE)) {
+            $snippet = substr($content, $match[0][1], 250);
+            if (preg_match('/\$_(GET|POST|REQUEST|COOKIE)/', $snippet)) {
+                $line = substr_count(substr($content, 0, $match[0][1]), "\n") + 1;
+                $threats[] = array(
+                    'file' => defined('ABSPATH') ? str_replace(ABSPATH, '', $file_path) : $file_path,
+                    'type' => 'ssrf',
+                    'severity' => 'CRITICAL',
+                    'description' => 'SSRF: User-controlled URL in wp_remote request',
+                    'line' => $line,
+                );
+            }
+        }
 
-        foreach ($ssrf_patterns as $pattern) {
-            if (preg_match($pattern, $content, $match, PREG_OFFSET_CAPTURE)) {
-                // Check for URL validation
-                $start = max(0, $match[0][1] - 400);
-                $snippet = substr($content, $start, 800);
-
-                $has_validation = preg_match('/wp_http_validate_url|filter_var.*FILTER_VALIDATE_URL|parse_url|whitelist/i', $snippet);
-
-                if (!$has_validation) {
-                    $line = substr_count(substr($content, 0, $match[0][1]), "\n") + 1;
-                    $threats[] = array(
-                        'file' => defined('ABSPATH') ? str_replace(ABSPATH, '', $file_path) : $file_path,
-                        'type' => 'ssrf',
-                        'severity' => 'CRITICAL',
-                        'description' => 'SSRF: User-controlled URL in HTTP request',
-                        'line' => $line,
-                    );
-                }
+        // cURL with user input
+        if (preg_match('/curl_setopt.*CURLOPT_URL/i', $content, $match, PREG_OFFSET_CAPTURE)) {
+            $snippet = substr($content, $match[0][1], 250);
+            if (preg_match('/\$_(GET|POST|REQUEST|COOKIE)/', $snippet)) {
+                $line = substr_count(substr($content, 0, $match[0][1]), "\n") + 1;
+                $threats[] = array(
+                    'file' => defined('ABSPATH') ? str_replace(ABSPATH, '', $file_path) : $file_path,
+                    'type' => 'ssrf',
+                    'severity' => 'CRITICAL',
+                    'description' => 'SSRF: User-controlled URL in cURL',
+                    'line' => $line,
+                );
             }
         }
 
@@ -1086,16 +1099,19 @@ class SG_Advanced_Detector
     {
         $threats = array();
 
-        // Pattern: unserialize() with user input
-        if (preg_match('/unserialize\s*\(\s*\$_(GET|POST|REQUEST|COOKIE)\[/i', $content, $match, PREG_OFFSET_CAPTURE)) {
-            $line = substr_count(substr($content, 0, $match[0][1]), "\n") + 1;
-            $threats[] = array(
-                'file' => defined('ABSPATH') ? str_replace(ABSPATH, '', $file_path) : $file_path,
-                'type' => 'object_injection',
-                'severity' => 'CRITICAL',
-                'description' => 'Object Injection: unserialize() with user input (PHP Object Injection)',
-                'line' => $line,
-            );
+        // Pattern: unserialize with user input (check within 100 chars)
+        if (preg_match('/unserialize\s*\(/i', $content, $match, PREG_OFFSET_CAPTURE)) {
+            $snippet = substr($content, $match[0][1], 150);
+            if (preg_match('/\$_(GET|POST|REQUEST|COOKIE)/', $snippet)) {
+                $line = substr_count(substr($content, 0, $match[0][1]), "\n") + 1;
+                $threats[] = array(
+                    'file' => defined('ABSPATH') ? str_replace(ABSPATH, '', $file_path) : $file_path,
+                    'type' => 'object_injection',
+                    'severity' => 'CRITICAL',
+                    'description' => 'Object Injection: unserialize() with user input',
+                    'line' => $line,
+                );
+            }
         }
 
         return $threats;
