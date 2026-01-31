@@ -156,6 +156,29 @@ class SG_Advanced_Detector
         $execution_threats = $this->detect_input_execution_flow($file_path, $content);
         $threats = array_merge($threats, $execution_threats);
 
+        // 7. SQL Injection Detection
+        $sql_threats = $this->detect_sql_injection($file_path, $content);
+        $threats = array_merge($threats, $sql_threats);
+
+        // 8. CSRF Detection
+        $csrf_threats = $this->detect_csrf($file_path, $content);
+        $threats = array_merge($threats, $csrf_threats);
+
+        // 9. Unsafe File Upload Detection
+        $upload_threats = $this->detect_unsafe_file_upload($file_path, $content);
+        $threats = array_merge($threats, $upload_threats);
+
+        // 10. Cryptocurrency Mining Detection (JS files)
+        $extension = pathinfo($file_path, PATHINFO_EXTENSION);
+        if ($extension === 'js') {
+            $crypto_threats = $this->detect_crypto_mining($file_path, $content);
+            $threats = array_merge($threats, $crypto_threats);
+        }
+
+        // 11. Information Disclosure (DB Credentials)
+        $info_threats = $this->detect_information_disclosure($file_path, $content);
+        $threats = array_merge($threats, $info_threats);
+
         return $threats;
     }
 
@@ -520,6 +543,221 @@ class SG_Advanced_Detector
         return $threats;
     }
 
+
+    /**
+     * Detect SQL Injection vulnerabilities
+     *
+     * @param string $file_path File path.
+     * @param string $content File content.
+     * @return array Threats found.
+     */
+    private function detect_sql_injection($file_path, $content)
+    {
+        $threats = array();
+
+        // Pattern 1: $wpdb->query() without $wpdb->prepare()
+        if (preg_match('/\$wpdb->query\s*\(\s*["\'].*\$\w+/s', $content, $match, PREG_OFFSET_CAPTURE)) {
+            // Check for prepare() in a reasonable proximity
+            $start = max(0, $match[0][1] - 500);
+            $snippet = substr($content, $start, 1000);
+            
+            if (!preg_match('/\$wpdb->prepare\s*\(/', $snippet)) {
+                $line = substr_count(substr($content, 0, $match[0][1]), "\n") + 1;
+                $threats[] = array(
+                    'file' => defined('ABSPATH') ? str_replace(ABSPATH, '', $file_path) : $file_path,
+                    'type' => 'sql_injection',
+                    'severity' => 'CRITICAL',
+                    'description' => 'SQL Injection: Direct variable interpolation in query without prepare()',
+                    'line' => $line,
+                );
+            }
+        }
+
+        // Pattern 2: Direct $_GET/$_POST in SQL queries
+        $sql_patterns = array(
+            '/\$wpdb->query\s*\([^)]*\$_(GET|POST|REQUEST)\[/is',
+            '/mysqli_query\s*\([^)]*\$_(GET|POST|REQUEST)\[/is',
+            '/mysql_query\s*\([^)]*\$_(GET|POST|REQUEST)\[/is',
+        );
+
+        foreach ($sql_patterns as $pattern) {
+            if (preg_match($pattern, $content, $match, PREG_OFFSET_CAPTURE)) {
+                $line = substr_count(substr($content, 0, $match[0][1]), "\n") + 1;
+                $threats[] = array(
+                    'file' => defined('ABSPATH') ? str_replace(ABSPATH, '', $file_path) : $file_path,
+                    'type' => 'sql_injection',
+                    'severity' => 'CRITICAL',
+                    'description' => 'SQL Injection: User input directly in SQL query',
+                    'line' => $line,
+                );
+            }
+        }
+
+        return $threats;
+    }
+
+    /**
+     * Detect CSRF vulnerabilities
+     *
+     * @param string $file_path File path.
+     * @param string $content File content.
+     * @return array Threats found.
+     */
+    private function detect_csrf($file_path, $content)
+    {
+        $threats = array();
+
+        // Pattern: $_POST processing without wp_verify_nonce()
+        if (preg_match('/if\s*\(\s*isset\s*\(\s*\$_POST\[/', $content, $match, PREG_OFFSET_CAPTURE)) {
+            // Check for nonce verification in proximity
+            $start = max(0, $match[0][1] - 200);
+            $snippet = substr($content, $start, 800);
+            
+            if (!preg_match('/wp_verify_nonce\s*\(|check_ajax_referer\s*\(/i', $snippet)) {
+                $line = substr_count(substr($content, 0, $match[0][1]), "\n") + 1;
+                $threats[] = array(
+                    'file' => defined('ABSPATH') ? str_replace(ABSPATH, '', $file_path) : $file_path,
+                    'type' => 'csrf',
+                    'severity' => 'HIGH',
+                    'description' => 'CSRF: Form processing without nonce verification',
+                    'line' => $line,
+                );
+            }
+        }
+
+        return $threats;
+    }
+
+    /**
+     * Detect unsafe file upload vulnerabilities
+     *
+     * @param string $file_path File path.
+     * @param string $content File content.
+     * @return array Threats found.
+     */
+    private function detect_unsafe_file_upload($file_path, $content)
+    {
+        $threats = array();
+
+        // Pattern: move_uploaded_file() without extension validation
+        if (preg_match('/move_uploaded_file\s*\(/', $content, $match, PREG_OFFSET_CAPTURE)) {
+            // Check for extension validation
+            $start = max(0, $match[0][1] - 500);
+            $snippet = substr($content, $start, 1500);
+            
+            $has_validation = preg_match('/wp_check_filetype|pathinfo\s*\([^)]*PATHINFO_EXTENSION|in_array\s*\([^)]*allowed|mime|extension/i', $snippet);
+            
+            if (!$has_validation) {
+                $line = substr_count(substr($content, 0, $match[0][1]), "\n") + 1;
+                $threats[] = array(
+                    'file' => defined('ABSPATH') ? str_replace(ABSPATH, '', $file_path) : $file_path,
+                    'type' => 'unsafe_file_upload',
+                    'severity' => 'CRITICAL',
+                    'description' => 'Unsafe File Upload: No extension/type validation detected',
+                    'line' => $line,
+                );
+            }
+        }
+
+        return $threats;
+    }
+
+    /**
+     * Detect cryptocurrency mining scripts (JavaScript)
+     *
+     * @param string $file_path File path.
+     * @param string $content File content.
+     * @return array Threats found.
+     */
+    private function detect_crypto_mining($file_path, $content)
+    {
+        $threats = array();
+
+        // Common crypto mining keywords
+        $mining_keywords = array(
+            'miner',
+            'crypto',
+            'cryptonight',
+            'CryptoMiner',
+            'setThrottle',
+            'hashrate',
+            'pool',
+            'coinhive',
+            'minero',
+            'deepMiner',
+        );
+
+        $matches = 0;
+        $found_keywords = array();
+        
+        foreach ($mining_keywords as $keyword) {
+            if (stripos($content, $keyword) !== false) {
+                $matches++;
+                $found_keywords[] = $keyword;
+            }
+        }
+
+        // If 2+ mining keywords found, likely a crypto miner
+        if ($matches >= 2) {
+            $threats[] = array(
+                'file' => defined('ABSPATH') ? str_replace(ABSPATH, '', $file_path) : $file_path,
+                'type' => 'crypto_mining',
+                'severity' => 'CRITICAL',
+                'description' => sprintf('Cryptocurrency mining script detected (keywords: %s)', implode(', ', $found_keywords)),
+                'line' => 1,
+            );
+        }
+
+        return $threats;
+    }
+
+    /**
+     * Detect information disclosure (DB credentials, secrets)
+     *
+     * @param string $file_path File path.
+     * @param string $content File content.
+     * @return array Threats found.
+     */
+    private function detect_information_disclosure($file_path, $content)
+    {
+        $threats = array();
+
+        // Sensitive WordPress constants
+        $sensitive_constants = array(
+            'DB_PASSWORD',
+            'DB_USER',
+            'DB_HOST',
+            'AUTH_KEY',
+            'SECURE_AUTH_KEY',
+            'LOGGED_IN_KEY',
+            'NONCE_KEY',
+        );
+
+        foreach ($sensitive_constants as $constant) {
+            $patterns = array(
+                '/echo\s+' . $constant . '/i',
+                '/print\s+' . $constant . '/i',
+                '/print_r\s*\([^)]*' . $constant . '/i',
+                '/var_dump\s*\([^)]*' . $constant . '/i',
+            );
+
+            foreach ($patterns as $pattern) {
+                if (preg_match($pattern, $content, $match, PREG_OFFSET_CAPTURE)) {
+                    $line = substr_count(substr($content, 0, $match[0][1]), "\n") + 1;
+                    $threats[] = array(
+                        'file' => defined('ABSPATH') ? str_replace(ABSPATH, '', $file_path) : $file_path,
+                        'type' => 'information_disclosure',
+                        'severity' => 'CRITICAL',
+                        'description' => sprintf('Information Disclosure: Database credentials exposed (%s)', $constant),
+                        'line' => $line,
+                    );
+                    break;
+                }
+            }
+        }
+
+        return $threats;
+    }
     /**
      * Check if file is in plugins or themes directory
      *
