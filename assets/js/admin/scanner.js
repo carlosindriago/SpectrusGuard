@@ -29,7 +29,88 @@
          */
         init: function () {
             this.bindEvents();
+            this.bindEvents();
             this.initPolling();
+            this.initHistoryChart();
+        },
+
+        /**
+         * Initialize History Chart
+         */
+        initHistoryChart: function () {
+            if ($('#sgHistoryChart').length === 0 || typeof window.spectrusGuardHistory === 'undefined' || typeof Chart === 'undefined') {
+                return;
+            }
+
+            var ctx = document.getElementById('sgHistoryChart').getContext('2d');
+            var history = window.spectrusGuardHistory;
+
+            // Reverse history to show oldest to newest
+            // history.reverse(); // Data comes oldest to newest from backend? No, push adds to end. So it's correct.
+
+            var labels = history.map(function (h) {
+                return h.date ? h.date.split(' ')[0] : 'Unknown';
+            });
+
+            var criticalData = history.map(function (h) { return h.stats.critical || 0; });
+            var highData = history.map(function (h) { return h.stats.high || 0; });
+            var mediumData = history.map(function (h) { return h.stats.medium || 0; });
+
+            new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: labels,
+                    datasets: [
+                        {
+                            label: 'Critical',
+                            data: criticalData,
+                            borderColor: '#e94560',
+                            backgroundColor: 'rgba(233, 69, 96, 0.1)',
+                            borderWidth: 2,
+                            tension: 0.4,
+                            fill: true
+                        },
+                        {
+                            label: 'High',
+                            data: highData,
+                            borderColor: '#ff8e53',
+                            backgroundColor: 'rgba(255, 142, 83, 0.1)',
+                            borderWidth: 2,
+                            tension: 0.4,
+                            fill: true
+                        },
+                        {
+                            label: 'Medium',
+                            data: mediumData,
+                            borderColor: '#ffc107',
+                            backgroundColor: 'rgba(255, 193, 7, 0.1)',
+                            borderWidth: 2,
+                            tension: 0.4,
+                            fill: true
+                        }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            labels: { color: '#cbd5e1' }
+                        }
+                    },
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            grid: { color: 'rgba(255, 255, 255, 0.05)' },
+                            ticks: { color: '#94a3b8' }
+                        },
+                        x: {
+                            grid: { display: false },
+                            ticks: { color: '#94a3b8' }
+                        }
+                    }
+                }
+            });
         },
 
         /**
@@ -185,32 +266,11 @@
             // 2. Show Report Modal instead of Toast/Alert
             this.showReportModal(results, grouped);
 
-            // Build results HTML
-            var html = this.buildResultsHTML(results, grouped);
+            // We no longer render inline HTML for results. 
+            // The user must click "View Detailed Results" in the modal to go to the new page.
+            // But we keep the progress bar red.
 
-            console.log('HTML generated, length:', html.length);
-
-            // Hide all progress elements (spinner, log) but KEEP the red bar for impact?
-            // User said "also the bar must turn red". 
-            // The current logic hides header/section. I will hide them to show results.
-            $progressPanel.find('#sg-progress-header').fadeOut();
-            // $progressPanel.find('#sg-progress-section').fadeOut(); // Maybe keep it? No, duplicate info.
-            $progressPanel.find('#sg-progress-section').fadeOut();
-            $progressPanel.find('#sg-activity-log').fadeOut();
-
-            // Remove any existing results content to prevent duplicates logic
-            $('#sg-results-content').remove();
-
-            // Add new results content
-            $progressPanel.append('<div id="sg-results-content" style="display: none;">' + html + '</div>');
-            $('#sg-results-content').fadeIn();
-
-            console.log('Results displayed');
-
-            // Bind continue button
-            $('#sg-continue-btn').on('click', function () {
-                location.reload();
-            });
+            console.log('Results modal displayed');
         },
 
         /**
@@ -797,7 +857,11 @@
                 $('.sg-modal-backdrop').addClass('show');
             });
 
-            // Bind close
+            // Bind accept/view button
+            $('#sg-modal-accept').on('click', function () {
+                // Redirect to the new dedicated results page
+                window.location.href = 'admin.php?page=spectrus-guard-results';
+            });
             $('#sg-modal-accept').on('click', function () {
                 $('.sg-modal-backdrop').removeClass('show');
                 setTimeout(function () {

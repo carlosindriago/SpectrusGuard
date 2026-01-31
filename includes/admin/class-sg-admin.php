@@ -21,7 +21,9 @@ require_once SG_PLUGIN_DIR . 'includes/admin/pages/class-sg-page-scanner.php';
 require_once SG_PLUGIN_DIR . 'includes/admin/pages/class-sg-page-quarantine.php';
 require_once SG_PLUGIN_DIR . 'includes/admin/pages/class-sg-page-whitelist.php';
 require_once SG_PLUGIN_DIR . 'includes/admin/pages/class-sg-page-hardening.php';
+require_once SG_PLUGIN_DIR . 'includes/admin/pages/class-sg-page-hardening.php';
 require_once SG_PLUGIN_DIR . 'includes/admin/pages/class-sg-page-settings.php';
+require_once SG_PLUGIN_DIR . 'includes/admin/pages/class-sg-page-results.php';
 
 /**
  * Class SG_Admin
@@ -55,6 +57,7 @@ class SG_Admin
     private $page_whitelist;
     private $page_hardening;
     private $page_settings;
+    private $page_results;
 
     /**
      * Constructor
@@ -73,6 +76,7 @@ class SG_Admin
         $this->page_whitelist = new SG_Page_Whitelist($loader);
         $this->page_hardening = new SG_Page_Hardening($loader);
         $this->page_settings = new SG_Page_Settings($loader);
+        $this->page_results = new SG_Page_Results($loader);
 
         add_action('admin_menu', array($this, 'add_admin_menu'));
         add_action('admin_init', array($this, 'register_settings'));
@@ -161,6 +165,16 @@ class SG_Admin
             'manage_options',
             'spectrus-guard-settings',
             array($this->page_settings, 'render') // Delegate to Settings Controller
+        );
+
+        // 6. Results Page (Hidden from menu, linked from Scanner)
+        add_submenu_page(
+            null, // NULL parent sends it to a hidden page
+            __('Scan Results', 'spectrus-guard'),
+            __('Scan Results', 'spectrus-guard'),
+            'manage_options',
+            'spectrus-guard-results',
+            array($this->page_results, 'render')
         );
     }
 

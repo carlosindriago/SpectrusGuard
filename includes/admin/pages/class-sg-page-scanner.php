@@ -58,11 +58,14 @@ class SG_Page_Scanner
         $scanner = $this->loader->get_scanner();
         $results = $scanner ? $scanner->get_display_results() : null;
         $last_scan = $scanner ? $scanner->get_last_scan_time() : null;
+        $history = get_option('spectrus_guard_scan_history', array());
 
         // Prepare data for view
         $data = array(
             'results' => $results,
+            'results' => $results,
             'last_scan' => $last_scan,
+            'history' => $history,
         );
 
         // Load view template
