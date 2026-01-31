@@ -223,11 +223,11 @@
             var html = '<div style="text-align: center; padding: 40px 0; margin-bottom: 40px;">' +
                 '<div style="font-size: 72px; margin-bottom: 20px;">🚨</div>' +
                 '<h2 style="margin: 0 0 12px 0; font-size: 32px; font-weight: 700; color: var(--sg-text-primary);">' +
-                (SpectrusGuardScanner.i18n.security_issues_found || 'Security Issues Found') + '</h2>' +
+                ((SpectrusGuardScanner.i18n && SpectrusGuardScanner.i18n.security_issues_found) || 'Security Issues Found') + '</h2>' +
                 '<p style="color: #e94560; font-size: 18px; font-weight: 600; margin: 0;">' +
-                (SpectrusGuardScanner.i18n.we_found_issues || 'We found') + ' <strong style="font-size: 24px;">' +
+                ((SpectrusGuardScanner.i18n && SpectrusGuardScanner.i18n.we_found_issues) || 'We found') + ' <strong style="font-size: 24px;">' +
                 results.summary.total_issues + '</strong> ' +
-                (SpectrusGuardScanner.i18n.potential_security_issues || 'potential security issues') + '</p>' +
+                ((SpectrusGuardScanner.i18n && SpectrusGuardScanner.i18n.potential_security_issues) || 'potential security issues') + '</p>' +
                 '</div>';
 
             // Show summary badges
