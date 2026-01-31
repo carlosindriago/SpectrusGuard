@@ -190,6 +190,9 @@ class SG_Scanner
         // Update last scan time option
         update_option('spectrus_shield_last_scan', current_time('mysql'));
 
+        // Save detailed results and update history for UI
+        $this->save_scan_results($this->results);
+
         return $this->results;
     }
 
@@ -825,4 +828,31 @@ class SG_Scanner
         );
         return isset($order[$severity]) ? $order[$severity] : 99;
     }
+    /**
+     * Save scan results and update history
+     * 
+     * @param array $results Scan results
+     */
+    private function save_scan_results($results)
+    {
+        // Save latest report for the Results Page
+        update_option('spectrus_guard_scan_report', $results, false); // Autoload=false to avoid performance hit
+
+        // Update history for the Dashboard Graph
+        $history = get_option('spectrus_guard_scan_history', array());
+
+        // Keep last 30 scans
+        if (count($history) >= 30) {
+            array_shift($history);
+        }
+
+        $history[] = array(
+            'date' => current_time('mysql'),
+            'timestamp' => current_time('timestamp'),
+            'stats' => $results['summary']
+        );
+
+        update_option('spectrus_guard_scan_history', $history);
+    }
+
 }
