@@ -42,15 +42,8 @@ class SG_Page_Results
      */
     public function render()
     {
-        // DEBUG PROBE
-        echo "DEBUG MODE: HELLO. IF YOU SEE THIS, CONTROLLER IS REACHABLE.";
-        exit;
-
-        // echo "Probe 1: Start Render<br>";
-
         // Fetch saved results
         $report = get_option('spectrus_guard_scan_report', array());
-        echo "Probe 2: Report Fetched. Size: " . strlen(serialize($report)) . "<br>";
 
         // Fallback if empty
         if (empty($report)) {
@@ -73,16 +66,13 @@ class SG_Page_Results
 
         // Calculate Score
         $score_data = $this->calculate_score($report['summary']);
-        echo "Probe 3: Score Calculated<br>";
 
         // Group Issues
         $grouped_issues = $this->group_issues_by_type($report);
-        echo "Probe 4: Issues Grouped<br>";
 
         // Get History for Trend
         $history = get_option('spectrus_guard_scan_history', array());
         $trend = $this->calculate_trend($history, $report['summary']);
-        echo "Probe 5: Trend Calculated. Loading View...<br>";
 
         // Load the view
         require_once SG_PLUGIN_DIR . 'includes/admin/views/scanner/results-premium.php';
