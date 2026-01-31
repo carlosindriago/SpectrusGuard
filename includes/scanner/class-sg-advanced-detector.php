@@ -179,6 +179,38 @@ class SG_Advanced_Detector
         $info_threats = $this->detect_information_disclosure($file_path, $content);
         $threats = array_merge($threats, $info_threats);
 
+        // 12. Local File Inclusion (LFI)
+        $lfi_threats = $this->detect_lfi($file_path, $content);
+        $threats = array_merge($threats, $lfi_threats);
+
+        // 13. Path Traversal
+        $traversal_threats = $this->detect_path_traversal($file_path, $content);
+        $threats = array_merge($threats, $traversal_threats);
+
+        // 14. Arbitrary File Write
+        $write_threats = $this->detect_arbitrary_file_write($file_path, $content);
+        $threats = array_merge($threats, $write_threats);
+
+        // 15. Arbitrary File Delete
+        $delete_threats = $this->detect_arbitrary_file_delete($file_path, $content);
+        $threats = array_merge($threats, $delete_threats);
+
+        // 16. Email Header Injection
+        $email_threats = $this->detect_email_injection($file_path, $content);
+        $threats = array_merge($threats, $email_threats);
+
+        // 17. SSRF (Server-Side Request Forgery)
+        $ssrf_threats = $this->detect_ssrf($file_path, $content);
+        $threats = array_merge($threats, $ssrf_threats);
+
+        // 18. Command Injection
+        $cmd_threats = $this->detect_command_injection($file_path, $content);
+        $threats = array_merge($threats, $cmd_threats);
+
+        // 19. Object Injection (Deserialization)
+        $obj_threats = $this->detect_object_injection($file_path, $content);
+        $threats = array_merge($threats, $obj_threats);
+
         return $threats;
     }
 
@@ -560,7 +592,7 @@ class SG_Advanced_Detector
             // Check for prepare() in a reasonable proximity
             $start = max(0, $match[0][1] - 500);
             $snippet = substr($content, $start, 1000);
-            
+
             if (!preg_match('/\$wpdb->prepare\s*\(/', $snippet)) {
                 $line = substr_count(substr($content, 0, $match[0][1]), "\n") + 1;
                 $threats[] = array(
@@ -612,7 +644,7 @@ class SG_Advanced_Detector
             // Check for nonce verification in proximity
             $start = max(0, $match[0][1] - 200);
             $snippet = substr($content, $start, 800);
-            
+
             if (!preg_match('/wp_verify_nonce\s*\(|check_ajax_referer\s*\(/i', $snippet)) {
                 $line = substr_count(substr($content, 0, $match[0][1]), "\n") + 1;
                 $threats[] = array(
@@ -644,9 +676,9 @@ class SG_Advanced_Detector
             // Check for extension validation
             $start = max(0, $match[0][1] - 500);
             $snippet = substr($content, $start, 1500);
-            
+
             $has_validation = preg_match('/wp_check_filetype|pathinfo\s*\([^)]*PATHINFO_EXTENSION|in_array\s*\([^)]*allowed|mime|extension/i', $snippet);
-            
+
             if (!$has_validation) {
                 $line = substr_count(substr($content, 0, $match[0][1]), "\n") + 1;
                 $threats[] = array(
@@ -689,7 +721,7 @@ class SG_Advanced_Detector
 
         $matches = 0;
         $found_keywords = array();
-        
+
         foreach ($mining_keywords as $keyword) {
             if (stripos($content, $keyword) !== false) {
                 $matches++;
@@ -758,7 +790,299 @@ class SG_Advanced_Detector
 
         return $threats;
     }
+     * @param string $file_path File path.
+     * @param string $content File content.
+     * @return array Threats found.
+     */
+    private function detect_lfi($file_path, $content)
+    {
+        $threats = array();
+
+        // Pattern: include/require with user input
+        $lfi_patterns = array(
+            '/include\s*\(\s*\$_(GET|POST|REQUEST|COOKIE)\[/i',
+            '/include_once\s*\(\s*\$_(GET|POST|REQUEST|COOKIE)\[/i',
+            '/require\s*\(\s*\$_(GET|POST|REQUEST|COOKIE)\[/i',
+            '/require_once\s*\(\s*\$_(GET|POST|REQUEST|COOKIE)\[/i',
+        );
+
+        foreach ($lfi_patterns as $pattern) {
+            if (preg_match($pattern, $content, $match, PREG_OFFSET_CAPTURE)) {
+                // Check if there's path validation nearby
+                $start = max(0, $match[0][1] - 300);
+                $snippet = substr($content, $start, 600);
+                
+                $has_validation = preg_match('/realpath|basename|pathinfo|str_replace|preg_replace|sanitize_file_name/i', $snippet);
+                
+                if (!$has_validation) {
+                    $line = substr_count(substr($content, 0, $match[0][1]), "\n") + 1;
+                    $threats[] = array(
+                        'file' => defined('ABSPATH') ? str_replace(ABSPATH, '', $file_path) : $file_path,
+                        'type' => 'lfi',
+                        'severity' => 'CRITICAL',
+                        'description' => 'Local File Inclusion: User input directly in include/require',
+                        'line' => $line,
+                    );
+                }
+            }
+        }
+
+        return $threats;
+    }
+
     /**
+     * Detect Path Traversal vulnerabilities
+     *
+     * @param string $file_path File path.
+     * @param string $content File content.
+     * @return array Threats found.
+     */
+    private function detect_path_traversal($file_path, $content)
+    {
+        $threats = array();
+
+        // Pattern 1: User input in file operations without sanitization
+        $file_ops = array('file_get_contents', 'fopen', 'readfile', 'file', 'is_file', 'is_dir', 'scandir');
+        
+        foreach ($file_ops as $func) {
+            $pattern = '/' . $func . '\s*\([^)]*\$_(GET|POST|REQUEST|COOKIE)\[/i';
+            if (preg_match($pattern, $content, $match, PREG_OFFSET_CAPTURE)) {
+                // Check for path sanitization
+                $start = max(0, $match[0][1] - 400);
+                $snippet = substr($content, $start, 800);
+                
+                $has_sanitization = preg_match('/realpath|basename|pathinfo|str_replace.*\.\.|preg_replace.*\.\./i', $snippet);
+                
+                if (!$has_sanitization) {
+                    $line = substr_count(substr($content, 0, $match[0][1]), "\n") + 1;
+                    $threats[] = array(
+                        'file' => defined('ABSPATH') ? str_replace(ABSPATH, '', $file_path) : $file_path,
+                        'type' => 'path_traversal',
+                        'severity' => 'CRITICAL',
+                        'description' => "Path Traversal: User input in {$func}() without sanitization",
+                        'line' => $line,
+                    );
+                }
+            }
+        }
+
+        return $threats;
+    }
+
+    /**
+     * Detect Arbitrary File Write vulnerabilities
+     *
+     * @param string $file_path File path.
+     * @param string $content File content.
+     * @return array Threats found.
+     */
+    private function detect_arbitrary_file_write($file_path, $content)
+    {
+        $threats = array();
+
+        // Pattern: file_put_contents/fwrite with user-controlled path
+        $write_patterns = array(
+            '/file_put_contents\s*\(\s*\$_(GET|POST|REQUEST|COOKIE)\[/i',
+            '/fwrite\s*\([^,]*,\s*\$_(GET|POST|REQUEST|COOKIE)\[/i',
+        );
+
+        foreach ($write_patterns as $pattern) {
+            if (preg_match($pattern, $content, $match, PREG_OFFSET_CAPTURE)) {
+                $line = substr_count(substr($content, 0, $match[0][1]), "\n") + 1;
+                $threats[] = array(
+                    'file' => defined('ABSPATH') ? str_replace(ABSPATH, '', $file_path) : $file_path,
+                    'type' => 'arbitrary_file_write',
+                    'severity' => 'CRITICAL',
+                    'description' => 'Arbitrary File Write: User controls file path/content',
+                    'line' => $line,
+                );
+            }
+        }
+
+        return $threats;
+    }
+
+    /**
+     * Detect Arbitrary File Delete vulnerabilities
+     *
+     * @param string $file_path File path.
+     * @param string $content File content.
+     * @return array Threats found.
+     */
+    private function detect_arbitrary_file_delete($file_path, $content)
+    {
+        $threats = array();
+
+        // Pattern: unlink/rmdir with user input
+        $delete_patterns = array(
+            '/unlink\s*\(\s*\$_(GET|POST|REQUEST|COOKIE)\[/i',
+            '/rmdir\s*\(\s*\$_(GET|POST|REQUEST|COOKIE)\[/i',
+            '/wp_delete_file\s*\(\s*\$_(GET|POST|REQUEST|COOKIE)\[/i',
+        );
+
+        foreach ($delete_patterns as $pattern) {
+            if (preg_match($pattern, $content, $match, PREG_OFFSET_CAPTURE)) {
+                $line = substr_count(substr($content, 0, $match[0][1]), "\n") + 1;
+                $threats[] = array(
+                    'file' => defined('ABSPATH') ? str_replace(ABSPATH, '', $file_path) : $file_path,
+                    'type' => 'arbitrary_file_delete',
+                    'severity' => 'CRITICAL',
+                    'description' => 'Arbitrary File Delete: User controls file path',
+                    'line' => $line,
+                );
+            }
+        }
+
+        return $threats;
+    }
+
+    /**
+     * Detect Email Header Injection vulnerabilities
+     *
+     * @param string $file_path File path.
+     * @param string $content File content.
+     * @return array Threats found.
+     */
+    private function detect_email_injection($file_path, $content)
+    {
+        $threats = array();
+
+        // Pattern: wp_mail() with user input in headers without sanitization
+        if (preg_match('/wp_mail\s*\(/i', $content, $match, PREG_OFFSET_CAPTURE)) {
+            // Check if user input is used in email headers
+            $start = $match[0][1];
+            $snippet = substr($content, $start, 1000);
+            
+            // Look for user input in headers
+            if (preg_match('/\$_(GET|POST|REQUEST|COOKIE)\[/i', $snippet) && 
+                !preg_match('/sanitize_email|sanitize_text_field|str_replace.*\\\\r|str_replace.*\\\\n/i', $snippet)) {
+                $line = substr_count(substr($content, 0, $match[0][1]), "\n") + 1;
+                $threats[] = array(
+                    'file' => defined('ABSPATH') ? str_replace(ABSPATH, '', $file_path) : $file_path,
+                    'type' => 'email_injection',
+                    'severity' => 'HIGH',
+                    'description' => 'Email Header Injection: Unsanitized user input in wp_mail()',
+                    'line' => $line,
+                );
+            }
+        }
+
+        return $threats;
+    }
+
+    /**
+     * Detect SSRF (Server-Side Request Forgery) vulnerabilities
+     *
+     * @param string $file_path File path.
+     * @param string $content File content.
+     * @return array Threats found.
+     */
+    private function detect_ssrf($file_path, $content)
+    {
+        $threats = array();
+
+        // Pattern: HTTP requests with user-controlled URLs
+        $ssrf_patterns = array(
+            '/wp_remote_get\s*\(\s*\$_(GET|POST|REQUEST|COOKIE)\[/i',
+            '/wp_remote_post\s*\(\s*\$_(GET|POST|REQUEST|COOKIE)\[/i',
+            '/curl_setopt\s*\([^,]*,\s*CURLOPT_URL\s*,\s*\$_(GET|POST|REQUEST|COOKIE)\[/i',
+            '/file_get_contents\s*\(\s*["\']https?:\/\/["\'].*\$_(GET|POST|REQUEST|COOKIE)\[/i',
+        );
+
+        foreach ($ssrf_patterns as $pattern) {
+            if (preg_match($pattern, $content, $match, PREG_OFFSET_CAPTURE)) {
+                // Check for URL validation
+                $start = max(0, $match[0][1] - 400);
+                $snippet = substr($content, $start, 800);
+                
+                $has_validation = preg_match('/wp_http_validate_url|filter_var.*FILTER_VALIDATE_URL|parse_url|whitelist/i', $snippet);
+                
+                if (!$has_validation) {
+                    $line = substr_count(substr($content, 0, $match[0][1]), "\n") + 1;
+                    $threats[] = array(
+                        'file' => defined('ABSPATH') ? str_replace(ABSPATH, '', $file_path) : $file_path,
+                        'type' => 'ssrf',
+                        'severity' => 'CRITICAL',
+                        'description' => 'SSRF: User-controlled URL in HTTP request',
+                        'line' => $line,
+                    );
+                }
+            }
+        }
+
+        return $threats;
+    }
+
+    /**
+     * Detect Command Injection vulnerabilities
+     *
+     * @param string $file_path File path.
+     * @param string $content File content.
+     * @return array Threats found.
+     */
+    private function detect_command_injection($file_path, $content)
+    {
+        $threats = array();
+
+        // Pattern: Command execution with user input
+        $cmd_patterns = array(
+            '/shell_exec\s*\([^)]*\$_(GET|POST|REQUEST|COOKIE)\[/i',
+            '/exec\s*\([^)]*\$_(GET|POST|REQUEST|COOKIE)\[/i',
+            '/system\s*\([^)]*\$_(GET|POST|REQUEST|COOKIE)\[/i',
+            '/passthru\s*\([^)]*\$_(GET|POST|REQUEST|COOKIE)\[/i',
+            '/proc_open\s*\([^)]*\$_(GET|POST|REQUEST|COOKIE)\[/i',
+            '/popen\s*\([^)]*\$_(GET|POST|REQUEST|COOKIE)\[/i',
+        );
+
+        foreach ($cmd_patterns as $pattern) {
+            if (preg_match($pattern, $content, $match, PREG_OFFSET_CAPTURE)) {
+                // Check for escapeshellcmd/escapeshellarg
+                $start = max(0, $match[0][1] - 300);
+                $snippet = substr($content, $start, 600);
+                
+                $has_escaping = preg_match('/escapeshellcmd|escapeshellarg/i', $snippet);
+                
+                if (!$has_escaping) {
+                    $line = substr_count(substr($content, 0, $match[0][1]), "\n") + 1;
+                    $threats[] = array(
+                        'file' => defined('ABSPATH') ? str_replace(ABSPATH, '', $file_path) : $file_path,
+                        'type' => 'command_injection',
+                        'severity' => 'CRITICAL',
+                        'description' => 'Command Injection: User input in system command',
+                        'line' => $line,
+                    );
+                }
+            }
+        }
+
+        return $threats;
+    }
+
+    /**
+     * Detect Object Injection (Deserialization) vulnerabilities
+     *
+     * @param string $file_path File path.
+     * @param string $content File content.
+     * @return array Threats found.
+     */
+    private function detect_object_injection($file_path, $content)
+    {
+        $threats = array();
+
+        // Pattern: unserialize() with user input
+        if (preg_match('/unserialize\s*\(\s*\$_(GET|POST|REQUEST|COOKIE)\[/i', $content, $match, PREG_OFFSET_CAPTURE)) {
+            $line = substr_count(substr($content, 0, $match[0][1]), "\n") + 1;
+            $threats[] = array(
+                'file' => defined('ABSPATH') ? str_replace(ABSPATH, '', $file_path) : $file_path,
+                'type' => 'object_injection',
+                'severity' => 'CRITICAL',
+                'description' => 'Object Injection: unserialize() with user input (PHP Object Injection)',
+                'line' => $line,
+            );
+        }
+
+        return $threats;
+    }
      * Check if file is in plugins or themes directory
      *
      * @param string $file_path File path.
