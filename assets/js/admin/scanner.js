@@ -251,7 +251,7 @@
             // Show threats by category
             html += '<div style="background: var(--sg-bg-dark); border: 1px solid var(--sg-border); border-radius: 16px; padding: 32px; margin-bottom: 32px;">';
             html += '<h3 style="margin: 0 0 28px 0; font-size: 22px; font-weight: 700; color: var(--sg-text-primary);">' +
-                (SpectrusGuardScanner.i18n.what_threats_mean || 'What These Threats Mean') + '</h3>';
+                ((SpectrusGuardScanner.i18n && SpectrusGuardScanner.i18n.what_threats_mean) || 'What These Threats Mean') + '</h3>';
 
             var categoryOrder = ['malware', 'uploads', 'core', 'suspicious'];
             $.each(categoryOrder, function (i, cat) {
@@ -266,7 +266,7 @@
             // Show file list
             html += '<div style="background: var(--sg-bg-dark); border: 1px solid var(--sg-border); border-radius: 16px; padding: 32px;">';
             html += '<h3 style="margin: 0 0 28px 0; font-size: 22px; font-weight: 700; color: var(--sg-text-primary);">' +
-                (SpectrusGuardScanner.i18n.affected_files || 'Affected Files') + '</h3>';
+                ((SpectrusGuardScanner.i18n && SpectrusGuardScanner.i18n.affected_files) || 'Affected Files') + '</h3>';
             html += '<div style="max-height: 500px; overflow-y: auto; padding-right: 12px; font-family: \'Monaco\', \'Consolas\', monospace; font-size: 14px; line-height: 1.6;">';
 
             $.each(results.issues, function (i, issue) {
@@ -278,7 +278,7 @@
             // Continue button
             html += '<div style="text-align: center; margin-top: 40px; padding-top: 20px; border-top: 1px solid var(--sg-border);">' +
                 '<button type="button" id="sg-continue-btn" class="sg-btn sg-btn-primary sg-btn-lg" style="padding: 18px 56px; font-size: 17px; font-weight: 700; border-radius: 10px;">' +
-                (SpectrusGuardScanner.i18n.continue || 'Continue') + ' →' +
+                ((SpectrusGuardScanner.i18n && SpectrusGuardScanner.i18n.continue) || 'Continue') + ' →' +
                 '</button>' +
                 '</div>';
 
@@ -307,13 +307,13 @@
                 '<div>' +
                 '<div style="font-size: 18px; font-weight: 700; color: var(--sg-text-primary); margin-bottom: 4px;">' + explanation.title + '</div>' +
                 '<div style="color: #667eea; font-weight: 600; font-size: 14px;">' + count + ' ' +
-                (SpectrusGuardScanner.i18n.threats_detected || 'threats detected') + '</div>' +
+                ((SpectrusGuardScanner.i18n && SpectrusGuardScanner.i18n.threats_detected) || 'threats detected') + '</div>' +
                 '</div>' +
                 '</div>' +
                 '<p style="color: #cbd5e1; margin: 0 0 20px 0; line-height: 1.7; font-size: 15px;">' + explanation.description + '</p>' +
                 '<div style="margin-top: 20px;">' +
                 '<div style="font-size: 14px; font-weight: 700; color: var(--sg-text-primary); margin-bottom: 12px; text-transform: uppercase; letter-spacing: 0.5px;">' +
-                (SpectrusGuardScanner.i18n.recommended_actions || 'Recommended Actions:') + '</div>' +
+                ((SpectrusGuardScanner.i18n && SpectrusGuardScanner.i18n.recommended_actions) || 'Recommended Actions:') + '</div>' +
                 '<ul style="margin: 0 0 0 28px; color: #cbd5e1; line-height: 1.8; font-size: 14px;">';
 
             $.each(explanation.actions, function (j, action) {
@@ -373,18 +373,18 @@
                     'data-file="' + $('<div/>').text(issue.file).html() + '" ' +
                     'data-index="' + index + '" ' +
                     'style="background: rgba(255, 193, 7, 0.15); border: 1px solid rgba(255, 193, 7, 0.4); color: #ffc107; padding: 10px 20px; font-size: 13px; border-radius: 8px; font-weight: 600; transition: all 0.3s ease;">' +
-                    '🔒 ' + (SpectrusGuardScanner.i18n.quarantine || 'Quarantine') +
+                    '🔒 ' + ((SpectrusGuardScanner.i18n && SpectrusGuardScanner.i18n.quarantine) || 'Quarantine') +
                     '</button>' +
                     '<button type="button" class="sg-btn sg-btn-delete" ' +
                     'data-file="' + $('<div/>').text(issue.file).html() + '" ' +
                     'data-index="' + index + '" ' +
                     'style="background: rgba(233, 69, 96, 0.15); border: 1px solid rgba(233, 69, 96, 0.4); color: #e94560; padding: 10px 20px; font-size: 13px; border-radius: 8px; font-weight: 600; transition: all 0.3s ease;">' +
-                    '🗑️ ' + (SpectrusGuardScanner.i18n.delete || 'Delete') +
+                    '🗑️ ' + ((SpectrusGuardScanner.i18n && SpectrusGuardScanner.i18n.delete) || 'Delete') +
                     '</button>';
             } else {
                 html += '<button type="button" class="sg-btn" disabled ' +
                     'style="background: rgba(255,255, 255, 0.05); color: var(--sg-text-secondary); padding: 10px 20px; font-size: 13px; border-radius: 8px; opacity: 0.5; font-weight: 600;">' +
-                    '⚠️ ' + (SpectrusGuardScanner.i18n.restore_core || 'Restore from WordPress core') +
+                    '⚠️ ' + ((SpectrusGuardScanner.i18n && SpectrusGuardScanner.i18n.restore_core) || 'Restore from WordPress core') +
                     '</button>';
             }
 
@@ -401,23 +401,23 @@
             var html = '<div style="text-align: center; padding: 60px 40px;">' +
                 '<div style="font-size: 96px; margin-bottom: 28px; line-height: 1;">✅</div>' +
                 '<h2 style="margin: 0 0 20px 0; font-size: 36px; font-weight: 700; color: var(--sg-text-primary);">' +
-                (SpectrusGuardScanner.i18n.site_clean || 'Your Site is Clean!') + '</h2>' +
+                ((SpectrusGuardScanner.i18n && SpectrusGuardScanner.i18n.site_clean) || 'Your Site is Clean!') + '</h2>' +
                 '<p style="color: #667eea; font-size: 19px; line-height: 1.7; max-width: 600px; margin: 0 auto 40px auto; font-weight: 500;">' +
-                (SpectrusGuardScanner.i18n.clean_scan_message || 'Great news! The scan didn\'t detect any security issues. Your WordPress installation appears to be secure.') +
+                ((SpectrusGuardScanner.i18n && SpectrusGuardScanner.i18n.clean_scan_message) || 'Great news! The scan didn\'t detect any security issues. Your WordPress installation appears to be secure.') +
                 '</p>' +
                 '<div style="background: linear-gradient(135deg, rgba(102, 126, 234, 0.12), rgba(118, 75, 162, 0.12)); border: 2px solid rgba(102, 126, 234, 0.3); border-radius: 16px; padding: 32px; margin-bottom: 40px; text-align: left;">' +
                 '<h3 style="margin: 0 0 24px 0; color: #667eea; font-size: 22px; font-weight: 700;">' +
-                (SpectrusGuardScanner.i18n.what_we_checked || 'What We Checked') + '</h3>' +
+                ((SpectrusGuardScanner.i18n && SpectrusGuardScanner.i18n.what_we_checked) || 'What We Checked') + '</h3>' +
                 '<ul style="margin: 0; padding-left: 32px; color: #cbd5e1; line-height: 2; font-size: 16px;">' +
-                '<li style="margin-bottom: 8px;">✅ ' + (SpectrusGuardScanner.i18n.check_core || 'WordPress core file integrity') + '</li>' +
-                '<li style="margin-bottom: 8px;">✅ ' + (SpectrusGuardScanner.i18n.check_uploads || 'PHP files in uploads directory') + '</li>' +
-                '<li style="margin-bottom: 8px;">✅ ' + (SpectrusGuardScanner.i18n.check_suspicious || 'Hidden and suspicious files') + '</li>' +
-                '<li style="margin-bottom: 8px;">✅ ' + (SpectrusGuardScanner.i18n.check_permissions || 'File permissions') + '</li>' +
-                '<li style="margin-bottom: 0;">✅ ' + (SpectrusGuardScanner.i18n.check_malware || 'Known malware signatures') + '</li>' +
+                '<li style="margin-bottom: 8px;">✅ ' + ((SpectrusGuardScanner.i18n && SpectrusGuardScanner.i18n.check_core) || 'WordPress core file integrity') + '</li>' +
+                '<li style="margin-bottom: 8px;">✅ ' + ((SpectrusGuardScanner.i18n && SpectrusGuardScanner.i18n.check_uploads) || 'PHP files in uploads directory') + '</li>' +
+                '<li style="margin-bottom: 8px;">✅ ' + ((SpectrusGuardScanner.i18n && SpectrusGuardScanner.i18n.check_suspicious) || 'Hidden and suspicious files') + '</li>' +
+                '<li style="margin-bottom: 8px;">✅ ' + ((SpectrusGuardScanner.i18n && SpectrusGuardScanner.i18n.check_permissions) || 'File permissions') + '</li>' +
+                '<li style="margin-bottom: 0;">✅ ' + ((SpectrusGuardScanner.i18n && SpectrusGuardScanner.i18n.check_malware) || 'Known malware signatures') + '</li>' +
                 '</ul>' +
                 '</div>' +
                 '<button type="button" id="sg-continue-btn" class="sg-btn sg-btn-primary sg-btn-lg" style="padding: 20px 60px; font-size: 17px; font-weight: 700; border-radius: 12px;">' +
-                (SpectrusGuardScanner.i18n.return_scanner || 'Return to Scanner') +
+                ((SpectrusGuardScanner.i18n && SpectrusGuardScanner.i18n.return_scanner) || 'Return to Scanner') +
                 '</button>' +
                 '</div>';
 
@@ -443,44 +443,44 @@
             // Default explanations (can be overridden via wp_localize_script)
             var explanations = {
                 'core': {
-                    title: SpectrusGuardScanner.i18n.threat_core_title || 'WordPress Core Integrity',
+                    title: (SpectrusGuardScanner.i18n && SpectrusGuardScanner.i18n.threat_core_title) || 'WordPress Core Integrity',
                     icon: '⚙️',
-                    description: SpectrusGuardScanner.i18n.threat_core_desc || 'Modified or missing WordPress core files can indicate a compromised installation.',
+                    description: (SpectrusGuardScanner.i18n && SpectrusGuardScanner.i18n.threat_core_desc) || 'Modified or missing WordPress core files can indicate a compromised installation.',
                     actions: [
-                        SpectrusGuardScanner.i18n.threat_core_action1 || 'Restore the modified files from a clean WordPress installation',
-                        SpectrusGuardScanner.i18n.threat_core_action2 || 'Check your WordPress version and update if needed',
-                        SpectrusGuardScanner.i18n.threat_core_action3 || 'Review the file modifications to understand what was changed'
+                        (SpectrusGuardScanner.i18n && SpectrusGuardScanner.i18n.threat_core_action1) || 'Restore the modified files from a clean WordPress installation',
+                        (SpectrusGuardScanner.i18n && SpectrusGuardScanner.i18n.threat_core_action2) || 'Check your WordPress version and update if needed',
+                        (SpectrusGuardScanner.i18n && SpectrusGuardScanner.i18n.threat_core_action3) || 'Review the file modifications to understand what was changed'
                     ]
                 },
                 'uploads': {
-                    title: SpectrusGuardScanner.i18n.threat_uploads_title || 'PHP Files in Uploads',
+                    title: (SpectrusGuardScanner.i18n && SpectrusGuardScanner.i18n.threat_uploads_title) || 'PHP Files in Uploads',
                     icon: '📁',
-                    description: SpectrusGuardScanner.i18n.threat_uploads_desc || 'PHP files in the uploads directory are almost always malicious.',
+                    description: (SpectrusGuardScanner.i18n && SpectrusGuardScanner.i18n.threat_uploads_desc) || 'PHP files in the uploads directory are almost always malicious.',
                     actions: [
-                        SpectrusGuardScanner.i18n.threat_uploads_action1 || 'Delete all PHP files from the uploads directory',
-                        SpectrusGuardScanner.i18n.threat_uploads_action2 || 'Review the file contents to understand what the backdoor does',
-                        SpectrusGuardScanner.i18n.threat_uploads_action3 || 'Check your access logs to see how the file was uploaded'
+                        (SpectrusGuardScanner.i18n && SpectrusGuardScanner.i18n.threat_uploads_action1) || 'Delete all PHP files from the uploads directory',
+                        (SpectrusGuardScanner.i18n && SpectrusGuardScanner.i18n.threat_uploads_action2) || 'Review the file contents to understand what the backdoor does',
+                        (SpectrusGuardScanner.i18n && SpectrusGuardScanner.i18n.threat_uploads_action3) || 'Check your access logs to see how the file was uploaded'
                     ]
                 },
                 'suspicious': {
-                    title: SpectrusGuardScanner.i18n.threat_suspicious_title || 'Suspicious Files',
+                    title: (SpectrusGuardScanner.i18n && SpectrusGuardScanner.i18n.threat_suspicious_title) || 'Suspicious Files',
                     icon: '🔍',
-                    description: SpectrusGuardScanner.i18n.threat_suspicious_desc || 'Hidden files or files with dangerous permissions may indicate malware activity.',
+                    description: (SpectrusGuardScanner.i18n && SpectrusGuardScanner.i18n.threat_suspicious_desc) || 'Hidden files or files with dangerous permissions may indicate malware activity.',
                     actions: [
-                        SpectrusGuardScanner.i18n.threat_suspicious_action1 || 'Review hidden files to determine if they are legitimate',
-                        SpectrusGuardScanner.i18n.threat_suspicious_action2 || 'Fix dangerous file permissions (should be 644 for files, 755 for directories)',
-                        SpectrusGuardScanner.i18n.threat_suspicious_action3 || 'Delete files you don\'t recognize'
+                        (SpectrusGuardScanner.i18n && SpectrusGuardScanner.i18n.threat_suspicious_action1) || 'Review hidden files to determine if they are legitimate',
+                        (SpectrusGuardScanner.i18n && SpectrusGuardScanner.i18n.threat_suspicious_action2) || 'Fix dangerous file permissions (should be 644 for files, 755 for directories)',
+                        (SpectrusGuardScanner.i18n && SpectrusGuardScanner.i18n.threat_suspicious_action3) || 'Delete files you don\'t recognize'
                     ]
                 },
                 'malware': {
-                    title: SpectrusGuardScanner.i18n.threat_malware_title || 'Malware Detected',
+                    title: (SpectrusGuardScanner.i18n && SpectrusGuardScanner.i18n.threat_malware_title) || 'Malware Detected',
                     icon: '🚨',
-                    description: SpectrusGuardScanner.i18n.threat_malware_desc || 'Malware signatures were detected in your files.',
+                    description: (SpectrusGuardScanner.i18n && SpectrusGuardScanner.i18n.threat_malware_desc) || 'Malware signatures were detected in your files.',
                     actions: [
-                        SpectrusGuardScanner.i18n.threat_malware_action1 || 'Review the infected files and the malware patterns detected',
-                        SpectrusGuardScanner.i18n.threat_malware_action2 || 'Delete or clean the infected files immediately',
-                        SpectrusGuardScanner.i18n.threat_malware_action3 || 'Scan from a clean computer to detect malware on your local system',
-                        SpectrusGuardScanner.i18n.threat_malware_action4 || 'Change all passwords (WordPress, FTP, database, hosting)'
+                        (SpectrusGuardScanner.i18n && SpectrusGuardScanner.i18n.threat_malware_action1) || 'Review the infected files and the malware patterns detected',
+                        (SpectrusGuardScanner.i18n && SpectrusGuardScanner.i18n.threat_malware_action2) || 'Delete or clean the infected files immediately',
+                        (SpectrusGuardScanner.i18n && SpectrusGuardScanner.i18n.threat_malware_action3) || 'Scan from a clean computer to detect malware on your local system',
+                        (SpectrusGuardScanner.i18n && SpectrusGuardScanner.i18n.threat_malware_action4) || 'Change all passwords (WordPress, FTP, database, hosting)'
                     ]
                 }
             };
@@ -488,8 +488,8 @@
             return explanations[category] || {
                 title: category,
                 icon: '⚠️',
-                description: SpectrusGuardScanner.i18n.threat_default_desc || 'Potential security issue detected.',
-                actions: [SpectrusGuardScanner.i18n.threat_default_action || 'Review the file and determine if it is legitimate']
+                description: (SpectrusGuardScanner.i18n && SpectrusGuardScanner.i18n.threat_default_desc) || 'Potential security issue detected.',
+                actions: [(SpectrusGuardScanner.i18n && SpectrusGuardScanner.i18n.threat_default_action) || 'Review the file and determine if it is legitimate']
             };
         },
 
