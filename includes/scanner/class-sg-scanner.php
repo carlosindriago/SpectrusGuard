@@ -773,7 +773,9 @@ class SG_Scanner
 
             // Add details
             $grouped[$key]['categories'][] = $category;
-            $grouped[$key]['messages'][] = $item['message'];
+            // Support both 'message' and 'description' keys (advanced detector uses 'description')
+            $message = isset($item['message']) ? $item['message'] : (isset($item['description']) ? $item['description'] : 'Unknown issue');
+            $grouped[$key]['messages'][] = $message;
         };
 
         // Process distinct result sets
