@@ -425,37 +425,62 @@ class SG_Firewall
      * Get the client's real IP address
      *
      * Handles proxies and load balancers.
+     * Prioritizes secure detection over blind trust of headers.
      *
      * @return string Client IP address.
      */
     public function get_client_ip()
     {
-        $ip_keys = array(
-            'HTTP_CF_CONNECTING_IP', // Cloudflare
-            'HTTP_X_FORWARDED_FOR',  // Proxy
-            'HTTP_X_REAL_IP',        // Nginx proxy
-            'HTTP_CLIENT_IP',        // Client IP
-            'REMOTE_ADDR',           // Standard
-        );
+        // 1. Cloudflare (High trust if present, assuming server is configured to accept CF)
+        if (!empty($_SERVER['HTTP_CF_CONNECTING_IP']) && filter_var($_SERVER['HTTP_CF_CONNECTING_IP'], FILTER_VALIDATE_IP)) {
+            return $_SERVER['HTTP_CF_CONNECTING_IP'];
+        }
 
-        foreach ($ip_keys as $key) {
-            if (!empty($_SERVER[$key])) {
-                $ip = $_SERVER[$key];
+        // 2. REMOTE_ADDR (Source of truth)
+        $remote_addr = isset($_SERVER['REMOTE_ADDR']) ? $_SERVER['REMOTE_ADDR'] : '0.0.0.0';
 
-                // Handle comma-separated IPs (X-Forwarded-For)
-                if (strpos($ip, ',') !== false) {
-                    $ips = explode(',', $ip);
-                    $ip = trim($ips[0]);
-                }
+        // 3. Check for Proxy Headers only if REMOTE_ADDR is private (local proxy)
+        if ($this->is_private_ip($remote_addr)) {
+            $ip_keys = array(
+                'HTTP_X_FORWARDED_FOR',
+                'HTTP_X_REAL_IP',
+                'HTTP_CLIENT_IP',
+            );
 
-                // Validate IP
-                if (filter_var($ip, FILTER_VALIDATE_IP)) {
-                    return $ip;
+            foreach ($ip_keys as $key) {
+                if (!empty($_SERVER[$key])) {
+                    $ip = $_SERVER[$key];
+
+                    // Handle comma-separated IPs (X-Forwarded-For)
+                    if (strpos($ip, ',') !== false) {
+                        $ips = explode(',', $ip);
+                        $ip = trim($ips[0]);
+                    }
+
+                    // Validate IP
+                    if (filter_var($ip, FILTER_VALIDATE_IP)) {
+                        return $ip;
+                    }
                 }
             }
         }
 
-        return '0.0.0.0';
+        return $remote_addr;
+    }
+
+    /**
+     * Check if an IP address is in a private network range
+     *
+     * @param string $ip IP address to check.
+     * @return bool True if private, false otherwise.
+     */
+    private function is_private_ip($ip)
+    {
+        return !filter_var(
+            $ip,
+            FILTER_VALIDATE_IP,
+            FILTER_FLAG_NO_PRIV_RANGE | FILTER_FLAG_NO_RES_RANGE
+        );
     }
 
     /**
