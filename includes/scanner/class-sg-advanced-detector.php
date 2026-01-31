@@ -778,7 +778,7 @@ class SG_Advanced_Detector
 
         foreach ($sensitive_constants as $constant) {
             // Lookfor output functions with these constants
-            if (preg_match('/(?:echo|print|var_dump|print_r)\s*[^;]* . $constant . '/i', $content, $match, PREG_OFFSET_CAPTURE)) {
+            if (preg_match('/(?:echo|print|var_dump|print_r)\s*[^;]*' . preg_quote($constant, '/') . '/i', $content, $match, PREG_OFFSET_CAPTURE)) {
                 $line = substr_count(substr($content, 0, $match[0][1]), "\n") + 1;
                 $threats[] = array(
                     'file' => defined('ABSPATH') ? str_replace(ABSPATH, '', $file_path) : $file_path,
