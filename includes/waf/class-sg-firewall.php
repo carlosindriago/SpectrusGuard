@@ -362,30 +362,41 @@ class SG_Firewall
      */
     private function decode_value($value)
     {
-        // URL decode (multiple passes for double/triple encoding)
         $decoded = $value;
-        for ($i = 0; $i < 3; $i++) {
-            $new_decoded = urldecode($decoded);
-            if ($new_decoded === $decoded) {
-                break;
+
+        // URL decode (multiple passes for double/triple encoding)
+        // Optimization: Check for % or + before decoding to skip expensive loop
+        if (strpos($decoded, '%') !== false || strpos($decoded, '+') !== false) {
+            for ($i = 0; $i < 3; $i++) {
+                $new_decoded = urldecode($decoded);
+                if ($new_decoded === $decoded) {
+                    break;
+                }
+                $decoded = $new_decoded;
             }
-            $decoded = $new_decoded;
         }
 
         // HTML entity decode
-        $decoded = html_entity_decode($decoded, ENT_QUOTES, 'UTF-8');
+        // Optimization: Check for & before decoding
+        if (strpos($decoded, '&') !== false) {
+            $decoded = html_entity_decode($decoded, ENT_QUOTES, 'UTF-8');
+        }
 
         // Handle null bytes
-        $decoded = str_replace(chr(0), '', $decoded);
+        if (strpos($decoded, chr(0)) !== false) {
+            $decoded = str_replace(chr(0), '', $decoded);
+        }
 
         // Handle unicode escapes
-        $decoded = preg_replace_callback(
-            '/\\\\u([0-9a-fA-F]{4})/',
-            function ($matches) {
-                return mb_convert_encoding(pack('H*', $matches[1]), 'UTF-8', 'UCS-2BE');
-            },
-            $decoded
-        );
+        if (strpos($decoded, '\\u') !== false) {
+            $decoded = preg_replace_callback(
+                '/\\\\u([0-9a-fA-F]{4})/',
+                function ($matches) {
+                    return mb_convert_encoding(pack('H*', $matches[1]), 'UTF-8', 'UCS-2BE');
+                },
+                $decoded
+            );
+        }
 
         return $decoded;
     }
