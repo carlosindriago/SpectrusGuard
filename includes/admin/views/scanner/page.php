@@ -116,7 +116,10 @@ if (!defined('ABSPATH')) {
                     <?php esc_html_e('Threat Detection History', 'spectrus-guard'); ?>
                 </h3>
                 <div class="sg-chart-container" style="position: relative; height: 350px; width: 100%;">
-                    <canvas id="sgHistoryChart"></canvas>
+                    <canvas id="sgHistoryChart" role="img"
+                        aria-label="<?php esc_attr_e('Threat Detection History Chart', 'spectrus-guard'); ?>">
+                        <p><?php esc_html_e('Bar chart showing the number of threats detected over the last 10 scans.', 'spectrus-guard'); ?></p>
+                    </canvas>
                 </div>
             </div>
 
