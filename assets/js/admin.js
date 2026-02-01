@@ -210,13 +210,16 @@
                     messageStyle = 'color: #ffffff; font-weight: 700; font-size: 15px;';
                 }
 
+                var icon = icons[type] || icons['info'];
+                var role = (type === 'error' || type === 'warning') ? 'alert' : 'status';
+
                 var $toast = $(
-                    '<div class="sg-toast ' + type + '" style="' + containerStyle + '">' +
+                    '<div class="sg-toast ' + type + '" style="' + containerStyle + '" role="' + role + '">' +
                     '<div class="sg-toast-icon">' + icon + '</div>' +
                     '<div class="sg-toast-content">' +
                     '<div class="sg-toast-message" style="' + messageStyle + '">' + message + '</div>' + // Explicit styles
                     '</div>' +
-                    '<button type="button" class="sg-toast-close" style="color: rgba(255,255,255,0.8);">&times;</button>' +
+                    '<button type="button" class="sg-toast-close" style="color: rgba(255,255,255,0.8);" aria-label="Close notification">&times;</button>' +
                     '</div>'
                 );
 

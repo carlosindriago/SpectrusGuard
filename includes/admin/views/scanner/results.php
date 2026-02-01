@@ -140,7 +140,8 @@ if (!defined('ABSPATH')) {
                                         </div>
                                     <?php else: ?>
                                         <button type="button" class="sg-btn sg-btn-sm" disabled
-                                            style="background: rgba(255,255,255,0.05); color: var(--sg-text-secondary); padding: 8px 16px; font-size: 12px; border-radius: 6px; opacity: 0.5;">
+                                            title="<?php esc_attr_e('Automatic restoration coming soon. Please restore manually via FTP.', 'spectrus-guard'); ?>"
+                                            style="background: rgba(255,255,255,0.05); color: var(--sg-text-secondary); padding: 8px 16px; font-size: 12px; border-radius: 6px; opacity: 0.5; cursor: help;">
                                             ⚠️ Restore from WordPress core
                                         </button>
                                     <?php endif; ?>

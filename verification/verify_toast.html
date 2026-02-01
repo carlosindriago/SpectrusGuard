@@ -1,0 +1,87 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Toast Verification</title>
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <style>
+        /* Mock CSS from assets/css/admin.css */
+        :root {
+            --sg-primary: #3b82f6;
+            --sg-success: #10b981;
+            --sg-danger: #ef4444;
+            --sg-warning: #f59e0b;
+            --sg-bg-card: #1e293b;
+            --sg-text-primary: #f8fafc;
+            --sg-text-muted: #64748b;
+            --sg-radius-md: 8px;
+        }
+        body { background: #0f172a; color: white; font-family: sans-serif; }
+
+        .sg-toast-container {
+            position: fixed;
+            top: 32px;
+            right: 20px;
+            z-index: 99999;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+        .sg-toast {
+            min-width: 320px;
+            background: var(--sg-bg-card);
+            border-left: 4px solid var(--sg-primary);
+            border-radius: var(--sg-radius-md);
+            padding: 16px;
+            display: flex;
+            align-items: flex-start;
+            gap: 12px;
+            color: white;
+            transition: all 0.3s;
+            opacity: 0;
+            transform: translateX(100%);
+        }
+        .sg-toast.show {
+            opacity: 1;
+            transform: translateX(0);
+        }
+        .sg-toast-icon { font-size: 20px; }
+        .sg-toast-content { flex: 1; }
+        .sg-toast-message { font-size: 14px; }
+        .sg-toast-close { background: transparent; border: none; color: white; cursor: pointer; font-size: 18px; }
+    </style>
+</head>
+<body>
+    <h1>Toast Verification</h1>
+    <button id="btn-success">Show Success</button>
+    <button id="btn-error">Show Error</button>
+
+    <script>
+        // Mock SpectrusGuard object
+        window.SpectrusGuard = {
+            ajax_url: '/mock-ajax',
+            nonce: 'mock-nonce',
+            i18n: {
+                copied: 'Copied!',
+                error: 'Error!',
+                confirm_clear: 'Are you sure?'
+            }
+        };
+    </script>
+
+    <!-- Load the actual JS file -->
+    <script src="../assets/js/admin.js"></script>
+
+    <script>
+        $(document).ready(function() {
+            $('#btn-success').click(function() {
+                SpectrusGuardAdmin.showNotice('success', 'This is a success message.');
+            });
+            $('#btn-error').click(function() {
+                SpectrusGuardAdmin.showNotice('error', 'This is an error message.');
+            });
+        });
+    </script>
+</body>
+</html>
