@@ -161,6 +161,10 @@ class SG_Whitelist
     {
         global $wpdb;
 
+        // Security: Cast to int to prevent SQL injection
+        $limit = (int) $limit;
+        $offset = (int) $offset;
+
         $limit_clause = $limit > 0 ? "LIMIT $limit" : '';
         $offset_clause = $offset > 0 ? "OFFSET $offset" : '';
 
