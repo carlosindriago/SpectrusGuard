@@ -2406,111 +2406,175 @@ input:checked+.sg-slider:before {
     max-width: 400px;
     margin: 0 auto 24px;
 }
+
 /* Action Button Colors */
-.sg-btn-icon-only.bg-orange:hover { background-color: #FFEDD5; color: #C2410C; border-color: #FDBA74; }
-.sg-btn-icon-only.bg-green:hover { background-color: #D1FAE5; color: #059669; border-color: #6EE7B7; }
+.sg-btn-icon-only.bg-orange:hover {
+    background-color: #FFEDD5;
+    color: #C2410C;
+    border-color: #FDBA74;
+}
+
+.sg-btn-icon-only.bg-green:hover {
+    background-color: #D1FAE5;
+    color: #059669;
+    border-color: #6EE7B7;
+}
+
+
 
 /* ============================================
-   Dashboard Alerts
+   Dashboard Alerts - Top Bar Style
    ============================================ */
 
 .sg-alerts-wrapper {
-    margin-bottom: 30px;
+    margin: -32px -32px 32px -32px;
+    /* Pull to edges of container padding */
     display: flex;
     flex-direction: column;
-    gap: 15px;
+    width: calc(100% + 64px);
+    /* Full width including negative margins */
+    z-index: 100;
+    position: relative;
+    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
 }
 
 .sg-alert {
     display: flex;
     align-items: center;
     gap: 20px;
-    padding: 20px;
+    padding: 15px 32px;
+    margin: 0;
+    border-radius: 0;
+    border-left: none;
+    border-bottom: 1px solid rgba(0, 0, 0, 0.1);
     background: var(--sg-bg-card);
-    border-left: 4px solid var(--sg-border);
-    border-radius: var(--sg-radius-md);
-    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
-    animation: slideIn 0.3s ease-out;
+    animation: slideDown 0.3s ease-out;
 }
 
-@keyframes slideIn {
-    from { opacity: 0; transform: translateY(-10px); }
-    to { opacity: 1; transform: translateY(0); }
+@keyframes slideDown {
+    from {
+        opacity: 0;
+        transform: translateY(-10px);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.sg-alert:last-child {
+    border-bottom: none;
 }
 
 .sg-alert-icon {
-    font-size: 24px;
-    width: 40px;
-    height: 40px;
+    font-size: 20px;
+    /* Smaller icon for bar */
+    width: 32px;
+    height: 32px;
     display: flex;
     align-items: center;
     justify-content: center;
-    background: rgba(255, 255, 255, 0.05);
-    border-radius: 50%;
+    background: rgba(255, 255, 255, 0.1);
+    border-radius: 6px;
+    /* Square-ish for bar */
     flex-shrink: 0;
 }
 
 .sg-alert-content {
     flex: 1;
+    display: flex;
+    align-items: center;
+    gap: 15px;
+    flex-wrap: wrap;
 }
 
-.sg-alert-content h4 {
-    margin: 0 0 5px 0;
-    font-size: 1rem;
+.sg-alert-content strong {
+    font-size: 0.95rem;
     color: var(--sg-text-primary);
+    white-space: nowrap;
 }
 
-.sg-alert-content p {
-    margin: 0;
+.sg-alert-content span {
     font-size: 0.9rem;
-    color: var(--sg-text-secondary);
+    color: var(--sg-text-primary);
+    opacity: 0.9;
 }
 
 .sg-alert-action {
-    padding: 8px 16px;
-    background: var(--sg-bg-hover);
-    color: var(--sg-text-primary);
+    padding: 6px 14px;
+    background: rgba(255, 255, 255, 0.1);
+    color: var(--sg-text-primary) !important;
     text-decoration: none;
-    border-radius: var(--sg-radius-sm);
-    font-size: 0.85rem;
+    border-radius: 4px;
+    /* Smaller radius */
+    font-size: 0.8rem;
     font-weight: 600;
     white-space: nowrap;
     transition: all 0.2s;
+    border: 1px solid rgba(255, 255, 255, 0.1);
 }
 
 .sg-alert-action:hover {
-    background: var(--sg-primary);
+    background: rgba(255, 255, 255, 0.2);
+    transform: translateY(-1px);
+}
+
+/* Alert Variants - Solid Colors for Visibility */
+
+.sg-alert-critical {
+    background: var(--sg-danger);
+    /* Red 500 */
+}
+
+.sg-alert-critical .sg-alert-content strong,
+.sg-alert-critical .sg-alert-content span {
     color: white;
 }
 
-/* Alert Variants */
-
-.sg-alert-critical {
-    border-left-color: var(--sg-danger);
-    background: linear-gradient(to right, rgba(239, 68, 68, 0.05), var(--sg-bg-card));
-}
-
 .sg-alert-critical .sg-alert-icon {
-    color: var(--sg-danger);
-    background: rgba(239, 68, 68, 0.1);
+    color: white;
+    background: rgba(0, 0, 0, 0.2);
 }
 
 .sg-alert-warning {
-    border-left-color: var(--sg-warning);
-    background: linear-gradient(to right, rgba(245, 158, 11, 0.05), var(--sg-bg-card));
+    background: var(--sg-warning);
+    /* Amber 500 */
+}
+
+.sg-alert-warning .sg-alert-content strong,
+.sg-alert-warning .sg-alert-content span {
+    color: #fff;
+    /* White text on amber for better contrast? Or black? Amber 500 is readable with black or white. Let's try white/black mix or specific palette. */
+    color: rgba(0, 0, 0, 0.8);
 }
 
 .sg-alert-warning .sg-alert-icon {
-    color: var(--sg-warning);
-    background: rgba(245, 158, 11, 0.1);
+    color: rgba(0, 0, 0, 0.8);
+    background: rgba(0, 0, 0, 0.1);
 }
 
+.sg-alert-warning .sg-alert-action {
+    color: rgba(0, 0, 0, 0.8) !important;
+    border-color: rgba(0, 0, 0, 0.1);
+}
+
+.sg-alert-warning .sg-alert-action:hover {
+    background: rgba(0, 0, 0, 0.1);
+}
+
+
 .sg-alert-info {
-    border-left-color: var(--sg-info);
-    background: linear-gradient(to right, rgba(14, 165, 233, 0.05), var(--sg-bg-card));
+    background: var(--sg-info);
+    /* Sky 500 */
+}
+
+.sg-alert-info .sg-alert-content strong,
+.sg-alert-info .sg-alert-content span {
+    color: white;
 }
 
 .sg-alert-info .sg-alert-icon {
-    color: var(--sg-info);
-    background: rgba(14, 165, 233, 0.1);
+    color: white;
+    background: rgba(0, 0, 0, 0.2);
 }

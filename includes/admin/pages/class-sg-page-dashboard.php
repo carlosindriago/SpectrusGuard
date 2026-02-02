@@ -64,6 +64,42 @@ class SG_Page_Dashboard
                 </div>
             </div>
 
+            <?php if (!empty($alerts)): ?>
+                <div class="sg-alerts-wrapper" style="margin: -32px -32px 32px -32px; width: calc(100% + 64px); display: flex; flex-direction: column; z-index: 100;">
+                    <?php foreach ($alerts as $alert): ?>
+                        <?php
+                        // Define inline styles for background based on type
+                        $bg_style = 'background: #1e293b;'; // Default
+                        $text_style = 'color: #f8fafc;';
+                        if ($alert['type'] === 'critical') {
+                            $bg_style = 'background: #ef4444; color: white;';
+                            $text_style = 'color: white;';
+                        } elseif ($alert['type'] === 'warning') {
+                            $bg_style = 'background: #f59e0b; color: rgba(0,0,0,0.8);';
+                            $text_style = 'color: rgba(0,0,0,0.8);';
+                        } elseif ($alert['type'] === 'info') {
+                            $bg_style = 'background: #0ea5e9; color: white;';
+                            $text_style = 'color: white;';
+                        }
+                        ?>
+                        <div class="sg-alert sg-alert-<?php echo esc_attr($alert['type']); ?>" style="<?php echo $bg_style; ?> display: flex; align-items: center; gap: 20px; padding: 15px 32px; margin: 0; border-bottom: 1px solid rgba(0,0,0,0.1); border-radius: 0;">
+                            <div class="sg-alert-icon" style="background: rgba(255,255,255,0.2); width: 32px; height: 32px; display: flex; align-items: center; justify-content: center; border-radius: 6px; flex-shrink: 0;">
+                                <?php echo $alert['icon']; ?>
+                            </div>
+                            <div class="sg-alert-content" style="flex: 1; display: flex; align-items: center; gap: 15px; flex-wrap: wrap;">
+                                <strong style="<?php echo $text_style; ?> font-size: 15px;"><?php echo esc_html($alert['title']); ?></strong>
+                                <span style="<?php echo $text_style; ?> opacity: 0.9; font-size: 14px;"><?php echo esc_html($alert['message']); ?></span>
+                            </div>
+                            <?php if (isset($alert['action_url'])): ?>
+                                <a href="<?php echo esc_url($alert['action_url']); ?>" class="sg-alert-action" style="background: rgba(255,255,255,0.2); color: inherit; text-decoration: none; padding: 6px 14px; border-radius: 4px; font-weight: 600; font-size: 13px; white-space: nowrap;">
+                                    <?php echo esc_html($alert['action_text']); ?> →
+                                </a>
+                            <?php endif; ?>
+                        </div>
+                    <?php endforeach; ?>
+                </div>
+            <?php endif; ?>
+
             <h2 class="nav-tab-wrapper" style="margin-bottom: 20px; border-bottom: 1px solid #334155;">
                 <a href="?page=spectrus-guard&tab=overview"
                     class="nav-tab <?php echo $active_tab == 'overview' ? 'nav-tab-active' : ''; ?>">
@@ -79,28 +115,6 @@ class SG_Page_Dashboard
                 <?php $recent_logs = $logger ? $logger->get_logs(5) : array(); ?>
 
                 <div class="sg-hero-panel">
-                    
-                    <?php if (!empty($alerts)): ?>
-                        <div class="sg-alerts-wrapper">
-                            <?php foreach ($alerts as $alert): ?>
-                                <div class="sg-alert sg-alert-<?php echo esc_attr($alert['type']); ?>">
-                                    <div class="sg-alert-icon">
-                                        <?php echo $alert['icon']; ?>
-                                    </div>
-                                    <div class="sg-alert-content">
-                                        <h4><?php echo esc_html($alert['title']); ?></h4>
-                                        <p><?php echo esc_html($alert['message']); ?></p>
-                                    </div>
-                                    <?php if (isset($alert['action_url'])): ?>
-                                        <a href="<?php echo esc_url($alert['action_url']); ?>" class="sg-alert-action">
-                                            <?php echo esc_html($alert['action_text']); ?> →
-                                        </a>
-                                    <?php endif; ?>
-                                </div>
-                            <?php endforeach; ?>
-                        </div>
-                    <?php endif; ?>
-
                     <div class="sg-hero-status">
                         <div class="sg-hero-icon-wrapper">
                             <span class="sg-hero-icon">🛡️</span>
