@@ -86,12 +86,8 @@ class SG_Ghost_Rescue
             // User has 2FA, ask for it
             $this->render_ui('2fa', ['user_id' => $user->ID]);
         } else {
-            // No 2FA, send email code
-            try {
-                $code = random_int(100000, 999999);
-            } catch (Exception $e) {
-                $code = rand(100000, 999999);
-            }
+            // No 2FA, send email code using cryptographically secure RNG
+            $code = random_int(100000, 999999);
             set_transient('sg_rescue_' . $user->ID, $code, 10 * 60); // 10 mins
 
             $subject = __('[SpectrusGuard] Emergency Rescue Code', 'spectrus-guard');

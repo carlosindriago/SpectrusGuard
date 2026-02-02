@@ -237,8 +237,9 @@ class SG_Stealth
 
         // Check if accessing the secret login URL
         if (strpos($request_uri, '/' . $secret_slug) !== false) {
-            // Set a cookie to allow access
-            setcookie('sg_login_access', md5($secret_slug . AUTH_SALT), time() + 3600, '/');
+            // Set a cookie to allow access using HMAC for security
+            $cookie_value = hash_hmac('sha256', $secret_slug, AUTH_SALT);
+            setcookie('sg_login_access', $cookie_value, time() + 3600, '/', '', is_ssl(), true);
             wp_safe_redirect(wp_login_url());
             exit;
         }
@@ -250,10 +251,10 @@ class SG_Stealth
         );
 
         if ($is_login_attempt) {
-            // Check for access cookie
-            $expected_cookie = md5($secret_slug . AUTH_SALT);
+            // Check for access cookie using timing-safe comparison
+            $expected_cookie = hash_hmac('sha256', $secret_slug, AUTH_SALT);
 
-            if (!isset($_COOKIE['sg_login_access']) || $_COOKIE['sg_login_access'] !== $expected_cookie) {
+            if (!isset($_COOKIE['sg_login_access']) || !hash_equals($expected_cookie, $_COOKIE['sg_login_access'])) {
                 // No valid cookie - block access
                 $this->show_404_or_redirect();
             }
@@ -295,9 +296,9 @@ class SG_Stealth
         if (strpos($location, 'wp-login.php') !== false) {
             // Check if they have the access cookie
             $secret_slug = isset($this->settings['login_slug']) ? $this->settings['login_slug'] : 'sg-login';
-            $expected_cookie = md5($secret_slug . AUTH_SALT);
+            $expected_cookie = hash_hmac('sha256', $secret_slug, AUTH_SALT);
 
-            if (!isset($_COOKIE['sg_login_access']) || $_COOKIE['sg_login_access'] !== $expected_cookie) {
+            if (!isset($_COOKIE['sg_login_access']) || !hash_equals($expected_cookie, $_COOKIE['sg_login_access'])) {
                 // Redirect to home instead
                 return home_url('/');
             }
