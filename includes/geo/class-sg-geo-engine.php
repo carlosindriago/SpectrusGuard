@@ -227,20 +227,28 @@ class SG_Geo_Engine
             return $this->tor_nodes;
         }
 
-        if (!file_exists($this->tor_db_path)) {
-            $this->tor_nodes = array();
+        // Try transient first (Fastest, Memory/DB)
+        $cached = get_transient('spectrus_tor_nodes');
+        if ($cached !== false && is_array($cached)) {
+            $this->tor_nodes = $cached;
             return $this->tor_nodes;
         }
 
-        $content = file_get_contents($this->tor_db_path);
-        if ($content === false) {
-            $this->tor_nodes = array();
-            return $this->tor_nodes;
+        // Fallback to JSON file
+        if (file_exists($this->tor_db_path)) {
+            $content = file_get_contents($this->tor_db_path);
+            if ($content !== false) {
+                $nodes = json_decode($content, true);
+                if (is_array($nodes)) {
+                    $this->tor_nodes = $nodes;
+                    // Populate transient for next time
+                    set_transient('spectrus_tor_nodes', $nodes, 86400); // 24 hours
+                    return $this->tor_nodes;
+                }
+            }
         }
 
-        $nodes = json_decode($content, true);
-        $this->tor_nodes = is_array($nodes) ? $nodes : array();
-
+        $this->tor_nodes = array();
         return $this->tor_nodes;
     }
 
@@ -288,11 +296,14 @@ class SG_Geo_Engine
             wp_mkdir_p($dir);
         }
 
-        // Save to file
+        // Save to JSON file (Persistent storage)
         $saved = file_put_contents($this->tor_db_path, json_encode($ips));
         if ($saved === false) {
             return new WP_Error('save_failed', __('Failed to save Tor nodes list', 'spectrus-guard'));
         }
+
+        // Update transient (Cache)
+        set_transient('spectrus_tor_nodes', $ips, 86400); // 24 hours
 
         // Update last update time
         update_option('sg_last_tor_update', time());
@@ -387,6 +398,18 @@ class SG_Geo_Engine
     }
 
     /**
+     * Check if database is available (Alias for is_database_installed)
+     *
+     * Fixes crash in MU-Plugin which calls this method.
+     *
+     * @return bool
+     */
+    public function is_database_available()
+    {
+        return $this->is_database_installed();
+    }
+
+    /**
      * Get database info
      *
      * @return array Database info.
@@ -407,6 +430,7 @@ class SG_Geo_Engine
             $info['modified'] = filemtime($this->db_path);
         }
 
+        // Check file for count (or could check transient)
         if (file_exists($this->tor_db_path)) {
             $nodes = $this->get_tor_nodes();
             $info['tor_nodes_count'] = count($nodes);
