@@ -27,6 +27,7 @@ class SG_Page_Dashboard
     {
         $settings = $this->loader->get_settings();
         $logger = $this->loader->get_logger();
+        $alerts = $this->get_security_alerts($settings);
 
         // Read attack stats from the correct option (WAF writes to 'spectrus_shield_attack_stats')
         $stats = get_option('spectrus_shield_attack_stats', array());
@@ -78,6 +79,28 @@ class SG_Page_Dashboard
                 <?php $recent_logs = $logger ? $logger->get_logs(5) : array(); ?>
 
                 <div class="sg-hero-panel">
+                    
+                    <?php if (!empty($alerts)): ?>
+                        <div class="sg-alerts-wrapper">
+                            <?php foreach ($alerts as $alert): ?>
+                                <div class="sg-alert sg-alert-<?php echo esc_attr($alert['type']); ?>">
+                                    <div class="sg-alert-icon">
+                                        <?php echo $alert['icon']; ?>
+                                    </div>
+                                    <div class="sg-alert-content">
+                                        <h4><?php echo esc_html($alert['title']); ?></h4>
+                                        <p><?php echo esc_html($alert['message']); ?></p>
+                                    </div>
+                                    <?php if (isset($alert['action_url'])): ?>
+                                        <a href="<?php echo esc_url($alert['action_url']); ?>" class="sg-alert-action">
+                                            <?php echo esc_html($alert['action_text']); ?> →
+                                        </a>
+                                    <?php endif; ?>
+                                </div>
+                            <?php endforeach; ?>
+                        </div>
+                    <?php endif; ?>
+
                     <div class="sg-hero-status">
                         <div class="sg-hero-icon-wrapper">
                             <span class="sg-hero-icon">🛡️</span>
@@ -467,5 +490,54 @@ class SG_Page_Dashboard
 
         $stats = get_option('spectrus_shield_attack_stats', array());
         wp_send_json_success($stats);
+    }
+
+    /**
+     * Get security alerts based on current settings
+     *
+     * @param array $settings Current plugin settings
+     * @return array List of alerts
+     */
+    private function get_security_alerts($settings)
+    {
+        $alerts = array();
+
+        // Check WAF Status
+        if (empty($settings['waf_enabled'])) {
+            $alerts[] = array(
+                'type' => 'critical',
+                'icon' => '🔥',
+                'title' => __('Firewall Disabled', 'spectrus-guard'),
+                'message' => __('The Web Application Firewall is disabled. Your site is vulnerable to SQL injection and XSS attacks.', 'spectrus-guard'),
+                'action_url' => admin_url('admin.php?page=spectrus-guard-settings'),
+                'action_text' => __('Enable WAF', 'spectrus-guard')
+            );
+        }
+
+        // Check Login Guard Status
+        if (empty($settings['login_limit_enabled'])) {
+            $alerts[] = array(
+                'type' => 'warning',
+                'icon' => '🔐',
+                'title' => __('Login Protection Disabled', 'spectrus-guard'),
+                'message' => __('Brute force protection is off. Bots can attempt unlimited logins.', 'spectrus-guard'),
+                'action_url' => admin_url('admin.php?page=spectrus-guard-settings'),
+                'action_text' => __('Enable Protection', 'spectrus-guard')
+            );
+        }
+
+        // Check XML-RPC Status
+        if (empty($settings['disable_xmlrpc'])) {
+            $alerts[] = array(
+                'type' => 'info',
+                'icon' => '⚠️',
+                'title' => __('XML-RPC Enabled', 'spectrus-guard'),
+                'message' => __('XML-RPC is often used for DDoS attacks. Consider disabling it if not used.', 'spectrus-guard'),
+                'action_url' => admin_url('admin.php?page=spectrus-guard-settings'),
+                'action_text' => __('Disable XML-RPC', 'spectrus-guard')
+            );
+        }
+
+        return $alerts;
     }
 }
