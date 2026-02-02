@@ -216,6 +216,13 @@ class SG_Loader
             if (file_exists($admin_file)) {
                 require_once $admin_file;
             }
+
+            // Onboarding wizard
+            $onboarding_file = SG_PLUGIN_DIR . 'includes/admin/class-sg-onboarding.php';
+            if (file_exists($onboarding_file)) {
+                require_once $onboarding_file;
+                new SG_Onboarding();
+            }
         }
 
     }

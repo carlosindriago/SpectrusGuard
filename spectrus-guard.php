@@ -186,6 +186,11 @@ function sg_activate()
 
     // Flush rewrite rules
     flush_rewrite_rules();
+
+    // Trigger onboarding wizard for new installations
+    if (!get_option('spectrus_onboarding_complete')) {
+        update_option('spectrus_show_wizard', true);
+    }
 }
 register_activation_hook(__FILE__, 'sg_activate');
 

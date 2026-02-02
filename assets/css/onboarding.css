@@ -1,0 +1,715 @@
+/**
+ * SpectrusGuard Onboarding Wizard Styles
+ *
+ * Modern, clean wizard UI with dark theme.
+ *
+ * @package SpectrusGuard
+ * @since   3.1.0
+ */
+
+/* ============================================
+   Base & Reset
+   ============================================ */
+
+.sg-wizard-body {
+    margin: 0;
+    padding: 0;
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
+    background: linear-gradient(135deg, #0f0f23 0%, #1a1a3e 50%, #0d1f3c 100%);
+    min-height: 100vh;
+    color: #fff;
+    overflow-x: hidden;
+}
+
+.sg-wizard-body * {
+    box-sizing: border-box;
+}
+
+/* ============================================
+   Container & Layout
+   ============================================ */
+
+.sg-wizard-container {
+    max-width: 900px;
+    margin: 0 auto;
+    padding: 40px 20px;
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+}
+
+/* ============================================
+   Progress Bar
+   ============================================ */
+
+.sg-wizard-progress {
+    margin-bottom: 40px;
+}
+
+.sg-progress-bar {
+    height: 4px;
+    background: rgba(255, 255, 255, 0.1);
+    border-radius: 2px;
+    overflow: hidden;
+    margin-bottom: 20px;
+}
+
+.sg-progress-fill {
+    height: 100%;
+    background: linear-gradient(90deg, #6c5ce7, #a29bfe);
+    border-radius: 2px;
+    width: 33.33%;
+    transition: width 0.5s ease;
+}
+
+.sg-progress-steps {
+    display: flex;
+    justify-content: center;
+    gap: 30px;
+}
+
+.sg-step {
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    background: rgba(255, 255, 255, 0.1);
+    border: 2px solid rgba(255, 255, 255, 0.2);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 600;
+    font-size: 14px;
+    transition: all 0.3s ease;
+}
+
+.sg-step.active {
+    background: linear-gradient(135deg, #6c5ce7, #a29bfe);
+    border-color: transparent;
+    box-shadow: 0 0 20px rgba(108, 92, 231, 0.5);
+}
+
+.sg-step.completed {
+    background: #00b894;
+    border-color: transparent;
+}
+
+/* ============================================
+   Wizard Steps
+   ============================================ */
+
+.sg-wizard-step {
+    display: none;
+    flex: 1;
+    animation: fadeIn 0.5s ease;
+}
+
+.sg-wizard-step.active {
+    display: flex;
+    flex-direction: column;
+}
+
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+        transform: translateY(20px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.sg-wizard-content {
+    text-align: center;
+    flex: 1;
+}
+
+.sg-wizard-icon {
+    font-size: 80px;
+    margin-bottom: 20px;
+    animation: pulse 2s infinite;
+}
+
+@keyframes pulse {
+    0%, 100% {
+        transform: scale(1);
+    }
+    50% {
+        transform: scale(1.05);
+    }
+}
+
+.sg-wizard-content h1 {
+    font-size: 2.5rem;
+    font-weight: 700;
+    margin: 0 0 15px 0;
+    background: linear-gradient(135deg, #fff, #a29bfe);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+}
+
+.sg-wizard-subtitle {
+    font-size: 1.1rem;
+    color: rgba(255, 255, 255, 0.7);
+    margin: 0 0 40px 0;
+    max-width: 600px;
+    margin-left: auto;
+    margin-right: auto;
+}
+
+/* ============================================
+   Features Grid (Step 1)
+   ============================================ */
+
+.sg-features-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 20px;
+    margin-bottom: 40px;
+}
+
+.sg-feature-card {
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 16px;
+    padding: 25px 20px;
+    text-align: center;
+    transition: all 0.3s ease;
+}
+
+.sg-feature-card:hover {
+    background: rgba(255, 255, 255, 0.08);
+    transform: translateY(-5px);
+    border-color: rgba(108, 92, 231, 0.5);
+}
+
+.sg-feature-icon {
+    font-size: 40px;
+    display: block;
+    margin-bottom: 15px;
+}
+
+.sg-feature-card h3 {
+    font-size: 1rem;
+    font-weight: 600;
+    margin: 0 0 10px 0;
+    color: #fff;
+}
+
+.sg-feature-card p {
+    font-size: 0.85rem;
+    color: rgba(255, 255, 255, 0.6);
+    margin: 0;
+    line-height: 1.5;
+}
+
+/* ============================================
+   Preset Grid (Step 2)
+   ============================================ */
+
+.sg-preset-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+    gap: 20px;
+    margin-bottom: 40px;
+}
+
+.sg-preset-card {
+    background: rgba(255, 255, 255, 0.05);
+    border: 2px solid rgba(255, 255, 255, 0.1);
+    border-radius: 16px;
+    padding: 30px 20px;
+    text-align: center;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    position: relative;
+}
+
+.sg-preset-card:hover {
+    background: rgba(255, 255, 255, 0.08);
+    border-color: rgba(108, 92, 231, 0.5);
+}
+
+.sg-preset-card.selected {
+    background: rgba(108, 92, 231, 0.15);
+    border-color: #6c5ce7;
+    box-shadow: 0 0 30px rgba(108, 92, 231, 0.3);
+}
+
+.sg-preset-icon {
+    font-size: 50px;
+    display: block;
+    margin-bottom: 15px;
+}
+
+.sg-preset-card h3 {
+    font-size: 1.1rem;
+    font-weight: 600;
+    margin: 0 0 10px 0;
+    color: #fff;
+}
+
+.sg-preset-card p {
+    font-size: 0.85rem;
+    color: rgba(255, 255, 255, 0.6);
+    margin: 0;
+    line-height: 1.4;
+}
+
+.sg-preset-check {
+    position: absolute;
+    top: 15px;
+    right: 15px;
+    width: 28px;
+    height: 28px;
+    background: #6c5ce7;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    opacity: 0;
+    transform: scale(0);
+    transition: all 0.3s ease;
+}
+
+.sg-preset-check svg {
+    width: 16px;
+    height: 16px;
+    color: #fff;
+}
+
+.sg-preset-card.selected .sg-preset-check {
+    opacity: 1;
+    transform: scale(1);
+}
+
+/* ============================================
+   Settings List (Step 3 - Preset Mode)
+   ============================================ */
+
+.sg-settings-list {
+    text-align: left;
+    max-width: 600px;
+    margin: 0 auto 40px;
+}
+
+.sg-setting-item {
+    display: flex;
+    align-items: flex-start;
+    gap: 15px;
+    padding: 15px 20px;
+    background: rgba(255, 255, 255, 0.05);
+    border-radius: 12px;
+    margin-bottom: 10px;
+}
+
+.sg-setting-icon {
+    font-size: 24px;
+    flex-shrink: 0;
+}
+
+.sg-setting-info h4 {
+    margin: 0 0 5px 0;
+    font-size: 1rem;
+    font-weight: 600;
+    color: #fff;
+}
+
+.sg-setting-info p {
+    margin: 0;
+    font-size: 0.85rem;
+    color: rgba(255, 255, 255, 0.6);
+}
+
+/* ============================================
+   Custom Settings (Step 3 - Custom Mode)
+   ============================================ */
+
+.sg-custom-settings {
+    text-align: left;
+    max-width: 600px;
+    margin: 0 auto 40px;
+}
+
+.sg-settings-group {
+    margin-bottom: 30px;
+}
+
+.sg-settings-group-title {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    font-size: 1rem;
+    font-weight: 600;
+    margin: 0 0 15px 0;
+    padding-bottom: 10px;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.sg-badge {
+    padding: 4px 10px;
+    border-radius: 20px;
+    font-size: 0.7rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.sg-badge-critical {
+    background: linear-gradient(135deg, #e74c3c, #c0392b);
+}
+
+.sg-badge-warning {
+    background: linear-gradient(135deg, #f39c12, #e67e22);
+}
+
+.sg-badge-info {
+    background: linear-gradient(135deg, #3498db, #2980b9);
+}
+
+/* Toggle Rows */
+.sg-toggle-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 20px;
+    padding: 15px 20px;
+    background: rgba(255, 255, 255, 0.03);
+    border-radius: 12px;
+    margin-bottom: 8px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.sg-toggle-row:hover {
+    background: rgba(255, 255, 255, 0.06);
+}
+
+.sg-toggle-info {
+    flex: 1;
+}
+
+.sg-toggle-info strong {
+    display: block;
+    font-size: 0.95rem;
+    margin-bottom: 4px;
+}
+
+.sg-toggle-info small {
+    color: rgba(255, 255, 255, 0.5);
+    font-size: 0.8rem;
+}
+
+/* Toggle Switch */
+.sg-toggle-input {
+    display: none;
+}
+
+.sg-toggle {
+    width: 50px;
+    height: 28px;
+    background: rgba(255, 255, 255, 0.2);
+    border-radius: 14px;
+    position: relative;
+    flex-shrink: 0;
+    transition: all 0.3s ease;
+}
+
+.sg-toggle::after {
+    content: '';
+    position: absolute;
+    width: 22px;
+    height: 22px;
+    background: #fff;
+    border-radius: 50%;
+    top: 3px;
+    left: 3px;
+    transition: all 0.3s ease;
+    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
+}
+
+.sg-toggle-input:checked + .sg-toggle {
+    background: linear-gradient(135deg, #6c5ce7, #a29bfe);
+}
+
+.sg-toggle-input:checked + .sg-toggle::after {
+    left: 25px;
+}
+
+/* ============================================
+   Buttons
+   ============================================ */
+
+.sg-wizard-actions {
+    display: flex;
+    justify-content: center;
+    gap: 15px;
+    flex-wrap: wrap;
+}
+
+.sg-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    padding: 12px 28px;
+    border: none;
+    border-radius: 12px;
+    font-size: 1rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    text-decoration: none;
+}
+
+.sg-btn:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+.sg-btn-primary {
+    background: linear-gradient(135deg, #6c5ce7, #a29bfe);
+    color: #fff;
+}
+
+.sg-btn-primary:hover:not(:disabled) {
+    transform: translateY(-2px);
+    box-shadow: 0 10px 30px rgba(108, 92, 231, 0.4);
+}
+
+.sg-btn-secondary {
+    background: rgba(255, 255, 255, 0.1);
+    color: #fff;
+    border: 1px solid rgba(255, 255, 255, 0.2);
+}
+
+.sg-btn-secondary:hover:not(:disabled) {
+    background: rgba(255, 255, 255, 0.15);
+}
+
+.sg-btn-success {
+    background: linear-gradient(135deg, #00b894, #55efc4);
+    color: #fff;
+}
+
+.sg-btn-success:hover:not(:disabled) {
+    transform: translateY(-2px);
+    box-shadow: 0 10px 30px rgba(0, 184, 148, 0.4);
+}
+
+.sg-btn-danger {
+    background: linear-gradient(135deg, #e74c3c, #c0392b);
+    color: #fff;
+}
+
+.sg-btn-lg {
+    padding: 16px 40px;
+    font-size: 1.1rem;
+}
+
+.sg-btn-block {
+    width: 100%;
+    margin-top: 20px;
+}
+
+.sg-btn-icon {
+    font-size: 1.2em;
+}
+
+.sg-btn-arrow {
+    font-size: 1.2em;
+    transition: transform 0.2s ease;
+}
+
+.sg-btn:hover .sg-btn-arrow {
+    transform: translateX(3px);
+}
+
+.sg-btn-secondary:hover .sg-btn-arrow {
+    transform: translateX(-3px);
+}
+
+/* ============================================
+   Skip Link
+   ============================================ */
+
+.sg-wizard-skip {
+    margin-top: 30px;
+}
+
+.sg-wizard-skip a {
+    color: rgba(255, 255, 255, 0.4);
+    text-decoration: none;
+    font-size: 0.9rem;
+    transition: color 0.2s ease;
+}
+
+.sg-wizard-skip a:hover {
+    color: rgba(255, 255, 255, 0.7);
+}
+
+/* ============================================
+   Modal
+   ============================================ */
+
+.sg-modal {
+    position: fixed;
+    inset: 0;
+    z-index: 10000;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 20px;
+}
+
+.sg-modal-backdrop {
+    position: absolute;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.8);
+    backdrop-filter: blur(5px);
+}
+
+.sg-modal-content {
+    position: relative;
+    background: linear-gradient(135deg, #1a1a3e 0%, #0f0f23 100%);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 20px;
+    padding: 40px;
+    max-width: 450px;
+    width: 100%;
+    text-align: center;
+    animation: modalIn 0.3s ease;
+}
+
+@keyframes modalIn {
+    from {
+        opacity: 0;
+        transform: scale(0.9) translateY(20px);
+    }
+    to {
+        opacity: 1;
+        transform: scale(1) translateY(0);
+    }
+}
+
+.sg-modal-icon {
+    font-size: 60px;
+    margin-bottom: 20px;
+}
+
+.sg-modal-content h2 {
+    font-size: 1.5rem;
+    margin: 0 0 15px 0;
+}
+
+.sg-modal-content p {
+    color: rgba(255, 255, 255, 0.7);
+    margin: 0 0 25px 0;
+    line-height: 1.6;
+}
+
+.sg-modal-actions {
+    display: flex;
+    gap: 12px;
+    justify-content: center;
+}
+
+/* ============================================
+   Loading Overlay
+   ============================================ */
+
+.sg-loading-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(15, 15, 35, 0.95);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    z-index: 10001;
+}
+
+.sg-loading-spinner {
+    width: 60px;
+    height: 60px;
+    border: 4px solid rgba(255, 255, 255, 0.1);
+    border-top-color: #6c5ce7;
+    border-radius: 50%;
+    animation: spin 1s linear infinite;
+    margin-bottom: 20px;
+}
+
+@keyframes spin {
+    to {
+        transform: rotate(360deg);
+    }
+}
+
+.sg-loading-overlay p {
+    color: rgba(255, 255, 255, 0.7);
+    font-size: 1.1rem;
+}
+
+/* ============================================
+   Footer
+   ============================================ */
+
+.sg-wizard-footer {
+    text-align: center;
+    padding-top: 30px;
+    margin-top: auto;
+}
+
+.sg-wizard-footer p {
+    color: rgba(255, 255, 255, 0.3);
+    font-size: 0.85rem;
+    margin: 0;
+}
+
+.sg-wizard-footer a {
+    color: rgba(255, 255, 255, 0.5);
+    text-decoration: none;
+}
+
+.sg-wizard-footer a:hover {
+    color: #a29bfe;
+}
+
+/* ============================================
+   Responsive
+   ============================================ */
+
+@media (max-width: 768px) {
+    .sg-wizard-content h1 {
+        font-size: 1.8rem;
+    }
+
+    .sg-wizard-icon {
+        font-size: 60px;
+    }
+
+    .sg-features-grid,
+    .sg-preset-grid {
+        grid-template-columns: 1fr 1fr;
+    }
+
+    .sg-modal-actions {
+        flex-direction: column;
+    }
+}
+
+@media (max-width: 480px) {
+    .sg-features-grid,
+    .sg-preset-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .sg-wizard-actions {
+        flex-direction: column;
+    }
+
+    .sg-btn {
+        width: 100%;
+    }
+}
