@@ -189,7 +189,8 @@
                 // Ensure container exists
                 var $container = $('.sg-toast-container');
                 if ($container.length === 0) {
-                    $container = $('<div class="sg-toast-container"></div>');
+                    // Added role and aria-label for accessibility
+                    $container = $('<div class="sg-toast-container" role="region" aria-label="Notifications"></div>');
                     $('body').append($container);
                 }
 
@@ -201,6 +202,8 @@
                     'info': 'ℹ️'
                 };
 
+                var icon = icons[type] || icons.info;
+
                 // Custom styles for Error type (Red background, Bold white text)
                 var containerStyle = 'color: #ffffff;';
                 var messageStyle = 'color: #ffffff; font-weight: 500;';
@@ -210,13 +213,19 @@
                     messageStyle = 'color: #ffffff; font-weight: 700; font-size: 15px;';
                 }
 
+                // Accessibility attributes: dynamic role and aria-live based on severity
+                var role = (type === 'error' || type === 'warning') ? 'alert' : 'status';
+                var ariaLive = (type === 'error' || type === 'warning') ? 'assertive' : 'polite';
+
                 var $toast = $(
-                    '<div class="sg-toast ' + type + '" style="' + containerStyle + '">' +
-                    '<div class="sg-toast-icon">' + icon + '</div>' +
+                    '<div class="sg-toast ' + type + '" role="' + role + '" aria-live="' + ariaLive + '" style="' + containerStyle + '">' +
+                    // Added aria-hidden to decorative icon
+                    '<div class="sg-toast-icon" aria-hidden="true">' + icon + '</div>' +
                     '<div class="sg-toast-content">' +
                     '<div class="sg-toast-message" style="' + messageStyle + '">' + message + '</div>' + // Explicit styles
                     '</div>' +
-                    '<button type="button" class="sg-toast-close" style="color: rgba(255,255,255,0.8);">&times;</button>' +
+                    // Added aria-label to close button
+                    '<button type="button" class="sg-toast-close" aria-label="Close notification" style="color: rgba(255,255,255,0.8);">&times;</button>' +
                     '</div>'
                 );
 
