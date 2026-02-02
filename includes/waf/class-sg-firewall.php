@@ -424,38 +424,57 @@ class SG_Firewall
     /**
      * Get the client's real IP address
      *
-     * Handles proxies and load balancers.
+     * Securely handles proxies and load balancers to prevent IP spoofing.
+     * Prioritizes REMOTE_ADDR unless verified to be behind a trusted proxy (Private Network).
      *
      * @return string Client IP address.
      */
     public function get_client_ip()
     {
-        $ip_keys = array(
-            'HTTP_CF_CONNECTING_IP', // Cloudflare
-            'HTTP_X_FORWARDED_FOR',  // Proxy
-            'HTTP_X_REAL_IP',        // Nginx proxy
-            'HTTP_CLIENT_IP',        // Client IP
-            'REMOTE_ADDR',           // Standard
-        );
+        $remote_addr = $_SERVER['REMOTE_ADDR'] ?? '0.0.0.0';
 
-        foreach ($ip_keys as $key) {
-            if (!empty($_SERVER[$key])) {
-                $ip = $_SERVER[$key];
+        // Only trust X-Forwarded-For if we are behind a private network proxy (e.g. Load Balancer)
+        // This prevents direct IP spoofing from public clients.
+        if ($this->is_private_ip($remote_addr)) {
+            $ip_keys = array(
+                'HTTP_CF_CONNECTING_IP', // Cloudflare
+                'HTTP_X_FORWARDED_FOR',  // Proxy
+                'HTTP_X_REAL_IP',        // Nginx proxy
+            );
 
-                // Handle comma-separated IPs (X-Forwarded-For)
-                if (strpos($ip, ',') !== false) {
-                    $ips = explode(',', $ip);
-                    $ip = trim($ips[0]);
-                }
+            foreach ($ip_keys as $key) {
+                if (!empty($_SERVER[$key])) {
+                    $ip = $_SERVER[$key];
 
-                // Validate IP
-                if (filter_var($ip, FILTER_VALIDATE_IP)) {
-                    return $ip;
+                    // Handle comma-separated IPs (X-Forwarded-For)
+                    if (strpos($ip, ',') !== false) {
+                        $ips = explode(',', $ip);
+                        $ip = trim($ips[0]);
+                    }
+
+                    // Validate IP
+                    if (filter_var($ip, FILTER_VALIDATE_IP)) {
+                        return $ip;
+                    }
                 }
             }
         }
 
-        return '0.0.0.0';
+        // Default to REMOTE_ADDR
+        return filter_var($remote_addr, FILTER_VALIDATE_IP) ? $remote_addr : '0.0.0.0';
+    }
+
+    /**
+     * Check if the IP is a private/local IP (trusted proxy candidate)
+     *
+     * @param string $ip IP address.
+     * @return bool True if private.
+     */
+    private function is_private_ip($ip)
+    {
+        // FILTER_FLAG_NO_PRIV_RANGE returns false for private IPs
+        // FILTER_FLAG_NO_RES_RANGE returns false for reserved IPs
+        return !filter_var($ip, FILTER_VALIDATE_IP, FILTER_FLAG_NO_PRIV_RANGE | FILTER_FLAG_NO_RES_RANGE);
     }
 
     /**
