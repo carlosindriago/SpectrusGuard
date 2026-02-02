@@ -1,137 +1,289 @@
 <?php
+/**
+ * SpectrusGuard Two-Factor Authentication Handler
+ *
+ * Manages 2FA verification flow for user authentication.
+ * Supports TOTP (authenticator app) and email-based verification.
+ *
+ * @package SpectrusGuard
+ * @since   3.0.0
+ */
 
-class Spectrus_2FA_Handler
+declare(strict_types=1);
+
+// Prevent direct access
+if (!defined('ABSPATH')) {
+    exit;
+}
+
+/**
+ * Class SG_2FA_Handler
+ *
+ * Handles two-factor authentication verification and sudo mode.
+ */
+class SG_2FA_Handler
 {
+    /**
+     * Nonce action for 2FA verification form
+     */
+    private const NONCE_ACTION = 'spectrus_2fa_verify_action';
 
+    /**
+     * Nonce field name
+     */
+    private const NONCE_FIELD = 'spectrus_2fa_nonce';
+
+    /**
+     * Pre-auth token expiration in seconds (10 minutes)
+     */
+    private const PRE_AUTH_EXPIRATION = 600;
+
+    /**
+     * Email code expiration in seconds (5 minutes)
+     */
+    private const EMAIL_CODE_EXPIRATION = 300;
+
+    /**
+     * Sudo mode timeout in seconds (15 minutes)
+     */
+    private const SUDO_TIMEOUT = 900;
+
+    /**
+     * Constructor - Register WordPress hooks
+     */
     public function __construct()
     {
-        // 1. Interceptar Login
+        // Intercept login after credentials validated
         add_filter('wp_authenticate_user', [$this, 'intercept_login'], 10, 2);
 
-        // 2. Procesar el formulario de 2FA (POST)
+        // Process 2FA verification form
         add_action('login_form_spectrus_2fa_verify', [$this, 'process_2fa_verification']);
 
-        // 3. Proteger Acciones Sensibles (Sudo Mode)
+        // Protect sensitive actions with sudo mode
         add_action('admin_init', [$this, 'check_sudo_mode_for_sensitive_actions']);
     }
 
     /**
-     * Se ejecuta cuando el usuario/contraseña son correctos.
-     * Si tiene 2FA, detenemos el login y mostramos el formulario del código.
+     * Intercept login after username/password validation
+     *
+     * If user has 2FA enabled, redirect to verification screen.
+     *
+     * @param WP_User|WP_Error $user     User object or error.
+     * @param string           $password User password.
+     * @return WP_User|WP_Error User object to continue or error to stop.
      */
-    public function intercept_login($user, $password)
+    public function intercept_login($user, string $password)
     {
-        // Si ya hay error, pasamos
-        if (is_wp_error($user))
+        // Pass through errors
+        if (is_wp_error($user)) {
             return $user;
+        }
 
-        // ¿Tiene 2FA activado?
-        $method = get_user_meta($user->ID, 'spectrus_2fa_method', true); // 'app', 'email' o vacío
+        // Check if user has 2FA enabled
+        $method = get_user_meta($user->ID, 'spectrus_2fa_method', true);
 
-        if (!$method)
-            return $user; // Pase libre si no configuró 2FA
+        if (empty($method)) {
+            return $user; // No 2FA configured, proceed normally
+        }
 
-        // LOGICA DE EMAIL (Si eligió email, enviamos el código ahora)
+        // Send email code if using email method
         if ($method === 'email') {
             $this->send_email_code($user);
         }
 
-        // Crear un token temporal de "Pre-Auth"
-        $temp_token = md5($user->ID . time() . 'spectrus_salt');
-        set_transient('spectrus_pre_auth_' . $temp_token, $user->ID, 10 * MINUTE_IN_SECONDS);
+        // Generate cryptographically secure pre-auth token
+        $temp_token = $this->generate_secure_token();
+        set_transient(
+            'spectrus_pre_auth_' . $temp_token,
+            $user->ID,
+            self::PRE_AUTH_EXPIRATION
+        );
 
-        // Redirigir a pantalla de verificación (evitando login completo)
-        $verify_url = wp_login_url() . '?action=spectrus_2fa_verify&token=' . $temp_token;
+        // Redirect to verification screen
+        $verify_url = add_query_arg([
+            'action' => 'spectrus_2fa_verify',
+            'token' => $temp_token,
+        ], wp_login_url());
+
         wp_redirect($verify_url);
         exit;
     }
 
     /**
-     * Renderiza y Procesa el formulario de código
+     * Process 2FA verification form submission
+     *
+     * Validates the 2FA code and completes login if successful.
      */
-    public function process_2fa_verification()
+    public function process_2fa_verification(): void
     {
-        $token = $_GET['token'] ?? '';
+        // Sanitize and validate token from URL
+        $token = isset($_GET['token']) ? sanitize_text_field(wp_unslash($_GET['token'])) : '';
+
+        if (empty($token) || !preg_match('/^[a-f0-9]{32}$/', $token)) {
+            wp_die(
+                esc_html__('Invalid verification token.', 'spectrus-guard'),
+                esc_html__('2FA Error', 'spectrus-guard'),
+                ['response' => 400]
+            );
+        }
+
         $user_id = get_transient('spectrus_pre_auth_' . $token);
 
         if (!$user_id) {
-            wp_die('Sesión expirada. Vuelve a iniciar sesión.', 'Error 2FA');
+            wp_die(
+                esc_html__('Session expired. Please login again.', 'spectrus-guard'),
+                esc_html__('2FA Error', 'spectrus-guard'),
+                ['response' => 403]
+            );
         }
 
-        // Si envió el formulario
-        if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['spectrus_2fa_code'])) {
-            $code = sanitize_text_field($_POST['spectrus_2fa_code']);
-            $user = get_user_by('id', $user_id);
+        $error = '';
 
-            if ($this->validate_2fa($user, $code)) {
-                // ✅ ÉXITO: Loguear al usuario manualmente
-                delete_transient('spectrus_pre_auth_' . $token);
+        // Process form submission
+        if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+            // Verify CSRF nonce
+            if (
+                !isset($_POST[self::NONCE_FIELD]) ||
+                !wp_verify_nonce(sanitize_text_field(wp_unslash($_POST[self::NONCE_FIELD])), self::NONCE_ACTION)
+            ) {
+                wp_die(
+                    esc_html__('Security verification failed. Please try again.', 'spectrus-guard'),
+                    esc_html__('Security Error', 'spectrus-guard'),
+                    ['response' => 403]
+                );
+            }
 
-                // Marcar sesión como "Sudo Validated" (para proteger configs)
-                wp_set_auth_cookie($user_id, true);
-                update_user_meta($user_id, 'spectrus_last_sudo', time());
+            if (isset($_POST['spectrus_2fa_code'])) {
+                $code = sanitize_text_field(wp_unslash($_POST['spectrus_2fa_code']));
+                $user = get_user_by('id', $user_id);
 
-                wp_safe_redirect(admin_url());
-                exit;
-            } else {
-                $error = "Código incorrecto.";
+                if ($user && $this->validate_2fa($user, $code)) {
+                    // Success: Complete login
+                    delete_transient('spectrus_pre_auth_' . $token);
+
+                    // Set authentication cookie and mark sudo mode
+                    wp_set_auth_cookie($user_id, true);
+                    update_user_meta($user_id, 'spectrus_last_sudo', time());
+
+                    wp_safe_redirect(admin_url());
+                    exit;
+                }
+
+                $error = __('Invalid verification code.', 'spectrus-guard');
             }
         }
 
-        // Renderizar Vista (HTML simple)
-        // Ensure path is correct relative to this file
+        // Render verification form
+        $nonce_field = self::NONCE_FIELD;
+        $nonce_action = self::NONCE_ACTION;
         include plugin_dir_path(__FILE__) . 'views/verify-2fa.php';
         exit;
     }
 
-    private function validate_2fa($user, $code)
+    /**
+     * Validate 2FA code based on user's configured method
+     *
+     * @param WP_User $user User object.
+     * @param string  $code Verification code to validate.
+     * @return bool True if code is valid.
+     */
+    private function validate_2fa(WP_User $user, string $code): bool
     {
         $method = get_user_meta($user->ID, 'spectrus_2fa_method', true);
 
         if ($method === 'app') {
-            require_once 'class-sg-totp-engine.php';
+            require_once __DIR__ . '/class-sg-totp-engine.php';
             $secret = get_user_meta($user->ID, 'spectrus_2fa_secret', true);
             return Spectrus_TOTP_Engine::verify_code($secret, $code);
-        } elseif ($method === 'email') {
-            $saved_code = get_transient('spectrus_email_code_' . $user->ID);
-            return $saved_code && ($saved_code === $code);
         }
+
+        if ($method === 'email') {
+            $saved_code = get_transient('spectrus_email_code_' . $user->ID);
+            if ($saved_code && hash_equals((string) $saved_code, $code)) {
+                // Delete code after successful verification (one-time use)
+                delete_transient('spectrus_email_code_' . $user->ID);
+                return true;
+            }
+        }
+
         return false;
     }
 
-    private function send_email_code($user)
+    /**
+     * Send email verification code to user
+     *
+     * @param WP_User $user User object.
+     */
+    private function send_email_code(WP_User $user): void
     {
-        $code = rand(100000, 999999);
-        set_transient('spectrus_email_code_' . $user->ID, $code, 5 * MINUTE_IN_SECONDS);
+        // Generate cryptographically secure 6-digit code
+        $code = (string) random_int(100000, 999999);
 
-        wp_mail(
-            $user->user_email,
-            'Tu código de acceso - SpectrusGuard',
-            "Tu código de seguridad es: $code. Expira en 5 minutos."
+        set_transient(
+            'spectrus_email_code_' . $user->ID,
+            $code,
+            self::EMAIL_CODE_EXPIRATION
         );
+
+        $subject = sprintf(
+            /* translators: %s: Site name */
+            __('Your verification code - %s', 'spectrus-guard'),
+            get_bloginfo('name')
+        );
+
+        $message = sprintf(
+            /* translators: 1: Verification code, 2: Expiration in minutes */
+            __("Your security verification code is: %1\$s\n\nThis code expires in %2\$d minutes.", 'spectrus-guard'),
+            $code,
+            self::EMAIL_CODE_EXPIRATION / 60
+        );
+
+        wp_mail($user->user_email, $subject, $message);
     }
 
     /**
-     * 🔥 MODO SUDO: Protección de Configuraciones Sensibles
+     * Generate cryptographically secure token
+     *
+     * @return string 32-character hex token.
      */
-    public function check_sudo_mode_for_sensitive_actions()
+    private function generate_secure_token(): string
+    {
+        return bin2hex(random_bytes(16));
+    }
+
+    /**
+     * Enforce sudo mode for sensitive configuration changes
+     *
+     * Requires re-authentication if sudo timeout has expired.
+     */
+    public function check_sudo_mode_for_sensitive_actions(): void
     {
         global $pagenow;
 
-        // Solo protegemos la página de configuración de SpectrusGuard
-        if ($pagenow === 'admin.php' && isset($_GET['page']) && $_GET['page'] === 'spectrus-guard') {
+        // Only protect SpectrusGuard settings page
+        $page = isset($_GET['page']) ? sanitize_text_field(wp_unslash($_GET['page'])) : '';
 
-            // Si intenta guardar cambios (POST)
-            if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-                $last_sudo = get_user_meta(get_current_user_id(), 'spectrus_last_sudo', true);
+        if ($pagenow !== 'admin.php' || $page !== 'spectrus-guard') {
+            return;
+        }
 
-                // Si pasaron más de 15 minutos desde el último login/verificación
-                if (!$last_sudo || (time() - $last_sudo > 900)) {
-                    // Detener y pedir código de nuevo
-                    wp_die('🔒 <b>Modo Sudo Requerido:</b> Por seguridad, verifica tu identidad nuevamente para cambiar estas configuraciones críticas.');
-                    // Aquí idealmente rediriges a una pantalla de re-verificación
-                }
-            }
+        // Check on POST requests (saving settings)
+        if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
+            return;
+        }
+
+        $last_sudo = (int) get_user_meta(get_current_user_id(), 'spectrus_last_sudo', true);
+
+        if (!$last_sudo || (time() - $last_sudo > self::SUDO_TIMEOUT)) {
+            wp_die(
+                '<strong>' . esc_html__('Sudo Mode Required', 'spectrus-guard') . '</strong><br>' .
+                esc_html__('For security, please re-authenticate to modify critical settings.', 'spectrus-guard'),
+                esc_html__('Authentication Required', 'spectrus-guard'),
+                ['response' => 403, 'back_link' => true]
+            );
         }
     }
 }
+
+// Backward compatibility alias
+class_alias('SG_2FA_Handler', 'Spectrus_2FA_Handler');

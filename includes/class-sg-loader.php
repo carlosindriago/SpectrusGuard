@@ -207,6 +207,11 @@ class SG_Loader
 
         // Admin (load only in admin context)
         if (is_admin()) {
+            $ajax_file = SG_PLUGIN_DIR . 'includes/admin/class-sg-ajax.php';
+            if (file_exists($ajax_file)) {
+                require_once $ajax_file;
+            }
+
             $admin_file = SG_PLUGIN_DIR . 'includes/admin/class-sg-admin.php';
             if (file_exists($admin_file)) {
                 require_once $admin_file;
@@ -255,6 +260,12 @@ class SG_Loader
         // Initialize Scanner (Sprint 3)
         if (class_exists('SG_Scanner')) {
             $this->scanner = new SG_Scanner();
+        }
+
+        // Initialize AJAX Handler (Core)
+        if (class_exists('SG_Ajax')) {
+            $ajax = new SG_Ajax();
+            $ajax->init();
         }
 
         // Initialize Admin (if in admin context)
@@ -324,9 +335,6 @@ class SG_Loader
             return;
         }
 
-        // Debug: Log current hook
-        error_log('SpectrusGuard: Current hook = ' . $hook);
-
         // Base styles (always load on our pages)
         wp_enqueue_style(
             'spectrus-guard-admin',
@@ -368,10 +376,7 @@ class SG_Loader
             )
         );
 
-        // Scanner-specific assets (temporarily load on all plugin pages)
-        // TODO: Restrict to scanner page only once hook is verified
-        // if ($hook === 'toplevel_page_spectrus-guard-scanner' ||
-        //     $hook === 'spectrus-guard_page_spectrus-guard-scanner') {
+        // Scanner-specific assets
         if (strpos($hook, 'spectrus-guard') !== false) {
 
             wp_enqueue_script(
@@ -460,11 +465,7 @@ class SG_Loader
             );
         }
 
-        // Quarantine & Whitelist page assets (temporarily load on all plugin pages until hook is verified)
-        // TODO: Restrict to specific pages once hook is verified
-        // Debug: Log current hook
-        error_log('SpectrusGuard: Current hook = ' . $hook . ' (looking for: spectrus-guard_page_spectrus-guard-quarantine or spectrus-guard-whitelist)');
-
+        // Quarantine & Whitelist page assets
         if (strpos($hook, 'spectrus-guard') !== false) {
             wp_enqueue_script(
                 'spectrus-guard-quarantine',

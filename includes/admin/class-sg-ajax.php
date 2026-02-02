@@ -1,0 +1,312 @@
+<?php
+/**
+ * SpectrusGuard AJAX Handler
+ *
+ * Handles all AJAX requests for buttons and actions in the dashboard.
+ *
+ * @package SpectrusGuard
+ * @since   3.0.4
+ */
+
+if (!defined('ABSPATH')) {
+    exit;
+}
+
+class SG_Ajax
+{
+    /**
+     * Initialize hooks
+     */
+    public function init()
+    {
+        add_action('wp_ajax_sg_delete_file', array($this, 'handle_delete_file'));
+        add_action('wp_ajax_sg_whitelist_file', array($this, 'handle_whitelist_file'));
+        add_action('wp_ajax_sg_quarantine_file', array($this, 'handle_quarantine_file'));
+        add_action('wp_ajax_sg_list_quarantine', array($this, 'handle_list_quarantine'));
+        add_action('wp_ajax_sg_restore_quarantine', array($this, 'handle_restore_quarantine'));
+        add_action('wp_ajax_sg_delete_quarantine', array($this, 'handle_delete_quarantine'));
+    }
+
+    /**
+     * Handle File Deletion
+     */
+    public function handle_delete_file()
+    {
+        check_ajax_referer('spectrus_guard_nonce', 'nonce');
+
+        if (!current_user_can('manage_options')) {
+            wp_send_json_error('Unauthorized');
+        }
+
+        $file_path = isset($_POST['file']) ? sanitize_text_field($_POST['file']) : '';
+        $original_file_path = $file_path; // Keep original for report update
+
+        // Try fixing relative path if it doesn't exist
+        if (!file_exists($file_path)) {
+            // Check if it's relative to ABSPATH
+            if (file_exists(ABSPATH . $file_path)) {
+                $file_path = ABSPATH . $file_path;
+            } else {
+                wp_send_json_error('File not found: ' . $file_path);
+            }
+        }
+
+        // Attempt delete
+        if (@unlink($file_path)) {
+            // Update the scan report to remove this item so it doesn't reappear until next scan
+            $this->remove_from_report($original_file_path);
+            wp_send_json_success('File deleted successfully');
+        } else {
+            wp_send_json_error('Could not delete file. Permission denied?');
+        }
+    }
+
+    /**
+     * Handle Quarantine Actions
+     */
+    public function handle_quarantine_file()
+    {
+        check_ajax_referer('spectrus_guard_nonce', 'nonce');
+
+        if (!current_user_can('manage_options')) {
+            wp_send_json_error('Unauthorized');
+        }
+
+        $file_path = isset($_POST['file']) ? sanitize_text_field($_POST['file']) : '';
+        $original_file_path = $file_path;
+
+        if (!file_exists($file_path)) {
+            if (file_exists(ABSPATH . $file_path)) {
+                $file_path = ABSPATH . $file_path;
+            } else {
+                wp_send_json_error('File not found');
+                return;
+            }
+        }
+
+        // Setup Quarantine Directory
+        $upload_dir = wp_upload_dir();
+        $quarantine_dir = $upload_dir['basedir'] . '/spectrus-quarantine';
+
+        if (!file_exists($quarantine_dir)) {
+            wp_mkdir_p($quarantine_dir);
+        }
+
+        // Secure Quarantine Directory
+        if (!file_exists($quarantine_dir . '/.htaccess')) {
+            file_put_contents($quarantine_dir . '/.htaccess', "Order Deny,Allow\nDeny from all");
+        }
+        if (!file_exists($quarantine_dir . '/index.php')) {
+            file_put_contents($quarantine_dir . '/index.php', '<?php // Silence is golden');
+        }
+
+        // Generate destination name
+        // IMPROVED: Base64 encode full path to preserve location for restore
+        // Format: encoded_path.timestamp.sgq
+        $encoded_path = base64_encode($file_path);
+        // Clean base64 output for filename safety (replace /, +)
+        $safe_encoded = str_replace(array('/', '+'), array('_', '-'), $encoded_path);
+        $new_name = $safe_encoded . '.' . time() . '.sgq';
+        $dest_path = $quarantine_dir . '/' . $new_name;
+
+        if (@rename($file_path, $dest_path)) {
+            $this->remove_from_report($original_file_path);
+            wp_send_json_success('File quarantined successfully');
+        } else {
+            wp_send_json_error('Could not move file to quarantine');
+        }
+    }
+
+    /**
+     * List Quarantined Files
+     */
+    public function handle_list_quarantine()
+    {
+        check_ajax_referer('spectrus_guard_nonce', 'nonce');
+
+        $upload_dir = wp_upload_dir();
+        $quarantine_dir = $upload_dir['basedir'] . '/spectrus-quarantine';
+
+        $files = array();
+
+        // Ensure directory exists
+        if (!file_exists($quarantine_dir)) {
+            wp_mkdir_p($quarantine_dir);
+        }
+
+        if (file_exists($quarantine_dir)) {
+            $scanned = scandir($quarantine_dir);
+
+            foreach ($scanned as $item) {
+                if ($item === '.' || $item === '..' || $item === '.htaccess' || $item === 'index.php') {
+                    continue;
+                }
+
+                $full_path = $quarantine_dir . '/' . $item;
+                $size = size_format(filesize($full_path));
+                $date = date('Y-m-d H:i:s', filemtime($full_path));
+
+                // Parse filename
+                if (strpos($item, '.sgq') !== false) {
+                    // New format: encoded.time.sgq
+                    $parts = explode('.', $item);
+                    $encoded = $parts[0];
+                    // Restore standard base64
+                    $base64 = str_replace(array('_', '-'), array('/', '+'), $encoded);
+                    $original_path = base64_decode($base64);
+                    // Add full path as tooltip?
+                    $display_name = $original_path;
+                } else {
+                    // Legacy/Fallback format: basename.time.quarantined
+                    $parts = explode('.', $item);
+                    $original_name = $parts[0]; // Simple logic
+                    $original_name = str_replace(array('.quarantined'), '', $item);
+                    $original_name = preg_replace('/\.\d+$/', '', $original_name);
+                    $display_name = $original_name . ' (Unknown Loc)';
+                }
+
+                $files[] = array(
+                    'quarantine_name' => $item,
+                    'original_name' => $display_name,
+                    'date' => $date,
+                    'size' => $size
+                );
+            }
+        }
+
+        wp_send_json_success(array('files' => $files));
+    }
+
+    /**
+     * Restore File
+     */
+    public function handle_restore_quarantine()
+    {
+        check_ajax_referer('spectrus_guard_nonce', 'nonce');
+        if (!current_user_can('manage_options'))
+            wp_send_json_error('Unauthorized');
+
+        $q_name = isset($_POST['quarantine_name']) ? sanitize_file_name($_POST['quarantine_name']) : '';
+        if (!$q_name)
+            wp_send_json_error('Missing filename');
+
+        $upload_dir = wp_upload_dir();
+        $quarantine_path = $upload_dir['basedir'] . '/spectrus-quarantine/' . $q_name;
+
+        if (!file_exists($quarantine_path)) {
+            wp_send_json_error('File not found in quarantine');
+        }
+
+        // Determine destination
+        if (strpos($q_name, '.sgq') !== false) {
+            $parts = explode('.', $q_name);
+            $encoded = $parts[0];
+            $base64 = str_replace(array('_', '-'), array('/', '+'), $encoded);
+            $dest_path = base64_decode($base64);
+        } else {
+            wp_send_json_error('Cannot automatically restore legacy quarantine file. Please manually move it from uploads/spectrus-quarantine.');
+            return;
+        }
+
+        // Ensure directory exists
+        $dest_dir = dirname($dest_path);
+        if (!file_exists($dest_dir)) {
+            wp_mkdir_p($dest_dir);
+        }
+
+        if (@rename($quarantine_path, $dest_path)) {
+            wp_send_json_success(array('message' => 'File restored successfully'));
+        } else {
+            wp_send_json_error('Could not restore file (Permission error?)');
+        }
+    }
+
+    /**
+     * Delete Permanently
+     */
+    public function handle_delete_quarantine()
+    {
+        check_ajax_referer('spectrus_guard_nonce', 'nonce');
+        if (!current_user_can('manage_options'))
+            wp_send_json_error('Unauthorized');
+
+        $q_name = isset($_POST['quarantine_name']) ? sanitize_file_name($_POST['quarantine_name']) : '';
+        if (!$q_name)
+            wp_send_json_error('Missing filename');
+
+        $upload_dir = wp_upload_dir();
+        $quarantine_path = $upload_dir['basedir'] . '/spectrus-quarantine/' . $q_name;
+
+        if (file_exists($quarantine_path)) {
+            if (@unlink($quarantine_path)) {
+                wp_send_json_success(array('message' => 'File permanently deleted'));
+            } else {
+                wp_send_json_error('Could not delete file');
+            }
+        } else {
+            wp_send_json_error('File not found');
+        }
+    }
+
+    /**
+     * Handle Whitelisting
+     */
+    public function handle_whitelist_file()
+    {
+        check_ajax_referer('spectrus_guard_nonce', 'nonce');
+
+        if (!current_user_can('manage_options')) {
+            wp_send_json_error('Unauthorized');
+        }
+
+        $file_path = isset($_POST['file']) ? sanitize_text_field($_POST['file']) : '';
+
+        if (empty($file_path)) {
+            wp_send_json_error('Invalid file');
+        }
+
+        $whitelist = get_option('spectrus_guard_whitelist', array());
+
+        if (!in_array($file_path, $whitelist)) {
+            $whitelist[] = $file_path;
+            update_option('spectrus_guard_whitelist', $whitelist);
+        }
+
+        // Also remove from current report UI
+        $this->remove_from_report($file_path);
+
+        wp_send_json_success('File whitelisted');
+    }
+
+    /**
+     * Remove item from current scan report so UI stays consistent
+     */
+    private function remove_from_report($file_path)
+    {
+        $report = get_option('spectrus_guard_scan_report', array());
+
+        // The report structure is complex ($report['malware'] etc).
+        // Iterate references to remove
+        $categories = ['malware', 'uploads_php', 'core_integrity', 'suspicious', 'advanced_threats'];
+        $modified = false;
+
+        foreach ($categories as $cat) {
+            if (!empty($report[$cat])) {
+                foreach ($report[$cat] as $key => $item) {
+                    $item_file = $item['file'] ?? '';
+                    // Robust match: Exact match OR basename match (handle relative vs absolute mismatches)
+                    if ($item_file === $file_path || basename($item_file) === basename($file_path)) {
+                        unset($report[$cat][$key]);
+                        $modified = true;
+                    }
+                }
+                // Re-index array
+                $report[$cat] = array_values($report[$cat]);
+            }
+        }
+
+        if ($modified) {
+            update_option('spectrus_guard_scan_report', $report, false);
+        }
+    }
+}

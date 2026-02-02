@@ -80,3 +80,4 @@ wp-config.php
 
 # Keep AI workflows documentation (intentionally committed)
 !.agent/workflows/
+*.log

@@ -110,9 +110,10 @@
         <?php endif; ?>
 
         <form method="post">
+            <?php wp_nonce_field($nonce_action, $nonce_field); ?>
             <input type="text" name="spectrus_2fa_code" class="sg-input" placeholder="000000" maxlength="6" autofocus
                 required autocomplete="one-time-code" inputmode="numeric">
-            <button type="submit" class="sg-btn">Verify Login</button>
+            <button type="submit" class="sg-btn"><?php esc_html_e('Verify Login', 'spectrus-guard'); ?></button>
         </form>
     </div>
 </body>

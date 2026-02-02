@@ -4,18 +4,18 @@ class Spectrus_TOTP_Engine
 {
 
     /**
-     * Genera un secreto aleatorio en Base32 (Requisito para Google Auth)
+     * Generate random Base32 secret for Google Authenticator
+     *
+     * @param int $length Secret length in characters.
+     * @return string Base32 encoded secret.
+     * @throws Exception If secure random generation fails.
      */
-    public static function generate_secret($length = 16)
+    public static function generate_secret(int $length = 16): string
     {
         $chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ234567'; // Base32 standard alphabet
         $secret = '';
         for ($i = 0; $i < $length; $i++) {
-            try {
-                $secret .= $chars[random_int(0, 31)];
-            } catch (Exception $e) {
-                $secret .= $chars[rand(0, 31)];
-            }
+            $secret .= $chars[random_int(0, 31)];
         }
         return $secret;
     }
