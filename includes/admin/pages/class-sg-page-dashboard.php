@@ -27,7 +27,9 @@ class SG_Page_Dashboard
     {
         $settings = $this->loader->get_settings();
         $logger = $this->loader->get_logger();
-        $stats = get_option('spectrus_shield_stats', array());
+
+        // Read attack stats from the correct option (WAF writes to 'spectrus_shield_attack_stats')
+        $stats = get_option('spectrus_shield_attack_stats', array());
 
         // Read scan results from the correct option (scanner saves to 'spectrus_guard_scan_report')
         $scan_results = get_option('spectrus_guard_scan_report', array());
