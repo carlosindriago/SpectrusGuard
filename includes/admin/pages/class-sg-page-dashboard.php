@@ -28,19 +28,21 @@ class SG_Page_Dashboard
         $settings = $this->loader->get_settings();
         $logger = $this->loader->get_logger();
         $stats = get_option('spectrus_shield_stats', array());
-        $scan_results = get_option('spectrus_shield_scan_results', array());
-        $last_scan = get_option('spectrus_shield_last_scan_time');
 
-        $active_tab = isset($_GET['tab']) ? $_GET['tab'] : 'overview';
+        // Read scan results from the correct option (scanner saves to 'spectrus_guard_scan_report')
+        $scan_results = get_option('spectrus_guard_scan_report', array());
 
-        // Overview Logic
+        // Read last scan time from the correct option (scanner saves to 'spectrus_shield_last_scan')
+        $last_scan = get_option('spectrus_shield_last_scan');
+
+        $active_tab = isset($_GET['tab']) ? sanitize_text_field($_GET['tab']) : 'overview';
+
+        // Overview Logic - count threats from scan report summary
         $threats_found = 0;
-        if (!empty($scan_results)) {
-            foreach ($scan_results as $result) {
-                if (isset($result['severity']) && in_array($result['severity'], array('critical', 'high', 'medium'))) {
-                    $threats_found++;
-                }
-            }
+        if (!empty($scan_results) && isset($scan_results['summary'])) {
+            // The scan report structure has summary.critical, summary.high, summary.medium
+            $summary = $scan_results['summary'];
+            $threats_found = ($summary['critical'] ?? 0) + ($summary['high'] ?? 0) + ($summary['medium'] ?? 0);
         }
         $scan_status = 'never';
         if ($last_scan) {
@@ -228,7 +230,9 @@ class SG_Page_Dashboard
                                     <input type="text" readonly
                                         value="<?php echo esc_url(home_url('/?spectrus_rescue=' . ($settings['rescue_key'] ?? ''))); ?>"
                                         class="sg-rescue-input" id="sg-rescue-url">
-                                    <button type="button" class="sg-copy-btn-icon" aria-label="<?php esc_attr_e('Copy rescue URL to clipboard', 'spectrus-guard'); ?>" title="<?php esc_attr_e('Copy rescue URL to clipboard', 'spectrus-guard'); ?>"
+                                    <button type="button" class="sg-copy-btn-icon"
+                                        aria-label="<?php esc_attr_e('Copy rescue URL to clipboard', 'spectrus-guard'); ?>"
+                                        title="<?php esc_attr_e('Copy rescue URL to clipboard', 'spectrus-guard'); ?>"
                                         onclick="navigator.clipboard.writeText(document.getElementById('sg-rescue-url').value)">
                                         <span class="dashicons dashicons-clipboard" aria-hidden="true"></span>
                                     </button>
