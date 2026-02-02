@@ -26,7 +26,7 @@ $presets = $this->get_presets();
     <?php wp_head(); ?>
 </head>
 
-<body class="sg-wizard-body">
+<body class="sg-wizard-body" style="background: #0f172a !important; background-color: #0f172a !important;">
     <div class="sg-wizard-container">
         <!-- Progress Bar -->
         <div class="sg-wizard-progress">
