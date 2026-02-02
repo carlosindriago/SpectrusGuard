@@ -29,7 +29,16 @@ class Spectrus_Login_Guard
                 // ... BLOQUEAR
                 status_header(404);
                 nocache_headers();
-                include(get_query_template('404'));
+                $template = get_query_template('404');
+                if ($template) {
+                    include($template);
+                } else {
+                    wp_die(
+                        esc_html__('Page not found.', 'spectrus-guard'),
+                        esc_html__('404 Not Found', 'spectrus-guard'),
+                        array('response' => 404)
+                    );
+                }
                 exit;
             }
         }
@@ -42,7 +51,16 @@ class Spectrus_Login_Guard
             // DOING_AJAX handles admin-ajax.php, but direct access to /wp-admin/ should be blocked.
             status_header(404);
             nocache_headers();
-            include(get_query_template('404'));
+            $template = get_query_template('404');
+            if ($template) {
+                include($template);
+            } else {
+                wp_die(
+                    esc_html__('Page not found.', 'spectrus-guard'),
+                    esc_html__('404 Not Found', 'spectrus-guard'),
+                    array('response' => 404)
+                );
+            }
             exit;
         }
 
