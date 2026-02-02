@@ -23,7 +23,9 @@ require_once SG_PLUGIN_DIR . 'includes/admin/pages/class-sg-page-whitelist.php';
 require_once SG_PLUGIN_DIR . 'includes/admin/pages/class-sg-page-hardening.php';
 require_once SG_PLUGIN_DIR . 'includes/admin/pages/class-sg-page-hardening.php';
 require_once SG_PLUGIN_DIR . 'includes/admin/pages/class-sg-page-settings.php';
+require_once SG_PLUGIN_DIR . 'includes/admin/pages/class-sg-page-settings.php';
 require_once SG_PLUGIN_DIR . 'includes/admin/pages/class-sg-page-results.php';
+require_once SG_PLUGIN_DIR . 'includes/admin/class-sg-ajax.php';
 
 /**
  * Class SG_Admin
@@ -78,6 +80,10 @@ class SG_Admin
         $this->page_settings = new SG_Page_Settings($loader);
         $this->page_results = new SG_Page_Results($loader);
 
+        // Initialize AJAX Handler
+        $this->ajax = new SG_Ajax();
+        $this->ajax->init();
+
         add_action('admin_menu', array($this, 'add_admin_menu'));
         add_action('admin_init', array($this, 'register_settings'));
     }
@@ -118,7 +124,7 @@ class SG_Admin
         );
 
         // 3. Scanner
-        add_submenu_page(
+        $scanner_hook = add_submenu_page(
             'spectrus-guard',
             __('Security Scanner', 'spectrus-guard'),
             __('Scanner', 'spectrus-guard'),
@@ -168,7 +174,7 @@ class SG_Admin
         );
 
         // 6. Results Page (Hidden from menu, linked from Scanner)
-        add_submenu_page(
+        $results_hook = add_submenu_page(
             null, // NULL parent sends it to a hidden page
             __('Scan Results', 'spectrus-guard'),
             __('Scan Results', 'spectrus-guard'),
@@ -176,6 +182,18 @@ class SG_Admin
             'spectrus-guard-results',
             array($this->page_results, 'render')
         );
+
+        // Localize Script for Scanner & Results
+        add_action("admin_print_scripts-$scanner_hook", array($this, 'enqueue_admin_scripts'));
+        add_action("admin_print_scripts-$results_hook", array($this, 'enqueue_admin_scripts'));
+    }
+
+    public function enqueue_admin_scripts()
+    {
+        wp_localize_script('spectrus-guard-admin', 'sg_ajax', array(
+            'ajaxurl' => admin_url('admin-ajax.php'),
+            'nonce' => wp_create_nonce('spectrus_guard_nonce')
+        ));
     }
 
     /**

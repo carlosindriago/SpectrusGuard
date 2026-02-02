@@ -757,20 +757,23 @@ class SG_Scanner
         // Helper to process raw items
         $process_item = function ($item, $category) use (&$grouped) {
             $key = $item['file'];
+            // Normalize severity for consistency (Advanced Detector returns UPPERCASE)
+            $severity = strtolower($item['severity']);
+
             if (!isset($grouped[$key])) {
                 $grouped[$key] = array(
                     'file' => $key,
-                    'severity' => $item['severity'],
-                    'severity_val' => $this->get_severity_value($item['severity']),
+                    'severity' => $severity,
+                    'severity_val' => $this->get_severity_value($severity),
                     'categories' => array(),
                     'messages' => array(),
                 );
             }
 
             // Update severity if this new item is higher (lower value)
-            $current_val = $this->get_severity_value($item['severity']);
+            $current_val = $this->get_severity_value($severity);
             if ($current_val < $grouped[$key]['severity_val']) {
-                $grouped[$key]['severity'] = $item['severity'];
+                $grouped[$key]['severity'] = $severity;
                 $grouped[$key]['severity_val'] = $current_val;
             }
 

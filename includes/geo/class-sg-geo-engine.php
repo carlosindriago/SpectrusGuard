@@ -52,8 +52,14 @@ class SG_Geo_Engine
      */
     public function __construct()
     {
-        $upload_dir = wp_upload_dir();
-        $base_dir = $upload_dir['basedir'] . '/spectrus-guard/geoip';
+        // Use WP_CONTENT_DIR as fallback when wp_upload_dir() is not available (early MU-Plugin load)
+        if (function_exists('wp_upload_dir')) {
+            $upload_dir = wp_upload_dir();
+            $base_dir = $upload_dir['basedir'] . '/spectrus-guard/geoip';
+        } else {
+            // Fallback for MU-Plugin early load
+            $base_dir = (defined('WP_CONTENT_DIR') ? WP_CONTENT_DIR : dirname(dirname(__DIR__))) . '/uploads/spectrus-guard/geoip';
+        }
 
         $this->db_path = $base_dir . '/GeoLite2-Country.mmdb';
         $this->tor_db_path = $base_dir . '/tor-exit-nodes.json';
@@ -74,7 +80,9 @@ class SG_Geo_Engine
         }
 
         try {
-            require_once SG_PLUGIN_DIR . 'includes/geo/class-sg-maxmind-reader.php';
+            // Use SG_CORE_PATH (defined by MU-Plugin) or SG_PLUGIN_DIR (defined by main plugin)
+            $plugin_dir = defined('SG_CORE_PATH') ? SG_CORE_PATH : (defined('SG_PLUGIN_DIR') ? SG_PLUGIN_DIR : dirname(dirname(__DIR__)) . '/');
+            require_once $plugin_dir . 'includes/geo/class-sg-maxmind-reader.php';
             $this->reader = new SG_MaxMind_Reader($this->db_path);
         } catch (Exception $e) {
             // Log error but don't crash
