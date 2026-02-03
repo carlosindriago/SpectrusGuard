@@ -253,6 +253,7 @@ class SG_Admin
 
         } elseif ($context === 'login') {
             // --- LOGIN TAB (Legacy Check) ---
+            $sanitized['login_limit_enabled'] = !empty($input['login_limit_enabled']);
             $sanitized['hide_login'] = !empty($input['hide_login']);
 
             if (isset($input['login_slug'])) {

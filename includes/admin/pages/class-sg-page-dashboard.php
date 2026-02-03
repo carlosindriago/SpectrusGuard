@@ -66,7 +66,8 @@ class SG_Page_Dashboard
             </div>
 
             <?php if (!empty($alerts)): ?>
-                <div class="sg-alerts-wrapper" style="margin: -32px -32px 32px -32px; width: calc(100% + 64px); display: flex; flex-direction: column; z-index: 100;">
+                <div class="sg-alerts-wrapper"
+                    style="margin: -32px -32px 32px -32px; width: calc(100% + 64px); display: flex; flex-direction: column; z-index: 100;">
                     <?php foreach ($alerts as $alert): ?>
                         <?php
                         // Define inline styles for background based on type
@@ -83,22 +84,24 @@ class SG_Page_Dashboard
                             $text_style = 'color: white;';
                         }
                         ?>
-                        <div class="sg-alert sg-alert-<?php echo esc_attr($alert['type']); ?>" style="<?php echo $bg_style; ?> display: flex; align-items: center; gap: 20px; padding: 15px 32px; margin: 0; border-bottom: 1px solid rgba(0,0,0,0.1); border-radius: 0;">
-                            <div class="sg-alert-icon" style="background: rgba(255,255,255,0.2); width: 32px; height: 32px; display: flex; align-items: center; justify-content: center; border-radius: 6px; flex-shrink: 0;">
+                        <div class="sg-alert sg-alert-<?php echo esc_attr($alert['type']); ?>"
+                            style="<?php echo $bg_style; ?> display: flex; align-items: center; gap: 20px; padding: 15px 32px; margin: 0; border-bottom: 1px solid rgba(0,0,0,0.1); border-radius: 0;">
+                            <div class="sg-alert-icon"
+                                style="background: rgba(255,255,255,0.2); width: 32px; height: 32px; display: flex; align-items: center; justify-content: center; border-radius: 6px; flex-shrink: 0;">
                                 <?php echo $alert['icon']; ?>
                             </div>
-                            <div class="sg-alert-content" style="flex: 1; display: flex; align-items: center; gap: 15px; flex-wrap: wrap;">
-                                <strong style="<?php echo $text_style; ?> font-size: 15px;"><?php echo esc_html($alert['title']); ?></strong>
-                                <span style="<?php echo $text_style; ?> opacity: 0.9; font-size: 14px;"><?php echo esc_html($alert['message']); ?></span>
+                            <div class="sg-alert-content"
+                                style="flex: 1; display: flex; align-items: center; gap: 15px; flex-wrap: wrap;">
+                                <strong
+                                    style="<?php echo $text_style; ?> font-size: 15px;"><?php echo esc_html($alert['title']); ?></strong>
+                                <span
+                                    style="<?php echo $text_style; ?> opacity: 0.9; font-size: 14px;"><?php echo esc_html($alert['message']); ?></span>
                             </div>
                             <?php if (isset($alert['action_url'])): ?>
-                                <a href="<?php echo esc_url($alert['action_url']); ?>" 
-                                   class="sg-alert-action <?php echo isset($alert['quick_action']) ? 'sg-quick-action-btn' : ''; ?>"
-                                   <?php if (isset($alert['quick_action'])): ?>
-                                       data-action="<?php echo esc_attr($alert['quick_action']); ?>"
-                                       data-nonce="<?php echo wp_create_nonce('sg_quick_action_' . $alert['quick_action']); ?>"
-                                   <?php endif; ?>
-                                   style="background: rgba(255,255,255,0.2); color: inherit; text-decoration: none; padding: 6px 14px; border-radius: 4px; font-weight: 600; font-size: 13px; white-space: nowrap;">
+                                <a href="<?php echo esc_url($alert['action_url']); ?>"
+                                    class="sg-alert-action <?php echo isset($alert['quick_action']) ? 'sg-quick-action-btn' : ''; ?>" <?php if (isset($alert['quick_action'])): ?> data-action="<?php echo esc_attr($alert['quick_action']); ?>"
+                                        data-nonce="<?php echo wp_create_nonce('sg_quick_action_' . $alert['quick_action']); ?>" <?php endif; ?>
+                                    style="background: rgba(255,255,255,0.2); color: inherit; text-decoration: none; padding: 6px 14px; border-radius: 4px; font-weight: 600; font-size: 13px; white-space: nowrap;">
                                     <?php echo esc_html($alert['action_text']); ?> →
                                 </a>
                             <?php endif; ?>
@@ -343,159 +346,159 @@ class SG_Page_Dashboard
                 </div>
 
                 <script>
-                    jQuery(document).ready(function ($) {
-                        var dailyStats = <?php echo json_encode($stats['daily_stats'] ?? array()); ?>;
-                        var labels = [];
-                        var data = [];
-                        for (var i = 29; i >= 0; i--) {
-                            var date = new Date();
-                            date.setDate(date.getDate() - i);
-                            var dateStr = date.toISOString().split('T')[0];
-                            labels.push(date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }));
-                            data.push(dailyStats[dateStr] || 0);
-                        }
-
-                        if (typeof Chart !== 'undefined') {
-                            var ctx = document.getElementById('sg-activity-chart').getContext('2d');
-                            var gradient = ctx.createLinearGradient(0, 0, 0, 300);
-                            gradient.addColorStop(0, 'rgba(59, 130, 246, 0.2)');
-                            gradient.addColorStop(1, 'rgba(59, 130, 246, 0)');
-
-                            new Chart(ctx, {
-                                type: 'line',
-                                data: {
-                                    labels: labels,
-                                    datasets: [{
-                                        label: 'Attacks Blocked',
-                                        data: data,
-                                        borderColor: '#3b82f6',
-                                        backgroundColor: gradient,
-                                        borderWidth: 2,
-                                        fill: true,
-                                        tension: 0.4
-                                    }]
-                                },
-                                options: {
-                                    responsive: true,
-                                    maintainAspectRatio: false,
-                                    plugins: { legend: { display: false } },
-                                    scales: {
-                                        y: { beginAtZero: true },
-                                        x: { grid: { display: false } }
+                                  jQuery(document).ready(function ($) {
+                                    var dailyStats = <?php echo json_encode($stats['daily_stats'] ?? array()); ?>;
+                                    var labels = [];
+                                    var data = [];
+                                    for (var i = 29; i >= 0; i--) {
+                                        var date = new Date();
+                                        date.setDate(date.getDate() - i);
+                                        var dateStr = date.toISOString().split('T')[0];
+                                        labels.push(date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }));
+                                        data.push(dailyStats[dateStr] || 0);
                                     }
-                                }
-                            });
-                        }
 
-                        $('.sg-copy-btn-icon').on('click', function () {
-                            var $btn = $(this);
-                            var $icon = $btn.find('.dashicons');
-                            $icon.removeClass('dashicons-clipboard').addClass('dashicons-yes');
-                            setTimeout(function () { $icon.removeClass('dashicons-yes').addClass('dashicons-clipboard'); }, 2000);
-                        });
-                    });
-                </script>
+                                    if (typeof Chart !== 'undefined') {
+                                        var ctx = document.getElementById('sg-activity-chart').getContext('2d');
+                                        var gradient = ctx.createLinearGradient(0, 0, 0, 300);
+                                        gradient.addColorStop(0, 'rgba(59, 130, 246, 0.2)');
+                                        gradient.addColorStop(1, 'rgba(59, 130, 246, 0)');
 
-            <?php elseif ($active_tab === 'logs'): ?>
-                <?php $logs = $logger ? $logger->get_logs(100) : array(); ?>
+                                        new Chart(ctx, {
+                                            type: 'line',
+                                            data: {
+                                                labels: labels,
+                                                datasets: [{
+                                                    label: 'Attacks Blocked',
+                                                    data: data,
+                                                    borderColor: '#3b82f6',
+                                                    backgroundColor: gradient,
+                                                    borderWidth: 2,
+                                                    fill: true,
+                                                    tension: 0.4
+                                                }]
+                                            },
+                                            options: {
+                                                responsive: true,
+                                                maintainAspectRatio: false,
+                                                plugins: { legend: { display: false } },
+                                                scales: {
+                                                    y: { beginAtZero: true },
+                                                    x: { grid: { display: false } }
+                                                }
+                                            }
+                                        });
+                                    }
 
-                <div class="sg-main-layout">
-                    <div class="sg-content-column" style="grid-column: span 12;">
-                        <div class="sg-card">
-                            <div class="sg-card-header">
-                                <h2>
-                                    <?php esc_html_e('Firewall Activity Log', 'spectrus-guard'); ?>
-                                </h2>
-                                <div class="sg-header-actions">
-                                    <button type="button" class="sg-btn sg-btn-danger" id="sg-clear-logs">
-                                        <span class="dashicons dashicons-trash"></span>
-                                        <?php esc_html_e('Clear Logs', 'spectrus-guard'); ?>
-                                    </button>
-                                    <button type="button" class="sg-btn sg-btn-secondary" id="sg-refresh-logs">
-                                        <span class="dashicons dashicons-update"></span>
-                                        <?php esc_html_e('Refresh', 'spectrus-guard'); ?>
-                                    </button>
+                                    $('.sg-copy-btn-icon').on('click', function () {
+                                        var $btn = $(this);
+                                        var $icon = $btn.find('.dashicons');
+                                        $icon.removeClass('dashicons-clipboard').addClass('dashicons-yes');
+                                        setTimeout(function () { $icon.removeClass('dashicons-yes').addClass('dashicons-clipboard'); }, 2000);
+                                    });
+                                });
+                            </script>
+
+                    <?php elseif ($active_tab === 'logs'): ?>
+                            <?php $logs = $logger ? $logger->get_logs(100) : array(); ?>
+
+                            <div class="sg-main-layout">
+                                <div class="sg-content-column" style="grid-column: span 12;">
+                                    <div class="sg-card">
+                                        <div class="sg-card-header">
+                                            <h2>
+                                                <?php esc_html_e('Firewall Activity Log', 'spectrus-guard'); ?>
+                                            </h2>
+                                            <div class="sg-header-actions">
+                                                <button type="button" class="sg-btn sg-btn-danger" id="sg-clear-logs">
+                                                    <span class="dashicons dashicons-trash"></span>
+                                                    <?php esc_html_e('Clear Logs', 'spectrus-guard'); ?>
+                                                </button>
+                                                <button type="button" class="sg-btn sg-btn-secondary" id="sg-refresh-logs">
+                                                    <span class="dashicons dashicons-update"></span>
+                                                    <?php esc_html_e('Refresh', 'spectrus-guard'); ?>
+                                                </button>
+                                            </div>
+                                        </div>
+                                        <div class="sg-card-body" style="padding: 0;">
+                                            <table class="sg-logs-table">
+                                                <thead>
+                                                    <tr>
+                                                        <th style="width: 180px;">
+                                                            <?php esc_html_e('Timestamp', 'spectrus-guard'); ?>
+                                                        </th>
+                                                        <th style="width: 120px;">
+                                                            <?php esc_html_e('Type', 'spectrus-guard'); ?>
+                                                        </th>
+                                                        <th style="width: 150px;">
+                                                            <?php esc_html_e('IP Address', 'spectrus-guard'); ?>
+                                                        </th>
+                                                        <th>
+                                                            <?php esc_html_e('Request URI', 'spectrus-guard'); ?>
+                                                        </th>
+                                                        <th>
+                                                            <?php esc_html_e('Payload', 'spectrus-guard'); ?>
+                                                        </th>
+                                                    </tr>
+                                                </thead>
+                                                <tbody>
+                                                    <?php if (empty($logs)): ?>
+                                                            <tr>
+                                                                <td colspan="5" style="text-align: center; padding: 40px; color: var(--sg-text-muted);">
+                                                                    <div style="font-size: 48px; margin-bottom: 16px;">🛡️</div>
+                                                                    <p>
+                                                                        <?php esc_html_e('No attacks detected yet. Your site is safe.', 'spectrus-guard'); ?>
+                                                                    </p>
+                                                                </td>
+                                                            </tr>
+                                                    <?php else: ?>
+                                                            <?php foreach ($logs as $log): ?>
+                                                                    <tr>
+                                                                        <td style="color: var(--sg-text-secondary); font-family: monospace;">
+                                                                            <?php echo esc_html($log['timestamp']); ?>
+                                                                        </td>
+                                                                        <td>
+                                                                            <span class="sg-badge <?php echo esc_attr(strtolower($log['type'])); ?>">
+                                                                                <?php echo esc_html($log['type']); ?>
+                                                                            </span>
+                                                                        </td>
+                                                                        <td style="font-family: monospace; color: var(--sg-primary);">
+                                                                            <?php echo esc_html($log['ip']); ?>
+                                                                        </td>
+                                                                        <td style="font-family: monospace; color: var(--sg-text-muted);">
+                                                                            <?php echo esc_html(substr($log['uri'], 0, 50)) . (strlen($log['uri']) > 50 ? '...' : ''); ?>
+                                                                        </td>
+                                                                        <td style="font-family: monospace; font-size: 11px; color: var(--sg-danger);">
+                                                                            <?php echo esc_html(substr($log['payload'], 0, 80)) . (strlen($log['payload']) > 80 ? '...' : ''); ?>
+                                                                        </td>
+                                                                    </tr>
+                                                            <?php endforeach; ?>
+                                                    <?php endif; ?>
+                                                </tbody>
+                                            </table>
+                                        </div>
+                                    </div>
                                 </div>
                             </div>
-                            <div class="sg-card-body" style="padding: 0;">
-                                <table class="sg-logs-table">
-                                    <thead>
-                                        <tr>
-                                            <th style="width: 180px;">
-                                                <?php esc_html_e('Timestamp', 'spectrus-guard'); ?>
-                                            </th>
-                                            <th style="width: 120px;">
-                                                <?php esc_html_e('Type', 'spectrus-guard'); ?>
-                                            </th>
-                                            <th style="width: 150px;">
-                                                <?php esc_html_e('IP Address', 'spectrus-guard'); ?>
-                                            </th>
-                                            <th>
-                                                <?php esc_html_e('Request URI', 'spectrus-guard'); ?>
-                                            </th>
-                                            <th>
-                                                <?php esc_html_e('Payload', 'spectrus-guard'); ?>
-                                            </th>
-                                        </tr>
-                                    </thead>
-                                    <tbody>
-                                        <?php if (empty($logs)): ?>
-                                            <tr>
-                                                <td colspan="5" style="text-align: center; padding: 40px; color: var(--sg-text-muted);">
-                                                    <div style="font-size: 48px; margin-bottom: 16px;">🛡️</div>
-                                                    <p>
-                                                        <?php esc_html_e('No attacks detected yet. Your site is safe.', 'spectrus-guard'); ?>
-                                                    </p>
-                                                </td>
-                                            </tr>
-                                        <?php else: ?>
-                                            <?php foreach ($logs as $log): ?>
-                                                <tr>
-                                                    <td style="color: var(--sg-text-secondary); font-family: monospace;">
-                                                        <?php echo esc_html($log['timestamp']); ?>
-                                                    </td>
-                                                    <td>
-                                                        <span class="sg-badge <?php echo esc_attr(strtolower($log['type'])); ?>">
-                                                            <?php echo esc_html($log['type']); ?>
-                                                        </span>
-                                                    </td>
-                                                    <td style="font-family: monospace; color: var(--sg-primary);">
-                                                        <?php echo esc_html($log['ip']); ?>
-                                                    </td>
-                                                    <td style="font-family: monospace; color: var(--sg-text-muted);">
-                                                        <?php echo esc_html(substr($log['uri'], 0, 50)) . (strlen($log['uri']) > 50 ? '...' : ''); ?>
-                                                    </td>
-                                                    <td style="font-family: monospace; font-size: 11px; color: var(--sg-danger);">
-                                                        <?php echo esc_html(substr($log['payload'], 0, 80)) . (strlen($log['payload']) > 80 ? '...' : ''); ?>
-                                                    </td>
-                                                </tr>
-                                            <?php endforeach; ?>
-                                        <?php endif; ?>
-                                    </tbody>
-                                </table>
-                            </div>
-                        </div>
-                    </div>
-                </div>
 
-                <script>
-                    jQuery(document).ready(function ($) {
-                        $('#sg-clear-logs').on('click', function () {
-                            if (confirm('<?php esc_html_e('Are you sure you want to delete all security logs?', 'spectrus-guard'); ?>')) {
-                                $.post(ajaxurl, {
-                                    action: 'sg_clear_logs',
-                                    nonce: SpectrusGuard.nonce
-                                }, function (response) {
-                                    if (response.success) { location.reload(); }
+                            <script>
+                                jQuery(document).ready(function ($) {
+                                    $('#sg-clear-logs').on('click', function () {
+                                        if (confirm('<?php esc_html_e('Are you sure you want to delete all security logs?', 'spectrus-guard'); ?>')) {
+                                            $.post(ajaxurl, {
+                                                action: 'sg_clear_logs',
+                                                nonce: SpectrusGuard.nonce
+                                            }, function (response) {
+                                                if (response.success) { location.reload(); }
+                                            });
+                                        }
+                                    });
+                                    $('#sg-refresh-logs').on('click', function () { location.reload(); });
                                 });
-                            }
-                        });
-                        $('#sg-refresh-logs').on('click', function () { location.reload(); });
-                    });
-                </script>
-            <?php endif; ?>
-        </div>
-        <?php
+                            </script>
+                    <?php endif; ?>
+                </div>
+                <?php
     }
 
     /**
@@ -525,27 +528,35 @@ class SG_Page_Dashboard
             wp_send_json_error(array('message' => 'Unauthorized'));
         }
 
-        $settings = get_option('spectrus_guard_settings', array());
+        $settings = get_option('spectrus_shield_settings', array());
         $message = '';
 
         switch ($action) {
             case 'enable_waf':
                 $settings['waf_enabled'] = 1;
+                $settings['form_context'] = 'waf';
                 $message = __('WAF Enabled Successfully', 'spectrus-guard');
                 break;
             case 'enable_login_protection':
                 $settings['login_limit_enabled'] = 1;
+                $settings['form_context'] = 'login';
                 $message = __('Login Protection Enabled', 'spectrus-guard');
                 break;
             case 'block_xmlrpc':
                 $settings['block_xmlrpc'] = 1;
+                $settings['form_context'] = 'stealth';
                 $message = __('XML-RPC Disabled', 'spectrus-guard');
+                break;
+            case 'enable_attack_logging':
+                $settings['log_attacks'] = 1;
+                $settings['form_context'] = 'waf';
+                $message = __('Attack Logging Enabled', 'spectrus-guard');
                 break;
             default:
                 wp_send_json_error(array('message' => 'Invalid action'));
         }
 
-        update_option('spectrus_guard_settings', $settings);
+        update_option('spectrus_shield_settings', $settings);
         wp_send_json_success(array('message' => $message));
     }
 
@@ -572,6 +583,19 @@ class SG_Page_Dashboard
             );
         }
 
+        // Check Attack Logging Status
+        if (empty($settings['log_attacks'])) {
+            $alerts[] = array(
+                'type' => 'warning',
+                'icon' => '📝',
+                'title' => __('Attack Logging Disabled', 'spectrus-guard'),
+                'message' => __('Attack logs are disabled. You will not see details of blocked attempts.', 'spectrus-guard'),
+                'action_url' => '#',
+                'action_text' => __('Enable Logging', 'spectrus-guard'),
+                'quick_action' => 'enable_attack_logging'
+            );
+        }
+
         // Check Login Guard Status
         if (empty($settings['login_limit_enabled'])) {
             $alerts[] = array(
@@ -591,7 +615,7 @@ class SG_Page_Dashboard
                 'type' => 'info',
                 'icon' => '⚠️',
                 'title' => __('XML-RPC Enabled', 'spectrus-guard'),
-                'message' => __('XML-RPC is often used for DDoS attacks. Consider disabling it if not used.', 'spectrus-guard'),
+                'message' => __('Prevents DDoS & Brute Force attacks. Safe to disable if you don\'t use Jetpack or the WP Mobile App.', 'spectrus-guard'),
                 'action_url' => '#',
                 'action_text' => __('Disable XML-RPC', 'spectrus-guard'),
                 'quick_action' => 'block_xmlrpc'
