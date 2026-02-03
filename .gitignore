@@ -66,18 +66,7 @@ wp-config.php
 .copilot/
 .continue/
 .tabby/
-
-# AI Prompts & Context
-.prompts/
-.ai-context/
-.ai-prompts/
-
-# AI Agent Sessions & Cache
-.agent/sessions/
-.agent/cache/
-.agent/tmp/
-.agent/.history/
-
-# Keep AI workflows documentation (intentionally committed)
-!.agent/workflows/
+.jules/
+.Jules/
+.agent/
 *.log
