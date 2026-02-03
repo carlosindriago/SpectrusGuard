@@ -25,7 +25,7 @@ if (!defined('ABSPATH')) {
 /**
  * Plugin Constants
  */
-define('SG_VERSION', '3.0.6');
+define('SG_VERSION', '3.0.7');
 define('SG_PLUGIN_FILE', __FILE__);
 define('SG_PLUGIN_DIR', plugin_dir_path(__FILE__));
 define('SG_PLUGIN_URL', plugin_dir_url(__FILE__));

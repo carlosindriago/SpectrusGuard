@@ -537,8 +537,8 @@ class SG_Page_Dashboard
                 $settings['login_limit_enabled'] = 1;
                 $message = __('Login Protection Enabled', 'spectrus-guard');
                 break;
-            case 'disable_xmlrpc':
-                $settings['disable_xmlrpc'] = 1;
+            case 'block_xmlrpc':
+                $settings['block_xmlrpc'] = 1;
                 $message = __('XML-RPC Disabled', 'spectrus-guard');
                 break;
             default:
@@ -586,7 +586,7 @@ class SG_Page_Dashboard
         }
 
         // Check XML-RPC Status
-        if (empty($settings['disable_xmlrpc'])) {
+        if (empty($settings['block_xmlrpc'])) {
             $alerts[] = array(
                 'type' => 'info',
                 'icon' => '⚠️',
@@ -594,7 +594,7 @@ class SG_Page_Dashboard
                 'message' => __('XML-RPC is often used for DDoS attacks. Consider disabling it if not used.', 'spectrus-guard'),
                 'action_url' => '#',
                 'action_text' => __('Disable XML-RPC', 'spectrus-guard'),
-                'quick_action' => 'disable_xmlrpc'
+                'quick_action' => 'block_xmlrpc'
             );
         }
 
