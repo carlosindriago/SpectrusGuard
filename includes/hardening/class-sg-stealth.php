@@ -70,12 +70,14 @@ class SG_Stealth
         // 6. Block access to sensitive files
         add_action('template_redirect', array($this, 'block_sensitive_files'));
 
-        // 7. Hide login page (if enabled)
+        // 7. Hide login page (Moved to class-sg-login-guard.php)
+        /*
         if (!empty($this->settings['hide_login'])) {
             add_action('init', array($this, 'hide_login_page'), 1);
             add_filter('site_url', array($this, 'filter_login_url'), 10, 4);
             add_filter('wp_redirect', array($this, 'filter_login_redirect'), 10, 2);
         }
+        */
 
         // 8. Disable XML-RPC (if enabled)
         if (!empty($this->settings['block_xmlrpc'])) {
@@ -211,107 +213,6 @@ class SG_Stealth
     }
 
     /**
-     * Hide the WordPress login page
-     *
-     * Blocks access to wp-login.php and wp-admin for non-logged-in users.
-     */
-    public function hide_login_page()
-    {
-        // Skip for CLI
-        if (defined('WP_CLI') && WP_CLI) {
-            return;
-        }
-
-        // Skip for logged-in users
-        if (is_user_logged_in()) {
-            return;
-        }
-
-        // Skip for AJAX requests
-        if (defined('DOING_AJAX') && DOING_AJAX) {
-            return;
-        }
-
-        $request_uri = isset($_SERVER['REQUEST_URI']) ? $_SERVER['REQUEST_URI'] : '';
-        $secret_slug = isset($this->settings['login_slug']) ? $this->settings['login_slug'] : 'sg-login';
-
-        // Check if accessing the secret login URL
-        if (strpos($request_uri, '/' . $secret_slug) !== false) {
-            // Set a cookie to allow access using HMAC for security
-            $cookie_value = hash_hmac('sha256', $secret_slug, AUTH_SALT);
-            setcookie('sg_login_access', $cookie_value, time() + 3600, '/', '', is_ssl(), true);
-            wp_safe_redirect(wp_login_url());
-            exit;
-        }
-
-        // Check if accessing wp-login.php or wp-admin
-        $is_login_attempt = (
-            strpos($request_uri, 'wp-login.php') !== false ||
-            (strpos($request_uri, '/wp-admin') !== false && strpos($request_uri, '/wp-admin/admin-ajax.php') === false)
-        );
-
-        if ($is_login_attempt) {
-            // Check for access cookie using timing-safe comparison
-            $expected_cookie = hash_hmac('sha256', $secret_slug, AUTH_SALT);
-
-            if (!isset($_COOKIE['sg_login_access']) || !hash_equals($expected_cookie, $_COOKIE['sg_login_access'])) {
-                // No valid cookie - block access
-                $this->show_404_or_redirect();
-            }
-        }
-    }
-
-    /**
-     * Filter login URL to use custom slug
-     *
-     * @param string      $url     The complete site URL.
-     * @param string      $path    Path relative to the site URL.
-     * @param string|null $scheme  Scheme to use.
-     * @param int|null    $blog_id Blog ID, or null for the current blog.
-     * @return string Modified URL.
-     */
-    public function filter_login_url($url, $path, $scheme, $blog_id)
-    {
-        if (strpos($path, 'wp-login.php') !== false) {
-            $secret_slug = isset($this->settings['login_slug']) ? $this->settings['login_slug'] : 'sg-login';
-            // Only modify for display purposes, not actual redirects
-        }
-        return $url;
-    }
-
-    /**
-     * Filter redirects to login page
-     *
-     * @param string $location Redirect location.
-     * @param int    $status   HTTP status code.
-     * @return string Modified location.
-     */
-    public function filter_login_redirect($location, $status)
-    {
-        // Don't modify if user is logged in
-        if (is_user_logged_in()) {
-            return $location;
-        }
-
-        if (strpos($location, 'wp-login.php') !== false) {
-            // Check if they have the access cookie
-            $secret_slug = isset($this->settings['login_slug']) ? $this->settings['login_slug'] : 'sg-login';
-            $expected_cookie = hash_hmac('sha256', $secret_slug, AUTH_SALT);
-
-            if (!isset($_COOKIE['sg_login_access']) || !hash_equals($expected_cookie, $_COOKIE['sg_login_access'])) {
-                // Redirect to home instead
-                return home_url('/');
-            }
-        }
-
-        return $location;
-    }
-
-    /**
-     * Show 404 or redirect to home
-     */
-    private function show_404_or_redirect()
-    {
         // Option 1: Redirect to home
         wp_safe_redirect(home_url('/'), 302);
         exit;

@@ -621,6 +621,20 @@ class SG_Page_Dashboard
                 'quick_action' => 'block_xmlrpc'
             );
         }
+        
+        // Check Stealth Mode (Info)
+        if (!empty($settings['hide_login'])) {
+            $slug = !empty($settings['login_slug']) ? $settings['login_slug'] : 'ghost-access';
+            $login_url = home_url('/' . $slug);
+            $alerts[] = array(
+                'type' => 'info',
+                'icon' => '👻',
+                'title' => __('Stealth Mode Active', 'spectrus-guard'),
+                'message' => sprintf(__('Your custom login URL is: %s', 'spectrus-guard'), $login_url),
+                'action_url' => $login_url,
+                'action_text' => __('Test URL', 'spectrus-guard')
+            );
+        }
 
         return $alerts;
     }

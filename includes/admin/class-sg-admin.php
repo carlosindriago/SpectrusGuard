@@ -257,7 +257,25 @@ class SG_Admin
             $sanitized['hide_login'] = !empty($input['hide_login']);
 
             if (isset($input['login_slug'])) {
-                $sanitized['login_slug'] = sanitize_title($input['login_slug']);
+                $old_slug = isset($current_settings['login_slug']) ? $current_settings['login_slug'] : '';
+                $new_slug = sanitize_title($input['login_slug']);
+                $sanitized['login_slug'] = $new_slug;
+
+                // Send email notification if slug changed and feature is enabled
+                if ($sanitized['hide_login'] && $new_slug !== $old_slug && !empty($new_slug)) {
+                    $admin_email = get_option('admin_email');
+                    $site_name = get_bloginfo('name');
+                    $login_url = home_url('/' . $new_slug);
+
+                    $subject = sprintf(__('[%s] New Login URL Configured', 'spectrus-guard'), $site_name);
+                    $message = sprintf(
+                        __("Hello,\n\nThe custom login URL for your site %s has been changed.\n\nNew Login URL: %s\n\nPlease save this URL to avoid being locked out.\n\nRegards,\nSpectrusGuard Security", 'spectrus-guard'),
+                        $site_name,
+                        $login_url
+                    );
+
+                    wp_mail($admin_email, $subject, $message);
+                }
             }
             if (isset($input['max_login_attempts'])) {
                 $sanitized['max_login_attempts'] = absint($input['max_login_attempts']);

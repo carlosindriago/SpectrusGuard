@@ -89,7 +89,7 @@ class Spectrus_Login_Guard
      */
     public function filter_login_url($url, $path, $scheme)
     {
-        if ($path === 'wp-login.php' && $scheme === 'login') {
+        if (strpos($path, 'wp-login.php') !== false) {
             $settings = get_option('spectrus_shield_settings', []);
             $slug = isset($settings['login_slug']) && !empty($settings['login_slug']) ? $settings['login_slug'] : 'ghost-access';
             return home_url('/' . $slug);
