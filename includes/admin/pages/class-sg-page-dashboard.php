@@ -18,6 +18,7 @@ class SG_Page_Dashboard
         $this->loader = $loader;
         // AJAX Hooks for Dashboard
         add_action('wp_ajax_sg_get_stats', array($this, 'ajax_get_stats'));
+        add_action('wp_ajax_sg_quick_action', array($this, 'ajax_handle_quick_action'));
     }
 
     /**
@@ -91,7 +92,13 @@ class SG_Page_Dashboard
                                 <span style="<?php echo $text_style; ?> opacity: 0.9; font-size: 14px;"><?php echo esc_html($alert['message']); ?></span>
                             </div>
                             <?php if (isset($alert['action_url'])): ?>
-                                <a href="<?php echo esc_url($alert['action_url']); ?>" class="sg-alert-action" style="background: rgba(255,255,255,0.2); color: inherit; text-decoration: none; padding: 6px 14px; border-radius: 4px; font-weight: 600; font-size: 13px; white-space: nowrap;">
+                                <a href="<?php echo esc_url($alert['action_url']); ?>" 
+                                   class="sg-alert-action <?php echo isset($alert['quick_action']) ? 'sg-quick-action-btn' : ''; ?>"
+                                   <?php if (isset($alert['quick_action'])): ?>
+                                       data-action="<?php echo esc_attr($alert['quick_action']); ?>"
+                                       data-nonce="<?php echo wp_create_nonce('sg_quick_action_' . $alert['quick_action']); ?>"
+                                   <?php endif; ?>
+                                   style="background: rgba(255,255,255,0.2); color: inherit; text-decoration: none; padding: 6px 14px; border-radius: 4px; font-weight: 600; font-size: 13px; white-space: nowrap;">
                                     <?php echo esc_html($alert['action_text']); ?> →
                                 </a>
                             <?php endif; ?>
@@ -507,6 +514,42 @@ class SG_Page_Dashboard
     }
 
     /**
+     * AJAX: Handle quick security actions
+     */
+    public function ajax_handle_quick_action()
+    {
+        $action = isset($_POST['security_action']) ? sanitize_text_field($_POST['security_action']) : '';
+        check_ajax_referer('sg_quick_action_' . $action, 'nonce');
+
+        if (!current_user_can('manage_options')) {
+            wp_send_json_error(array('message' => 'Unauthorized'));
+        }
+
+        $settings = get_option('spectrus_guard_settings', array());
+        $message = '';
+
+        switch ($action) {
+            case 'enable_waf':
+                $settings['waf_enabled'] = 1;
+                $message = __('WAF Enabled Successfully', 'spectrus-guard');
+                break;
+            case 'enable_login_protection':
+                $settings['login_limit_enabled'] = 1;
+                $message = __('Login Protection Enabled', 'spectrus-guard');
+                break;
+            case 'disable_xmlrpc':
+                $settings['disable_xmlrpc'] = 1;
+                $message = __('XML-RPC Disabled', 'spectrus-guard');
+                break;
+            default:
+                wp_send_json_error(array('message' => 'Invalid action'));
+        }
+
+        update_option('spectrus_guard_settings', $settings);
+        wp_send_json_success(array('message' => $message));
+    }
+
+    /**
      * Get security alerts based on current settings
      *
      * @param array $settings Current plugin settings
@@ -523,8 +566,9 @@ class SG_Page_Dashboard
                 'icon' => '🔥',
                 'title' => __('Firewall Disabled', 'spectrus-guard'),
                 'message' => __('The Web Application Firewall is disabled. Your site is vulnerable to SQL injection and XSS attacks.', 'spectrus-guard'),
-                'action_url' => admin_url('admin.php?page=spectrus-guard-settings'),
-                'action_text' => __('Enable WAF', 'spectrus-guard')
+                'action_url' => '#',
+                'action_text' => __('Enable WAF', 'spectrus-guard'),
+                'quick_action' => 'enable_waf'
             );
         }
 
@@ -535,8 +579,9 @@ class SG_Page_Dashboard
                 'icon' => '🔐',
                 'title' => __('Login Protection Disabled', 'spectrus-guard'),
                 'message' => __('Brute force protection is off. Bots can attempt unlimited logins.', 'spectrus-guard'),
-                'action_url' => admin_url('admin.php?page=spectrus-guard-settings'),
-                'action_text' => __('Enable Protection', 'spectrus-guard')
+                'action_url' => '#',
+                'action_text' => __('Enable Protection', 'spectrus-guard'),
+                'quick_action' => 'enable_login_protection'
             );
         }
 
@@ -547,8 +592,9 @@ class SG_Page_Dashboard
                 'icon' => '⚠️',
                 'title' => __('XML-RPC Enabled', 'spectrus-guard'),
                 'message' => __('XML-RPC is often used for DDoS attacks. Consider disabling it if not used.', 'spectrus-guard'),
-                'action_url' => admin_url('admin.php?page=spectrus-guard-settings'),
-                'action_text' => __('Disable XML-RPC', 'spectrus-guard')
+                'action_url' => '#',
+                'action_text' => __('Disable XML-RPC', 'spectrus-guard'),
+                'quick_action' => 'disable_xmlrpc'
             );
         }
 

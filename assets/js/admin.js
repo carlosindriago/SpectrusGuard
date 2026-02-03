@@ -43,6 +43,9 @@
 
             // Toggle sections
             $(document).on('click', '.sg-toggle-section', this.handleToggleSection);
+
+            // Quick Actions (Dashboard Alerts)
+            $(document).on('click', '.sg-quick-action-btn', this.handleQuickAction);
         },
 
         /**
@@ -169,6 +172,58 @@
         },
 
         /**
+         * Handle Quick Actions (Dashboard Alerts)
+         */
+        handleQuickAction: function (e) {
+            e.preventDefault();
+
+            var $btn = $(this);
+            var $alert = $btn.closest('.sg-alert');
+            var action = $btn.data('action');
+            var nonce = $btn.data('nonce');
+            var originalText = $btn.text();
+
+            if ($btn.prop('disabled')) return;
+
+            // Loading state
+            $btn.prop('disabled', true).text('Processing...');
+
+            $.ajax({
+                url: SpectrusGuard.ajax_url,
+                type: 'POST',
+                data: {
+                    action: 'sg_quick_action',
+                    security_action: action,
+                    nonce: nonce
+                },
+                success: function (response) {
+                    if (response.success) {
+                        SpectrusGuardAdmin.showNotice('success', response.data.message);
+                        $btn.text('Done!');
+
+                        // Remove alert with animation
+                        setTimeout(function () {
+                            $alert.slideUp(400, function () {
+                                $(this).remove();
+                                // If no more alerts, remove wrapper
+                                if ($('.sg-alert').length === 0) {
+                                    $('.sg-alerts-wrapper').slideUp();
+                                }
+                            });
+                        }, 500);
+                    } else {
+                        SpectrusGuardAdmin.showNotice('error', response.data.message || SpectrusGuard.i18n.error);
+                        $btn.prop('disabled', false).text(originalText);
+                    }
+                },
+                error: function () {
+                    SpectrusGuardAdmin.showNotice('error', SpectrusGuard.i18n.error);
+                    $btn.prop('disabled', false).text(originalText);
+                }
+            });
+        },
+
+        /**
          * Show admin notice (Toast style)
          */
         showNotice: function (type, message) {
@@ -212,7 +267,7 @@
 
                 var $toast = $(
                     '<div class="sg-toast ' + type + '" style="' + containerStyle + '">' +
-                    '<div class="sg-toast-icon">' + icon + '</div>' +
+                    '<div class="sg-toast-icon">' + icons[type] + '</div>' +
                     '<div class="sg-toast-content">' +
                     '<div class="sg-toast-message" style="' + messageStyle + '">' + message + '</div>' + // Explicit styles
                     '</div>' +
