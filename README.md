@@ -469,13 +469,17 @@ git checkout -b feature/your-feature-name
 - Ensure **PHPStan Level 8** compliance
 - Update documentation
 
-### Security Vulnerability Reporting
-
-> ⚠️ **DO NOT** open a public issue for security vulnerabilities.
-
-For security issues, email: **security@spectrusguard.com**
-
 ---
+
+## 📞 Support & Community
+
+SpectrusGuard is a community-driven open source project. We encourage developers to contribute and help improve the ecosystem.
+
+- **Bug Reports & Feature Requests:** Please use the [GitHub Issues](https://github.com/carlosindriago/SpectrusGuard/issues) tracker.
+- **Documentation:** Visit the `docs/` folder in this repository.
+- **Security Vulnerabilities:** If you discover a sensitive security issue, please **do not open a public issue**. Instead, use the "Report a vulnerability" tab in the GitHub repository or contact the maintainer directly via [GitHub profile](https://github.com/carlosindriago).
+
+> **Note:** As an open-source project, support is provided by the community and is not guaranteed.
 
 ## 📚 Documentation
 
@@ -501,6 +505,21 @@ it under the terms of the GNU General Public License as published by
 the Free Software Foundation; either version 2 of the License, or
 (at your option) any later version.
 ```
+
+---
+
+## ⚠️ Disclaimer & Liability
+
+**SpectrusGuard is an Open Source project provided "as is", without warranty of any kind, express or implied.**
+
+By installing and using this software, you acknowledge and agree that:
+
+1. **Use at Your Own Risk:** The developers and contributors of SpectrusGuard are not responsible for any damage to your website, data loss, server downtime, or financial loss resulting from the use or misconfiguration of this plugin.
+2. **No Guarantee of Security:** While SpectrusGuard implements military-grade security measures, no software can guarantee 100% protection against all cyber threats. You remain responsible for maintaining your server's overall security, backups, and updates.
+3. **Responsible Use:** This tool is designed for defensive security purposes only. The authors condemn any malicious use of the source code.
+4. **Testing Required:** This is a powerful system that alters standard WordPress behavior. **Always test in a staging environment** before deploying to a live production site.
+
+> **If you do not agree to these terms, please do not use this software.**
 
 ---
 
