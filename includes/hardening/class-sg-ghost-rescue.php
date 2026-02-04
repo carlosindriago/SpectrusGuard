@@ -9,6 +9,16 @@ if (!defined('ABSPATH')) {
  */
 class SG_Ghost_Rescue
 {
+    /**
+     * Nonce action for CSRF protection
+     */
+    private const NONCE_ACTION = 'spectrus_ghost_rescue';
+
+    /**
+     * Nonce field name
+     */
+    private const NONCE_FIELD = 'sg_rescue_nonce';
+
     private $settings;
 
     public function __construct()
@@ -56,6 +66,12 @@ class SG_Ghost_Rescue
 
     private function handle_post()
     {
+        // Verify CSRF nonce
+        $nonce = sanitize_text_field($_POST[self::NONCE_FIELD] ?? '');
+        if (!wp_verify_nonce($nonce, self::NONCE_ACTION)) {
+            return __('Security verification failed. Please refresh and try again.', 'spectrus-guard');
+        }
+
         $step = $_POST['sg_step'] ?? '';
 
         if ($step === 'verify_email') {
@@ -142,6 +158,9 @@ class SG_Ghost_Rescue
         $template_path = SG_PLUGIN_DIR . 'templates/views/rescue-ui.php';
 
         if (file_exists($template_path)) {
+            // Pass nonce data to template
+            $nonce_field = self::NONCE_FIELD;
+            $nonce_action = self::NONCE_ACTION;
             include $template_path;
         } else {
             // Fallback if template is missing

@@ -1,13 +1,14 @@
-<?php
 /**
- * Rescue UI Template
- *
- * Variables available:
- * @var string $state   Current state: 'email', '2fa', 'email_code'
- * @var array  $data    Data array with 'error', 'user_id' etc.
- */
+* Rescue UI Template
+*
+* Variables available:
+* @var string $state Current state: 'email', '2fa', 'email_code'
+* @var array $data Data array with 'error', 'user_id' etc.
+* @var string $nonce_field Name of the nonce field
+* @var string $nonce_action Nonce action for verification
+*/
 if (!defined('ABSPATH')) {
-    exit;
+exit;
 }
 
 $error = $data['error'] ?? '';
@@ -108,6 +109,8 @@ $error = $data['error'] ?? '';
         <?php endif; ?>
 
         <form method="post">
+            <?php wp_nonce_field($nonce_action, $nonce_field); ?>
+
             <?php if ($state === 'email'): ?>
                 <p class="note">
                     <?php esc_html_e('Enter your Administrator Email to verify identity.', 'spectrus-guard'); ?>
