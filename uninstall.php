@@ -44,7 +44,7 @@ function sg_uninstall_cleanup()
     );
 
     // 3. Remove MU-Plugin file
-    $mu_plugin_path = WP_CONTENT_DIR . '/mu-plugins/ghost-waf.php';
+    $mu_plugin_path = WP_CONTENT_DIR . '/mu-plugins/spectrus-waf.php';
     if (file_exists($mu_plugin_path)) {
         unlink($mu_plugin_path);
     }
