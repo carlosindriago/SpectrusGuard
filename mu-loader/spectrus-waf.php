@@ -624,8 +624,8 @@ class SpectrusGuard_MU_Guard
     {
         switch ($action) {
             case 'captcha':
-                // For now, fall through to 403
-                // Future: implement CAPTCHA challenge
+            // For now, fall through to 403
+            // Future: implement CAPTCHA challenge
             case '403':
             default:
                 header('HTTP/1.1 403 Forbidden');
@@ -724,22 +724,59 @@ class SpectrusGuard_MU_Guard
     }
 
     /**
-     * Get client IP address (handling proxies)
+     * Get client IP address securely
      *
-
-     * @return string
+     * Only trusts proxy headers if request comes from a trusted proxy.
+     *
+     * @return string Client IP address
      */
     private function get_client_ip()
     {
-        $headers = array(
-            'HTTP_CF_CONNECTING_IP',
-            'HTTP_X_FORWARDED_FOR',
-            'HTTP_X_REAL_IP',
-            'HTTP_CLIENT_IP',
-            'REMOTE_ADDR',
-        );
+        $remote_addr = $_SERVER['REMOTE_ADDR'] ?? '0.0.0.0';
 
-        foreach ($headers as $header) {
+        // Validate REMOTE_ADDR
+        if (!filter_var($remote_addr, FILTER_VALIDATE_IP)) {
+            return '0.0.0.0';
+        }
+
+        // Get trusted proxies from settings
+        $settings = get_option('spectrus_shield_settings', []);
+        $trusted_proxies = isset($settings['trusted_proxies']) ? (array) $settings['trusted_proxies'] : [];
+
+        // Add CloudFlare IPs if enabled
+        if (!empty($settings['cloudflare_enabled'])) {
+            $cf_ips = get_transient('sg_cloudflare_ip_ranges');
+            if (is_array($cf_ips)) {
+                $trusted_proxies = array_merge($trusted_proxies, $cf_ips);
+            }
+        }
+
+        // If no trusted proxies, only trust REMOTE_ADDR
+        if (empty($trusted_proxies)) {
+            return $remote_addr;
+        }
+
+        // Check if request comes from a trusted proxy
+        $is_trusted = false;
+        foreach ($trusted_proxies as $proxy) {
+            if ($this->ip_in_range_check($remote_addr, $proxy)) {
+                $is_trusted = true;
+                break;
+            }
+        }
+
+        if (!$is_trusted) {
+            return $remote_addr;
+        }
+
+        // Only now trust proxy headers
+        $proxy_headers = [
+            'HTTP_CF_CONNECTING_IP',
+            'HTTP_X_REAL_IP',
+            'HTTP_X_FORWARDED_FOR',
+        ];
+
+        foreach ($proxy_headers as $header) {
             if (!empty($_SERVER[$header])) {
                 $ip = $_SERVER[$header];
                 if (strpos($ip, ',') !== false) {
@@ -752,7 +789,82 @@ class SpectrusGuard_MU_Guard
             }
         }
 
-        return '0.0.0.0';
+        return $remote_addr;
+    }
+
+    /**
+     * Check if IP is in range (CIDR supported)
+     *
+     * @param string $ip    IP to check
+     * @param string $range Range (IP or CIDR)
+     * @return bool
+     */
+    private function ip_in_range_check($ip, $range)
+    {
+        // IPv6 check
+        if (strpos($range, ':') !== false) {
+            return $this->ipv6_in_range($ip, $range);
+        }
+
+        // Single IP
+        if (strpos($range, '/') === false) {
+            return $ip === $range;
+        }
+
+        // CIDR
+        list($subnet, $bits) = explode('/', $range);
+        $ip_long = ip2long($ip);
+        $subnet_long = ip2long($subnet);
+
+        if ($ip_long === false || $subnet_long === false) {
+            return false;
+        }
+
+        $mask = -1 << (32 - (int) $bits);
+        return ($ip_long & $mask) === ($subnet_long & $mask);
+    }
+
+    /**
+     * Check if IPv6 is in range
+     *
+     * @param string $ip   IPv6 address
+     * @param string $cidr CIDR range
+     * @return bool
+     */
+    private function ipv6_in_range($ip, $cidr)
+    {
+        if (strpos($ip, ':') === false) {
+            return false;
+        }
+
+        if (strpos($cidr, '/') === false) {
+            return $ip === $cidr;
+        }
+
+        list($subnet, $bits) = explode('/', $cidr);
+        $bits = (int) $bits;
+
+        $ip_bin = @inet_pton($ip);
+        $subnet_bin = @inet_pton($subnet);
+
+        if ($ip_bin === false || $subnet_bin === false) {
+            return false;
+        }
+
+        $full_bytes = (int) floor($bits / 8);
+        if (substr($ip_bin, 0, $full_bytes) !== substr($subnet_bin, 0, $full_bytes)) {
+            return false;
+        }
+
+        $remaining_bits = $bits % 8;
+        if ($remaining_bits > 0 && $full_bytes < 16) {
+            $mask = 0xFF << (8 - $remaining_bits);
+            if ((ord($ip_bin[$full_bytes]) & $mask) !== (ord($subnet_bin[$full_bytes]) & $mask)) {
+                return false;
+            }
+        }
+
+        return true;
     }
 
     /**

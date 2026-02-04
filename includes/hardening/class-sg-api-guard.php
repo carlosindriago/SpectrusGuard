@@ -13,6 +13,9 @@ if (!defined('ABSPATH')) {
     exit;
 }
 
+// Load IP Detection Trait
+require_once SG_PLUGIN_DIR . 'includes/traits/IpDetectionTrait.php';
+
 /**
  * Class SG_API_Guard
  *
@@ -20,6 +23,7 @@ if (!defined('ABSPATH')) {
  */
 class SG_API_Guard
 {
+    use IpDetectionTrait;
 
     /**
      * Constructor
@@ -381,33 +385,12 @@ class SG_API_Guard
     }
 
     /**
-     * Get client IP address
+     * Get the real client IP securely
      *
      * @return string
      */
     private function get_client_ip()
     {
-        $headers = array(
-            'HTTP_CF_CONNECTING_IP',
-            'HTTP_X_FORWARDED_FOR',
-            'HTTP_X_REAL_IP',
-            'HTTP_CLIENT_IP',
-            'REMOTE_ADDR',
-        );
-
-        foreach ($headers as $header) {
-            if (!empty($_SERVER[$header])) {
-                $ip = $_SERVER[$header];
-                if (strpos($ip, ',') !== false) {
-                    $ips = explode(',', $ip);
-                    $ip = trim($ips[0]);
-                }
-                if (filter_var($ip, FILTER_VALIDATE_IP)) {
-                    return $ip;
-                }
-            }
-        }
-
-        return '0.0.0.0';
+        return $this->getClientIpSecure($this->getTrustedProxiesFromSettings());
     }
 }

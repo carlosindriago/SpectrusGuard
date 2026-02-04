@@ -16,6 +16,9 @@ if (!defined('ABSPATH')) {
     exit;
 }
 
+// Load IP Detection Trait
+require_once SG_PLUGIN_DIR . 'includes/traits/IpDetectionTrait.php';
+
 /**
  * Class SG_Firewall
  *
@@ -23,6 +26,7 @@ if (!defined('ABSPATH')) {
  */
 class SG_Firewall
 {
+    use IpDetectionTrait;
 
     /**
      * Logger instance
@@ -422,70 +426,26 @@ class SG_Firewall
     }
 
     /**
-     * Get the client's real IP address securely.
+     * Get the client IP address securely.
      *
-     * Handles proxies and load balancers, but only trusts headers
-     * from defined trusted proxies to prevent IP spoofing.
+     * Delegates to IpDetectionTrait::getClientIpSecure() with trusted proxies.
      *
      * @return string Client IP address.
      */
     public function get_client_ip()
     {
-        $remote_addr = isset($_SERVER['REMOTE_ADDR']) ? $_SERVER['REMOTE_ADDR'] : '0.0.0.0';
+        return $this->getClientIpSecure($this->getTrustedProxiesFromSettings());
+    }
 
-        // Validate REMOTE_ADDR first
-        if (!filter_var($remote_addr, FILTER_VALIDATE_IP)) {
-            return '0.0.0.0';
-        }
-
-        // Get trusted proxies from settings (e.g., Cloudflare IPs, Load Balancer IPs)
+    /**
+     * Retrieves trusted proxies from plugin settings.
+     *
+     * @return array An array of trusted proxy IP addresses or CIDR ranges.
+     */
+    private function getTrustedProxiesFromSettings()
+    {
         $settings = get_option('spectrus_shield_settings', array());
-        $trusted_proxies = isset($settings['trusted_proxies']) ? (array) $settings['trusted_proxies'] : array();
-
-        // If no trusted proxies defined, only trust REMOTE_ADDR
-        if (empty($trusted_proxies)) {
-            return $remote_addr;
-        }
-
-        // Check if request comes from a trusted proxy
-        $is_trusted_proxy = false;
-        foreach ($trusted_proxies as $proxy) {
-            if ($this->ip_in_range($remote_addr, $proxy)) {
-                $is_trusted_proxy = true;
-                break;
-            }
-        }
-
-        // If not from trusted proxy, return REMOTE_ADDR directly
-        if (!$is_trusted_proxy) {
-            return $remote_addr;
-        }
-
-        // Order matters: prioritize more specific headers
-        $proxy_headers = array(
-            'HTTP_CF_CONNECTING_IP', // Cloudflare
-            'HTTP_X_REAL_IP',        // Nginx proxy
-            'HTTP_X_FORWARDED_FOR',  // Standard proxy header
-        );
-
-        foreach ($proxy_headers as $header) {
-            if (!empty($_SERVER[$header])) {
-                $ip = $_SERVER[$header];
-
-                // Handle comma-separated IPs (X-Forwarded-For)
-                if (strpos($ip, ',') !== false) {
-                    $ips = explode(',', $ip);
-                    $ip = trim($ips[0]);
-                }
-
-                // Validate and return the IP
-                if (filter_var($ip, FILTER_VALIDATE_IP)) {
-                    return $ip;
-                }
-            }
-        }
-
-        return $remote_addr;
+        return isset($settings['trusted_proxies']) ? (array) $settings['trusted_proxies'] : array();
     }
 
     /**
