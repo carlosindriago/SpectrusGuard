@@ -1,0 +1,44 @@
+{
+    "name": "carlosindriago/spectrus-guard",
+    "description": "Enterprise-grade WordPress security with WAF, Geo-Blocking, and AI-powered UEBA.",
+    "type": "wordpress-plugin",
+    "license": "GPL-2.0-or-later",
+    "authors": [
+        {
+            "name": "Carlos Indriago",
+            "homepage": "https://github.com/carlosindriago/"
+        }
+    ],
+    "require": {
+        "php": ">=8.1"
+    },
+    "require-dev": {
+        "squizlabs/php_codesniffer": "^3.7",
+        "wp-coding-standards/wpcs": "^3.0",
+        "phpstan/phpstan": "^1.10",
+        "szepeviktor/phpstan-wordpress": "^1.3"
+    },
+    "autoload": {
+        "psr-4": {
+            "SpectrusGuard\\": "includes/"
+        },
+        "classmap": [
+            "includes/"
+        ]
+    },
+    "config": {
+        "allow-plugins": {
+            "dealerdirect/phpcodesniffer-composer-installer": true
+        },
+        "sort-packages": true
+    },
+    "scripts": {
+        "lint": "phpcs --standard=WordPress includes/",
+        "lint:fix": "phpcbf --standard=WordPress includes/",
+        "analyze": "phpstan analyze --memory-limit=512M includes/",
+        "test": [
+            "@lint",
+            "@analyze"
+        ]
+    }
+}
