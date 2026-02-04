@@ -28,6 +28,43 @@ class SG_Ajax
     }
 
     /**
+     * Validate file path to prevent path traversal attacks
+     *
+     * @param string $filePath Raw file path from user input
+     * @return string|null Valid absolute path or null if invalid
+     */
+    private function validateFilePath(string $filePath): ?string
+    {
+        // First, try the path as-is
+        $realPath = @realpath($filePath);
+
+        // If not found, try prepending ABSPATH
+        if ($realPath === false) {
+            $realPath = @realpath(ABSPATH . ltrim($filePath, '/'));
+        }
+
+        // Still not found
+        if ($realPath === false) {
+            return null;
+        }
+
+        // Security check: ensure file is within allowed directories
+        $allowedPaths = [
+            realpath(ABSPATH),
+            realpath(WP_CONTENT_DIR),
+        ];
+
+        foreach ($allowedPaths as $allowed) {
+            if ($allowed !== false && strpos($realPath, $allowed) === 0) {
+                return $realPath;
+            }
+        }
+
+        // Path is outside allowed directories
+        return null;
+    }
+
+    /**
      * Handle File Deletion
      */
     public function handle_delete_file()
@@ -38,17 +75,13 @@ class SG_Ajax
             wp_send_json_error('Unauthorized');
         }
 
-        $file_path = isset($_POST['file']) ? sanitize_text_field($_POST['file']) : '';
-        $original_file_path = $file_path; // Keep original for report update
+        $raw_path = isset($_POST['file']) ? sanitize_text_field($_POST['file']) : '';
+        $original_file_path = $raw_path; // Keep original for report update
 
-        // Try fixing relative path if it doesn't exist
-        if (!file_exists($file_path)) {
-            // Check if it's relative to ABSPATH
-            if (file_exists(ABSPATH . $file_path)) {
-                $file_path = ABSPATH . $file_path;
-            } else {
-                wp_send_json_error('File not found: ' . $file_path);
-            }
+        // Validate path to prevent path traversal
+        $file_path = $this->validateFilePath($raw_path);
+        if ($file_path === null) {
+            wp_send_json_error('Invalid file path');
         }
 
         // Attempt delete
@@ -72,16 +105,13 @@ class SG_Ajax
             wp_send_json_error('Unauthorized');
         }
 
-        $file_path = isset($_POST['file']) ? sanitize_text_field($_POST['file']) : '';
-        $original_file_path = $file_path;
+        $raw_path = isset($_POST['file']) ? sanitize_text_field($_POST['file']) : '';
+        $original_file_path = $raw_path;
 
-        if (!file_exists($file_path)) {
-            if (file_exists(ABSPATH . $file_path)) {
-                $file_path = ABSPATH . $file_path;
-            } else {
-                wp_send_json_error('File not found');
-                return;
-            }
+        // Validate path to prevent path traversal
+        $file_path = $this->validateFilePath($raw_path);
+        if ($file_path === null) {
+            wp_send_json_error('Invalid file path');
         }
 
         // Setup Quarantine Directory
@@ -123,6 +153,10 @@ class SG_Ajax
     public function handle_list_quarantine()
     {
         check_ajax_referer('spectrus_guard_nonce', 'nonce');
+
+        if (!current_user_can('manage_options')) {
+            wp_send_json_error('Unauthorized');
+        }
 
         $upload_dir = wp_upload_dir();
         $quarantine_dir = $upload_dir['basedir'] . '/spectrus-quarantine';
