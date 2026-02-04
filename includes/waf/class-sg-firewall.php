@@ -422,25 +422,55 @@ class SG_Firewall
     }
 
     /**
-     * Get the client's real IP address
+     * Get the client's real IP address securely.
      *
-     * Handles proxies and load balancers.
+     * Handles proxies and load balancers, but only trusts headers
+     * from defined trusted proxies to prevent IP spoofing.
      *
      * @return string Client IP address.
      */
     public function get_client_ip()
     {
-        $ip_keys = array(
+        $remote_addr = isset($_SERVER['REMOTE_ADDR']) ? $_SERVER['REMOTE_ADDR'] : '0.0.0.0';
+
+        // Validate REMOTE_ADDR first
+        if (!filter_var($remote_addr, FILTER_VALIDATE_IP)) {
+            return '0.0.0.0';
+        }
+
+        // Get trusted proxies from settings (e.g., Cloudflare IPs, Load Balancer IPs)
+        $settings = get_option('spectrus_shield_settings', array());
+        $trusted_proxies = isset($settings['trusted_proxies']) ? (array) $settings['trusted_proxies'] : array();
+
+        // If no trusted proxies defined, only trust REMOTE_ADDR
+        if (empty($trusted_proxies)) {
+            return $remote_addr;
+        }
+
+        // Check if request comes from a trusted proxy
+        $is_trusted_proxy = false;
+        foreach ($trusted_proxies as $proxy) {
+            if ($this->ip_in_range($remote_addr, $proxy)) {
+                $is_trusted_proxy = true;
+                break;
+            }
+        }
+
+        // If not from trusted proxy, return REMOTE_ADDR directly
+        if (!$is_trusted_proxy) {
+            return $remote_addr;
+        }
+
+        // Order matters: prioritize more specific headers
+        $proxy_headers = array(
             'HTTP_CF_CONNECTING_IP', // Cloudflare
-            'HTTP_X_FORWARDED_FOR',  // Proxy
             'HTTP_X_REAL_IP',        // Nginx proxy
-            'HTTP_CLIENT_IP',        // Client IP
-            'REMOTE_ADDR',           // Standard
+            'HTTP_X_FORWARDED_FOR',  // Standard proxy header
         );
 
-        foreach ($ip_keys as $key) {
-            if (!empty($_SERVER[$key])) {
-                $ip = $_SERVER[$key];
+        foreach ($proxy_headers as $header) {
+            if (!empty($_SERVER[$header])) {
+                $ip = $_SERVER[$header];
 
                 // Handle comma-separated IPs (X-Forwarded-For)
                 if (strpos($ip, ',') !== false) {
@@ -448,14 +478,40 @@ class SG_Firewall
                     $ip = trim($ips[0]);
                 }
 
-                // Validate IP
+                // Validate and return the IP
                 if (filter_var($ip, FILTER_VALIDATE_IP)) {
                     return $ip;
                 }
             }
         }
 
-        return '0.0.0.0';
+        return $remote_addr;
+    }
+
+    /**
+     * Check if an IP is within a given range (CIDR notation supported).
+     *
+     * @param string $ip    IP address to check.
+     * @param string $range IP range (single IP or CIDR).
+     * @return bool True if IP is in range.
+     */
+    private function ip_in_range($ip, $range)
+    {
+        if (strpos($range, '/') === false) {
+            // Single IP comparison
+            return $ip === $range;
+        }
+
+        // CIDR notation
+        list($subnet, $bits) = explode('/', $range);
+
+        $ip_long = ip2long($ip);
+        $subnet_long = ip2long($subnet);
+        $mask = -1 << (32 - (int) $bits);
+
+        $subnet_long &= $mask;
+
+        return ($ip_long & $mask) === $subnet_long;
     }
 
     /**
@@ -498,121 +554,17 @@ class SG_Firewall
     {
         $incident_id = substr(md5(uniqid('', true)), 0, 12);
 
-        ?>
-        <!DOCTYPE html>
-        <html lang="en">
+        $template_path = SG_PLUGIN_DIR . 'templates/views/block-page.php';
 
-        <head>
-            <meta charset="UTF-8">
-            <meta name="viewport" content="width=device-width, initial-scale=1.0">
-            <meta name="robots" content="noindex, nofollow">
-            <title>Access Denied | Security Alert</title>
-            <style>
-                * {
-                    margin: 0;
-                    padding: 0;
-                    box-sizing: border-box;
-                }
-
-                body {
-                    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-                    background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%);
-                    min-height: 100vh;
-                    display: flex;
-                    align-items: center;
-                    justify-content: center;
-                    color: #fff;
-                }
-
-                .container {
-                    text-align: center;
-                    padding: 2rem;
-                    max-width: 600px;
-                }
-
-                .shield {
-                    font-size: 5rem;
-                    margin-bottom: 1rem;
-                    animation: pulse 2s ease-in-out infinite;
-                }
-
-                @keyframes pulse {
-
-                    0%,
-                    100% {
-                        transform: scale(1);
-                        opacity: 1;
-                    }
-
-                    50% {
-                        transform: scale(1.05);
-                        opacity: 0.8;
-                    }
-                }
-
-                h1 {
-                    font-size: 2rem;
-                    margin-bottom: 0.5rem;
-                    color: #e94560;
-                }
-
-                p {
-                    color: #a8a8b3;
-                    line-height: 1.6;
-                    margin-bottom: 1rem;
-                }
-
-                .incident {
-                    background: rgba(255, 255, 255, 0.1);
-                    border-radius: 8px;
-                    padding: 1rem;
-                    font-family: monospace;
-                    font-size: 0.9rem;
-                    color: #ffd700;
-                    margin-top: 2rem;
-                }
-
-                .back-btn {
-                    display: inline-block;
-                    margin-top: 2rem;
-                    padding: 12px 24px;
-                    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-                    color: #fff;
-                    text-decoration: none;
-                    border-radius: 25px;
-                    font-weight: 600;
-                    transition: transform 0.2s, box-shadow 0.2s;
-                }
-
-                .back-btn:hover {
-                    transform: translateY(-2px);
-                    box-shadow: 0 10px 40px rgba(102, 126, 234, 0.4);
-                }
-            </style>
-        </head>
-
-        <body>
-            <div class="container">
-                <div class="shield">🛡️</div>
-                <h1>Access Blocked</h1>
-                <p>
-                    Your request has been blocked by our security system.
-                    This may be due to suspicious activity detected in your request.
-                </p>
-                <p>
-                    If you believe this is a mistake, please contact the site administrator
-                    with the incident ID below.
-                </p>
-                <div class="incident">
-                    Incident ID:
-                    <?php echo esc_html($incident_id); ?>
-                </div>
-                <a href="javascript:history.back()" class="back-btn">← Go Back</a>
-            </div>
-        </body>
-
-        </html>
-        <?php
+        if (file_exists($template_path)) {
+            include $template_path;
+        } else {
+            // Fallback if template is missing
+            echo '<!DOCTYPE html><html><head><title>Access Denied</title></head>';
+            echo '<body><h1>Access Blocked</h1>';
+            echo '<p>Incident ID: ' . esc_html($incident_id) . '</p>';
+            echo '</body></html>';
+        }
     }
 
     /**
