@@ -65,6 +65,7 @@ class SG_Onboarding
         add_action('wp_ajax_sg_save_onboarding', array($this, 'ajax_save_onboarding'));
         add_action('wp_ajax_sg_skip_onboarding', array($this, 'ajax_skip_onboarding'));
         add_action('wp_ajax_sg_dismiss_alert', array($this, 'ajax_dismiss_alert'));
+        add_action('wp_ajax_sg_toggle_cloudflare', array($this, 'ajax_toggle_cloudflare'));
 
         // Enqueue assets on wizard page
         add_action('admin_enqueue_scripts', array($this, 'enqueue_wizard_assets'));
@@ -101,6 +102,7 @@ class SG_Onboarding
                     'enable_2fa_admins' => true,
                     'file_monitor_enabled' => true,
                     'security_headers_enabled' => true,
+                    'cloudflare_enabled' => false, // Ask in wizard Step 2
                 ),
             ),
             'business' => array(
@@ -119,6 +121,7 @@ class SG_Onboarding
                     'rate_limiting_enabled' => true,
                     'auto_scan_enabled' => true,
                     'custom_login_url' => 'sg-login',
+                    'cloudflare_enabled' => false, // Ask in wizard Step 2
                 ),
             ),
         );
@@ -346,6 +349,42 @@ class SG_Onboarding
         update_option(self::OPTION_DISMISSED_ALERTS, $dismissed);
 
         wp_send_json_success();
+    }
+
+    /**
+     * AJAX: Toggle CloudFlare detection
+     */
+    public function ajax_toggle_cloudflare()
+    {
+        check_ajax_referer('sg_onboarding_nonce', 'nonce');
+
+        if (!current_user_can('manage_options')) {
+            wp_send_json_error(array('message' => 'Unauthorized'));
+        }
+
+        $enabled = isset($_POST['enabled']) && $_POST['enabled'] === 'true';
+
+        // Load CloudFlare IPs handler
+        $cf_file = SG_PLUGIN_DIR . 'includes/geo/class-sg-cloudflare-ips.php';
+        if (!file_exists($cf_file)) {
+            wp_send_json_error(array('message' => 'CloudFlare module not available'));
+        }
+
+        require_once $cf_file;
+        $cloudflare = new SG_Cloudflare_IPs();
+
+        if ($enabled) {
+            $cloudflare->enable();
+            $message = __('CloudFlare detection enabled. IP ranges will update weekly.', 'spectrus-guard');
+        } else {
+            $cloudflare->disable();
+            $message = __('CloudFlare detection disabled.', 'spectrus-guard');
+        }
+
+        wp_send_json_success(array(
+            'message' => $message,
+            'status' => $cloudflare->getStatus(),
+        ));
     }
 
     /**
