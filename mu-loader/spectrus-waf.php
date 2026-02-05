@@ -63,7 +63,7 @@ class SpectrusGuard_MU_Guard
         // Define paths
         // Define path to main plugin
         if (!defined('SG_CORE_PATH')) {
-            define('SG_CORE_PATH', WP_CONTENT_DIR . '/plugins/spectrus-guard/');
+            define('SG_CORE_PATH', WP_CONTENT_DIR . '/plugins/SpectrusGuard/');
         }
         $this->plugin_dir = SG_CORE_PATH;
         $this->rules_file = $this->plugin_dir . 'includes/waf/rules.json';
