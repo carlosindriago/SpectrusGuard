@@ -588,7 +588,7 @@ class SpectrusGuard_MU_Guard
         $geo_engine = new SG_Geo_Engine();
 
         // Check if database is available
-        if (!$geo_engine->is_database_available()) {
+        if (!$geo_engine->is_database_installed()) {
             // Fail-open: no database, allow access
             return;
         }
@@ -596,7 +596,7 @@ class SpectrusGuard_MU_Guard
         $client_ip = $this->get_client_ip();
 
         // 1. Check Tor exit nodes
-        if ($block_tor && $geo_engine->is_tor_exit_node($client_ip)) {
+        if ($block_tor && $geo_engine->is_tor_node($client_ip)) {
             $action = isset($settings['geo_action']) ? $settings['geo_action'] : '403';
             $this->log_geo_block($client_ip, 'TOR', $action);
             $this->execute_geo_action($action, 'TOR');
@@ -604,7 +604,7 @@ class SpectrusGuard_MU_Guard
 
         // 2. Check country blocking
         if (!empty($blocked_countries)) {
-            $country = $geo_engine->get_country($client_ip);
+            $country = $geo_engine->get_country_iso($client_ip);
 
             if ($country && in_array($country, $blocked_countries, true)) {
                 $action = isset($settings['geo_action']) ? $settings['geo_action'] : '403';
