@@ -89,9 +89,41 @@ class SG_API_Guard
             add_filter('rest_index', array($this, 'hide_rest_index'));
         }
 
-        // 8. Custom REST API prefix
+        // 8. Custom REST API prefix - NOTE: This filter only changes URL generation.
+        // The actual route registration happens in rest_api_init which runs once.
+        // For a full custom prefix to work, it must be set BEFORE WordPress initializes REST.
+        // This is handled via mu-plugin or very early hook. Here we set it for URL generation.
         if (!empty($this->apiSettings['custom_prefix'])) {
             add_filter('rest_url_prefix', array($this, 'custom_rest_prefix'));
+
+            // Also redirect old wp-json to 404 for non-admins (stealth)
+            add_action('parse_request', array($this, 'block_old_rest_prefix'));
+        }
+    }
+
+    /**
+     * Block access to old /wp-json/ endpoint when custom prefix is enabled
+     * Only blocks for non-admin users to maintain admin access
+     *
+     * @param WP_Query $wp WordPress query object
+     */
+    public function block_old_rest_prefix($wp): void
+    {
+        $request_path = trim($_SERVER['REQUEST_URI'] ?? '', '/');
+        $customPrefix = $this->apiSettings['custom_prefix'] ?? '';
+
+        // Check if request is to old wp-json endpoint
+        if (strpos($request_path, 'wp-json') === 0 && !empty($customPrefix)) {
+            // Allow admins to still access for debugging
+            if (is_user_logged_in() && current_user_can('manage_options')) {
+                return;
+            }
+
+            // Return 404 for everyone else
+            status_header(404);
+            nocache_headers();
+            include(get_query_template('404'));
+            exit;
         }
     }
 
