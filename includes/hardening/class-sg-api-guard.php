@@ -502,4 +502,215 @@ class SG_API_Guard
     {
         return $this->getClientIpSecure($this->getTrustedProxiesFromSettings());
     }
+
+    /**
+     * Known plugins with their REST API namespaces
+     * Used for auto-detection feature in UI
+     *
+     * @var array
+     */
+    private const KNOWN_PLUGIN_NAMESPACES = [
+        'woocommerce/woocommerce.php' => [
+            'name' => 'WooCommerce',
+            'routes' => ['wc/v3', 'wc/v2', 'wc-blocks/', 'wc-analytics/'],
+        ],
+        'contact-form-7/wp-contact-form-7.php' => [
+            'name' => 'Contact Form 7',
+            'routes' => ['contact-form-7/v1'],
+        ],
+        'jetpack/jetpack.php' => [
+            'name' => 'Jetpack',
+            'routes' => ['jetpack/v4', 'wpcom/v2'],
+        ],
+        'elementor/elementor.php' => [
+            'name' => 'Elementor',
+            'routes' => ['elementor/v1'],
+        ],
+        'elementor-pro/elementor-pro.php' => [
+            'name' => 'Elementor Pro',
+            'routes' => ['elementor-pro/v1'],
+        ],
+        'wpforms-lite/wpforms.php' => [
+            'name' => 'WPForms',
+            'routes' => ['wpforms/v1'],
+        ],
+        'wpforms/wpforms.php' => [
+            'name' => 'WPForms Pro',
+            'routes' => ['wpforms/v1'],
+        ],
+        'mailchimp-for-wp/mailchimp-for-wp.php' => [
+            'name' => 'Mailchimp for WP',
+            'routes' => ['mailchimp/v1'],
+        ],
+        'yoast-seo-premium/wp-seo-premium.php' => [
+            'name' => 'Yoast SEO Premium',
+            'routes' => ['yoast/v1'],
+        ],
+        'wordpress-seo/wp-seo.php' => [
+            'name' => 'Yoast SEO',
+            'routes' => ['yoast/v1'],
+        ],
+        'woocommerce-gateway-stripe/woocommerce-gateway-stripe.php' => [
+            'name' => 'Stripe for WooCommerce',
+            'routes' => ['wc-stripe/v1'],
+        ],
+        'woocommerce-payments/woocommerce-payments.php' => [
+            'name' => 'WooCommerce Payments',
+            'routes' => ['wc-payments/v1'],
+        ],
+        'gravityforms/gravityforms.php' => [
+            'name' => 'Gravity Forms',
+            'routes' => ['gf/v2'],
+        ],
+        'learnpress/learnpress.php' => [
+            'name' => 'LearnPress',
+            'routes' => ['learnpress/v1'],
+        ],
+        'buddypress/bp-loader.php' => [
+            'name' => 'BuddyPress',
+            'routes' => ['buddypress/v1'],
+        ],
+        'bbpress/bbpress.php' => [
+            'name' => 'bbPress',
+            'routes' => ['bbp/v1'],
+        ],
+        'easy-digital-downloads/easy-digital-downloads.php' => [
+            'name' => 'Easy Digital Downloads',
+            'routes' => ['edd/v1'],
+        ],
+        'the-events-calendar/the-events-calendar.php' => [
+            'name' => 'The Events Calendar',
+            'routes' => ['tribe/events/v1'],
+        ],
+    ];
+
+    /**
+     * Get detected plugins that use REST API
+     * Returns array of plugins with their API routes for auto-whitelist
+     *
+     * @return array Array of detected plugins with their routes
+     */
+    public static function get_detected_api_plugins(): array
+    {
+        if (!function_exists('is_plugin_active')) {
+            require_once ABSPATH . 'wp-admin/includes/plugin.php';
+        }
+
+        $detected = [];
+
+        foreach (self::KNOWN_PLUGIN_NAMESPACES as $pluginFile => $pluginData) {
+            if (is_plugin_active($pluginFile)) {
+                $detected[$pluginFile] = [
+                    'name' => $pluginData['name'],
+                    'routes' => $pluginData['routes'],
+                    'active' => true,
+                ];
+            }
+        }
+
+        // Also add WordPress core routes that are essential
+        $detected['wordpress-core'] = [
+            'name' => 'WordPress Core',
+            'routes' => [
+                'wp/v2/posts',
+                'wp/v2/pages',
+                'wp/v2/categories',
+                'wp/v2/tags',
+                'wp/v2/media',
+                'wp/v2/comments',
+                'oembed/',
+                'wp-site-health/v1',
+            ],
+            'active' => true,
+            'core' => true,
+        ];
+
+        return $detected;
+    }
+
+    /**
+     * Get recommended whitelist based on active plugins
+     *
+     * @return array Array of route prefixes to whitelist
+     */
+    public static function get_recommended_whitelist(): array
+    {
+        $plugins = self::get_detected_api_plugins();
+        $routes = [];
+
+        foreach ($plugins as $plugin) {
+            $routes = array_merge($routes, $plugin['routes']);
+        }
+
+        return array_unique($routes);
+    }
+
+    /**
+     * Build full whitelist combining defaults, detected plugins, and user custom
+     *
+     * @param array $userWhitelist User-defined whitelist
+     * @return array Complete whitelist
+     */
+    public function build_full_whitelist(array $userWhitelist = []): array
+    {
+        // Start with hardcoded defaults
+        $whitelist = self::DEFAULT_WHITELIST;
+
+        // Add detected plugin routes
+        $detected = self::get_detected_api_plugins();
+        foreach ($detected as $plugin) {
+            $whitelist = array_merge($whitelist, $plugin['routes']);
+        }
+
+        // Add user manual whitelist
+        if (!empty($userWhitelist)) {
+            $whitelist = array_merge($whitelist, array_filter($userWhitelist));
+        }
+
+        // Clean and return unique entries
+        return array_unique(array_filter(array_map('trim', $whitelist)));
+    }
+
+    /**
+     * Check if a route is whitelisted
+     *
+     * @param string $route The REST route to check
+     * @return bool True if whitelisted
+     */
+    public function is_route_whitelisted(string $route): bool
+    {
+        $userWhitelist = $this->apiSettings['whitelist'] ?? [];
+        $fullWhitelist = $this->build_full_whitelist($userWhitelist);
+
+        foreach ($fullWhitelist as $allowedRoute) {
+            if (stripos($route, $allowedRoute) !== false) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    /**
+     * AJAX handler for getting detected plugins (used by UI)
+     */
+    public static function ajax_get_detected_plugins(): void
+    {
+        check_ajax_referer('spectrus_guard_nonce', 'nonce');
+
+        if (!current_user_can('manage_options')) {
+            wp_send_json_error(__('Insufficient permissions.', 'spectrus-guard'));
+        }
+
+        $plugins = self::get_detected_api_plugins();
+        $recommended = self::get_recommended_whitelist();
+
+        wp_send_json_success([
+            'plugins' => $plugins,
+            'recommended' => $recommended,
+        ]);
+    }
 }
+
+// Register AJAX handler
+add_action('wp_ajax_sg_get_detected_api_plugins', ['SG_API_Guard', 'ajax_get_detected_plugins']);

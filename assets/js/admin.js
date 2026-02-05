@@ -46,6 +46,12 @@
 
             // Quick Actions (Dashboard Alerts)
             $(document).on('click', '.sg-quick-action-btn', this.handleQuickAction);
+
+            // Auto-detect API plugins button
+            $('#sg-auto-detect-plugins').on('click', this.handleAutoDetectPlugins);
+
+            // Add routes to whitelist when clicking plugin chip
+            $(document).on('click', '.sg-plugin-chip-add', this.handleAddPluginRoutes);
         },
 
         /**
@@ -331,6 +337,100 @@
                     func.apply(context, args);
                 }, wait);
             };
+        },
+
+        /**
+         * Handle auto-detect API plugins
+         */
+        handleAutoDetectPlugins: function (e) {
+            e.preventDefault();
+
+            var $btn = $(this);
+            var originalText = $btn.text();
+            $btn.prop('disabled', true).text('🔄 Detecting...');
+
+            $.ajax({
+                url: SpectrusGuard.ajax_url,
+                type: 'POST',
+                data: {
+                    action: 'sg_get_detected_api_plugins',
+                    nonce: SpectrusGuard.nonce
+                },
+                success: function (response) {
+                    if (response.success && response.data) {
+                        var plugins = response.data.plugins || {};
+                        var $container = $('#sg-detected-plugins');
+                        var $chips = $('#sg-plugin-chips');
+
+                        $chips.empty();
+
+                        // Build chips for each detected plugin
+                        $.each(plugins, function (key, plugin) {
+                            var isCore = plugin.core || false;
+                            var chipClass = isCore ? 'sg-chip sg-chip-core' : 'sg-chip sg-chip-plugin';
+                            var routes = plugin.routes.join(', ');
+
+                            var $chip = $(
+                                '<span class="' + chipClass + '" style="display: inline-flex; align-items: center; gap: 8px; padding: 6px 12px; border-radius: 20px; font-size: 13px; ' +
+                                (isCore ? 'background: rgba(59, 130, 246, 0.15); color: var(--sg-primary);' : 'background: rgba(16, 185, 129, 0.15); color: #10b981;') +
+                                '">' +
+                                '<span>' + plugin.name + '</span>' +
+                                (isCore ? '' : '<button type="button" class="sg-plugin-chip-add" data-routes="' + routes + '" ' +
+                                    'style="background: none; border: none; cursor: pointer; padding: 2px 6px; margin: -2px -6px -2px 0; color: inherit; opacity: 0.7;" ' +
+                                    'title="Add to whitelist">➕</button>') +
+                                '</span>'
+                            );
+
+                            $chips.append($chip);
+                        });
+
+                        $container.slideDown();
+                        SpectrusGuardAdmin.showToast('success', 'Detected ' + Object.keys(plugins).length + ' plugins using REST API');
+                    } else {
+                        SpectrusGuardAdmin.showToast('error', response.data || 'Detection failed');
+                    }
+                },
+                error: function () {
+                    SpectrusGuardAdmin.showToast('error', 'Network error during detection');
+                },
+                complete: function () {
+                    $btn.prop('disabled', false).text(originalText);
+                }
+            });
+        },
+
+        /**
+         * Handle adding plugin routes to whitelist
+         */
+        handleAddPluginRoutes: function (e) {
+            e.preventDefault();
+            e.stopPropagation();
+
+            var routes = $(this).data('routes');
+            if (!routes) return;
+
+            var $textarea = $('#sg-api-whitelist');
+            var currentValue = $textarea.val().trim();
+            var routeArray = routes.split(', ');
+            var newRoutes = [];
+
+            // Check for duplicates
+            routeArray.forEach(function (route) {
+                if (currentValue.indexOf(route) === -1) {
+                    newRoutes.push(route);
+                }
+            });
+
+            if (newRoutes.length > 0) {
+                var separator = currentValue ? '\n' : '';
+                $textarea.val(currentValue + separator + newRoutes.join('\n'));
+                SpectrusGuardAdmin.showToast('success', 'Added ' + newRoutes.length + ' route(s) to whitelist');
+
+                // Visual feedback on chip
+                $(this).text('✓').prop('disabled', true);
+            } else {
+                SpectrusGuardAdmin.showToast('info', 'Routes already in whitelist');
+            }
         }
     };
 

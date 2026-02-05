@@ -209,8 +209,8 @@ class SG_Page_Hardening
                                         <?php esc_html_e('Example: api/v1/secure → your API will be at', 'spectrus-guard'); ?>
                                         <code
                                             style="background: rgba(59, 130, 246, 0.1); padding: 2px 6px; border-radius: 4px; color: var(--sg-primary);">
-                                                        <?php echo esc_html(home_url('/api/v1/secure/')); ?>
-                                                    </code>
+                                                                    <?php echo esc_html(home_url('/api/v1/secure/')); ?>
+                                                                </code>
                                     </p>
 
                                     <div
@@ -219,6 +219,67 @@ class SG_Page_Hardening
                                             ⚠️ <strong><?php esc_html_e('Important:', 'spectrus-guard'); ?></strong>
                                             <?php esc_html_e('If using a custom prefix, ensure your REST API clients (mobile apps, external integrations) are updated to use the new URL.', 'spectrus-guard'); ?>
                                         </p>
+                                    </div>
+
+                                    <!-- API Exceptions / Whitelist Section -->
+                                    <div style="margin-top: 32px; padding-top: 24px; border-top: 1px solid var(--sg-border);">
+                                        <div
+                                            style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 16px;">
+                                            <div>
+                                                <h4 style="margin: 0 0 4px 0; font-size: 16px; color: var(--sg-text-primary);">
+                                                    📋 <?php esc_html_e('API Exceptions (Whitelist)', 'spectrus-guard'); ?>
+                                                </h4>
+                                                <p style="color: var(--sg-text-muted); margin: 0; font-size: 13px;">
+                                                    <?php esc_html_e('Allow specific API routes to bypass authentication requirements.', 'spectrus-guard'); ?>
+                                                </p>
+                                            </div>
+                                            <button type="button" id="sg-auto-detect-plugins" class="sg-btn sg-btn-secondary"
+                                                style="white-space: nowrap; padding: 8px 16px; font-size: 13px;">
+                                                🔍 <?php esc_html_e('Auto-Detect Plugins', 'spectrus-guard'); ?>
+                                            </button>
+                                        </div>
+
+                                        <!-- Detected Plugins Display -->
+                                        <div id="sg-detected-plugins" style="margin-bottom: 16px; display: none;">
+                                            <p style="color: var(--sg-text-secondary); font-size: 13px; margin: 0 0 8px 0;">
+                                                <strong><?php esc_html_e('Detected plugins using REST API:', 'spectrus-guard'); ?></strong>
+                                            </p>
+                                            <div id="sg-plugin-chips" style="display: flex; flex-wrap: wrap; gap: 8px;"></div>
+                                        </div>
+
+                                        <?php
+                                        $user_whitelist = $api_settings['whitelist'] ?? [];
+                                        $whitelist_text = is_array($user_whitelist) ? implode("\n", $user_whitelist) : '';
+                                        ?>
+                                        <div class="sg-control-group">
+                                            <label class="sg-control-label"
+                                                style="font-weight: 500; margin-bottom: 8px; display: block;">
+                                                <?php esc_html_e('Custom Whitelist', 'spectrus-guard'); ?>
+                                            </label>
+                                            <p style="color: var(--sg-text-muted); margin: 0 0 8px 0; font-size: 13px;">
+                                                <?php esc_html_e('Enter route prefixes to whitelist (one per line). Examples: contact-form-7/v1, wc/v3, jetpack/v4', 'spectrus-guard'); ?>
+                                            </p>
+                                            <textarea name="spectrus_shield_settings[api_hardening][whitelist_raw]"
+                                                id="sg-api-whitelist" rows="4"
+                                                placeholder="contact-form-7/v1&#10;wc/v3&#10;jetpack/v4"
+                                                style="width: 100%; background: var(--sg-bg-app); border: 1px solid var(--sg-border); color: var(--sg-text-primary); padding: 12px; border-radius: 6px; font-family: monospace; font-size: 13px; resize: vertical;"><?php echo esc_textarea($whitelist_text); ?></textarea>
+                                        </div>
+
+                                        <div
+                                            style="background: rgba(59, 130, 246, 0.1); border-left: 4px solid var(--sg-primary); padding: 12px; margin-top: 16px; border-radius: 4px;">
+                                            <p style="margin: 0; font-size: 13px; color: var(--sg-text-primary);">
+                                                💡 <strong><?php esc_html_e('Tip:', 'spectrus-guard'); ?></strong>
+                                                <?php esc_html_e('WordPress Core routes (posts, pages, media) and detected plugins are automatically whitelisted. Only add custom routes if you experience issues with specific integrations.', 'spectrus-guard'); ?>
+                                            </p>
+                                        </div>
+
+                                        <div
+                                            style="background: rgba(245, 158, 11, 0.1); border-left: 4px solid var(--sg-warning); padding: 12px; margin-top: 12px; border-radius: 4px;">
+                                            <p style="margin: 0; font-size: 13px; color: var(--sg-text-primary);">
+                                                ⚠️ <strong><?php esc_html_e('Balance:', 'spectrus-guard'); ?></strong>
+                                                <?php esc_html_e('A permissive whitelist reduces stealth effectiveness. Only whitelist routes that are essential for your site functionality.', 'spectrus-guard'); ?>
+                                            </p>
+                                        </div>
                                     </div>
                                 </div>
                             </div>
