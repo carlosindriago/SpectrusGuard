@@ -418,7 +418,9 @@ class SpectrusGuard_MU_Guard
         // Set headers
         if (!headers_sent()) {
             header('HTTP/1.1 403 Forbidden');
-            header('X-SpectrusGuard-Blocked: ' . strtoupper($type));
+            // Sanitize type for header (defense in depth - prevent HTTP Response Splitting)
+            $safe_type = preg_replace('/[^a-zA-Z0-9_-]/', '', strtoupper($type));
+            header('X-SpectrusGuard-Blocked: ' . $safe_type);
             header('Connection: close');
         }
 
@@ -629,7 +631,9 @@ class SpectrusGuard_MU_Guard
             case '403':
             default:
                 header('HTTP/1.1 403 Forbidden');
-                header('X-SpectrusGuard-Block: geo-' . strtolower($country_code));
+                // Sanitize country code for header (defense in depth - prevent HTTP Response Splitting)
+                $safe_country = preg_replace('/[^a-zA-Z0-9_-]/', '', strtolower($country_code));
+                header('X-SpectrusGuard-Block: geo-' . $safe_country);
                 echo '<!DOCTYPE html><html><head><title>Access Denied</title>';
                 echo '<style>body{font-family:sans-serif;text-align:center;padding:50px;background:#1a1a2e;color:#fff;}';
                 echo 'h1{color:#e94560;}</style></head><body>';

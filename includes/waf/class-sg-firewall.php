@@ -495,7 +495,9 @@ class SG_Firewall
         // Set response headers
         if (!headers_sent()) {
             header('HTTP/1.1 403 Forbidden');
-            header('X-SpectrusGuard-Block: ' . $attack['type']);
+            // Sanitize type for header (defense in depth - prevent HTTP Response Splitting)
+            $safe_type = preg_replace('/[^a-zA-Z0-9_-]/', '', $attack['type']);
+            header('X-SpectrusGuard-Block: ' . $safe_type);
             header('Connection: close');
         }
 
