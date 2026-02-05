@@ -154,6 +154,75 @@ class SG_Page_Hardening
                                 </div>
                             </div>
 
+                            <!-- Card 3: REST API Stealth -->
+                            <?php
+                            $api_settings = $settings['api_hardening'] ?? [];
+                            $custom_prefix = $api_settings['custom_prefix'] ?? '';
+                            $hide_index = !empty($api_settings['hide_index']);
+                            ?>
+                            <div class="sg-card" style="margin-top: 24px;">
+                                <div class="sg-card-header">
+                                    <h2>🔐 <?php esc_html_e('REST API Stealth', 'spectrus-guard'); ?></h2>
+                                </div>
+                                <div class="sg-settings-card-body">
+                                    <p style="color: var(--sg-text-secondary); margin-bottom: 20px;">
+                                        <?php esc_html_e('Hide the WordPress REST API endpoint from bots and scanners. When enabled, /wp-json/ returns 404 for non-authenticated users.', 'spectrus-guard'); ?>
+                                    </p>
+
+                                    <div class="sg-control-group">
+                                        <div class="sg-control-info">
+                                            <label
+                                                class="sg-control-label"><?php esc_html_e('Hide API Index', 'spectrus-guard'); ?></label>
+                                            <p class="sg-control-desc">
+                                                <?php esc_html_e('Returns 404 on /wp-json/ discovery endpoint for non-admins.', 'spectrus-guard'); ?>
+                                            </p>
+                                        </div>
+                                        <div class="sg-control-input">
+                                            <label class="sg-switch">
+                                                <input type="checkbox" name="spectrus_shield_settings[api_hardening][hide_index]"
+                                                    value="1" <?php checked($hide_index); ?>>
+                                                <span class="sg-slider"></span>
+                                            </label>
+                                        </div>
+                                    </div>
+
+                                    <div class="sg-control-group" style="margin-top: 20px;">
+                                        <div class="sg-control-info" style="flex: 1;">
+                                            <label
+                                                class="sg-control-label"><?php esc_html_e('Custom API Prefix', 'spectrus-guard'); ?></label>
+                                            <p class="sg-control-desc">
+                                                <?php esc_html_e('Replace /wp-json/ with a custom path. Bots scanning for /wp-json/ will get 404.', 'spectrus-guard'); ?>
+                                            </p>
+                                        </div>
+                                    </div>
+
+                                    <div style="display: flex; gap: 12px; align-items: center; margin-top: 12px;">
+                                        <code
+                                            style="color: var(--sg-text-muted); background: var(--sg-bg-app); padding: 8px 12px; border-radius: 6px;"><?php echo esc_html(home_url('/')); ?></code>
+                                        <input type="text" name="spectrus_shield_settings[api_hardening][custom_prefix]"
+                                            value="<?php echo esc_attr($custom_prefix); ?>" placeholder="api/v1/secure"
+                                            style="flex: 1; max-width: 250px; background: var(--sg-bg-app); border: 1px solid var(--sg-border); color: var(--sg-text-primary); padding: 10px 14px; border-radius: 6px; font-family: monospace;">
+                                        <code style="color: var(--sg-text-muted);">/</code>
+                                    </div>
+
+                                    <p style="color: var(--sg-text-secondary); margin: 12px 0 0 0; font-size: 13px;">
+                                        <?php esc_html_e('Example: api/v1/secure → your API will be at', 'spectrus-guard'); ?>
+                                        <code
+                                            style="background: rgba(59, 130, 246, 0.1); padding: 2px 6px; border-radius: 4px; color: var(--sg-primary);">
+                                                        <?php echo esc_html(home_url('/api/v1/secure/')); ?>
+                                                    </code>
+                                    </p>
+
+                                    <div
+                                        style="background: rgba(245, 158, 11, 0.1); border-left: 4px solid var(--sg-warning); padding: 12px; margin-top: 20px; border-radius: 4px;">
+                                        <p style="margin: 0; font-size: 13px; color: var(--sg-text-primary);">
+                                            ⚠️ <strong><?php esc_html_e('Important:', 'spectrus-guard'); ?></strong>
+                                            <?php esc_html_e('If using a custom prefix, ensure your REST API clients (mobile apps, external integrations) are updated to use the new URL.', 'spectrus-guard'); ?>
+                                        </p>
+                                    </div>
+                                </div>
+                            </div>
+
                         </div>
                     </div>
                 </form>
