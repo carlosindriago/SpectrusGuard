@@ -1,8 +1,78 @@
 {
-    "version": "3.0.7",
-    "generated": "2026-02-05T05:00:00Z",
+    "version": "3.0.6",
+    "generated": "2026-02-05T06:03:23+00:00",
     "algorithm": "sha256",
     "generator": "scripts/generate-integrity.php",
-    "note": "This is a placeholder manifest. Run 'php scripts/generate-integrity.php' to generate actual hashes.",
-    "files": {}
+    "files": {
+        "spectrus-guard.php": {
+            "hash": "da8123160cd164747ac614b2539eeafd301fe6137c5ad2fc1143e54f5242d1c3",
+            "risk": "critical",
+            "size": 11815
+        },
+        "uninstall.php": {
+            "hash": "c33033dd9a7a6cf5872db025d3e6195e6f5180b6a3170c3cc361dc3bf9429cc2",
+            "risk": "critical",
+            "size": 2398
+        },
+        "mu-loader/spectrus-waf.php": {
+            "hash": "78fa4431e9a9fd5d74cb8e26a75533e15a35301cf7b45a312f58d0c88ccea004",
+            "risk": "critical",
+            "size": 32402
+        },
+        "includes/waf/class-sg-firewall.php": {
+            "hash": "607358393f0685d560f0cd1cd2a14eec1c8fb0f52ceae55b2acdfa2d9ab72ea1",
+            "risk": "critical",
+            "size": 15792
+        },
+        "includes/hardening/class-sg-api-guard.php": {
+            "hash": "21b05697ee811b80ab68de047807f78a5ab3688c2569352cd2f7c7cd0e6edc03",
+            "risk": "critical",
+            "size": 22800
+        },
+        "includes/hardening/class-sg-ghost-rescue.php": {
+            "hash": "455b0082717731c1fde06930c67d5fb60dcc7e7589409605e0f9c7c562351cdf",
+            "risk": "critical",
+            "size": 5226
+        },
+        "includes/hardening/class-sg-login-guard.php": {
+            "hash": "4ff77776725a83638d6b36a098e9571a89f8644b902951262cbedbf942c88c7b",
+            "risk": "critical",
+            "size": 4411
+        },
+        "includes/admin/class-sg-admin.php": {
+            "hash": "0a3927a2e652653c359a185e487e1e67ca4baf516543f66337052d5389e09eef",
+            "risk": "critical",
+            "size": 15299
+        },
+        "includes/admin/class-sg-ajax.php": {
+            "hash": "9359ecfdc49de8a5ca78e22418af13fdb2ae84174b57df128e09cb39e5eccf8d",
+            "risk": "critical",
+            "size": 14472
+        },
+        "includes/scanner/class-sg-scanner.php": {
+            "hash": "6341c47d26701a1eeb46ac8e63fac6866d375f3bf59b0c83da8de5b6faf7b712",
+            "risk": "critical",
+            "size": 27310
+        },
+        "includes/ueba/class-sg-ueba-engine.php": {
+            "hash": "b800e4e92bb64c9fe7616251545ef392a0adb0a5eaa1ab58ecd1e4e8f2144eaf",
+            "risk": "critical",
+            "size": 13177
+        },
+        "includes/ueba/class-sg-response-engine.php": {
+            "hash": "985fd8d91458e8dae130a8a2e69b038c4792e6b30bc8d0937c05b32c0cbd8fc7",
+            "risk": "critical",
+            "size": 16881
+        },
+        "includes/security/class-sg-integrity.php": {
+            "hash": "d057c268518d3bcc7f19d881c7b4fe8945337cceae02ae08ba84196ddb08ce1c",
+            "risk": "critical",
+            "size": 18861
+        },
+        "includes/class-sg-loader.php": {
+            "hash": "a1b6db35656222e73eec363f0bd47df4c842ed32f8902baa49f4a5b43b80bbac",
+            "risk": "critical",
+            "size": 21024
+        }
+    }
 }
