@@ -15,16 +15,25 @@ $rescue_key = $settings['rescue_key'] ?? substr(md5(uniqid()), 0, 10); // Fallba
 $rescue_url = site_url("?ghost_rescue={$rescue_key}");
 
 // Determine current step index for UI
+// Step 1: Environment detection (always done)
+// Step 2: Rules written (Apache/LiteSpeed automatic, Nginx manual)
+// Step 3: Activation toggle
 $step = 1;
 if ($env_type === 'apache' || $env_type === 'litespeed') {
+    // For Apache, step is 2 (ready to write) or 3 (rules written)
     $step = $has_rules ? 3 : 2;
 } elseif ($env_type === 'nginx') {
-    $step = 2; // Manual step needed
+    $step = 2; // Manual step needed, can still activate
 }
-// If enabled, we are effectively done/managing
+
+// If cloaking is already enabled, we're at step 3 regardless
 if (!empty($settings['url_cloaking_enabled'])) {
     $step = 3;
 }
+
+// Activation panel should be enabled once we detect a compatible server
+// (user can enable cloaking even before rules are written - rules are for URL rewriting)
+$can_activate = ($env_type === 'apache' || $env_type === 'litespeed' || $env_type === 'nginx');
 ?>
 
 <style>
@@ -333,7 +342,7 @@ if (!empty($settings['url_cloaking_enabled'])) {
     </div>
 
     <!-- STEP 3: ACTIVATION -->
-    <div class="sg-gc-panel" style="<?php echo ($step < 2) ? 'opacity: 0.5; pointer-events: none;' : ''; ?>">
+    <div class="sg-gc-panel" style="<?php echo !$can_activate ? 'opacity: 0.5; pointer-events: none;' : ''; ?>">
         <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 24px;">
             <div>
                 <h3 style="margin: 0 0 8px 0; font-size: 18px; color: var(--sg-text-primary);">
@@ -377,7 +386,7 @@ if (!empty($settings['url_cloaking_enabled'])) {
 
 
     <!-- NEW: Plugin Masking Studio (Visible in Step 3) -->
-    <div class="sg-gc-panel" style="<?php echo ($step < 2) ? 'opacity: 0.5; pointer-events: none;' : ''; ?>">
+    <div class="sg-gc-panel" style="<?php echo !$can_activate ? 'opacity: 0.5; pointer-events: none;' : ''; ?>">
         <h3 style="margin: 0 0 16px 0; font-size: 18px; color: var(--sg-text-primary);">
             🎭 <?php esc_html_e('Plugin Masking Studio', 'spectrus-guard'); ?>
         </h3>
