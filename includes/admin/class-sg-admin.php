@@ -251,6 +251,46 @@ class SG_Admin
             $sanitized['hide_wp_version'] = !empty($input['hide_wp_version']);
             $sanitized['protect_api'] = !empty($input['protect_api']);
 
+            // API Hardening Settings (REST API Stealth section)
+            if (isset($input['api_hardening']) && is_array($input['api_hardening'])) {
+                $api_input = $input['api_hardening'];
+
+                // Initialize or preserve existing api_hardening
+                if (!isset($sanitized['api_hardening'])) {
+                    $sanitized['api_hardening'] = [];
+                }
+
+                // Hide API Index
+                $sanitized['api_hardening']['hide_index'] = !empty($api_input['hide_index']);
+
+                // Custom API Prefix (sanitize: alphanumeric, dashes, slashes)
+                if (isset($api_input['custom_prefix'])) {
+                    $prefix = trim($api_input['custom_prefix'], '/');
+                    $sanitized['api_hardening']['custom_prefix'] = preg_replace(
+                        '/[^a-zA-Z0-9\-\/]/',
+                        '',
+                        $prefix
+                    );
+                }
+
+                // Require Auth (if toggle exists)
+                $sanitized['api_hardening']['require_auth'] = !empty($api_input['require_auth']);
+
+                // Whitelist from textarea (one route per line)
+                if (isset($api_input['whitelist_raw'])) {
+                    $lines = explode("\n", $api_input['whitelist_raw']);
+                    $routes = [];
+                    foreach ($lines as $line) {
+                        $route = trim($line);
+                        if (!empty($route)) {
+                            // Sanitize route: alphanumeric, dashes, slashes
+                            $routes[] = preg_replace('/[^a-zA-Z0-9\-\/]/', '', $route);
+                        }
+                    }
+                    $sanitized['api_hardening']['whitelist'] = array_unique(array_filter($routes));
+                }
+            }
+
         } elseif ($context === 'login') {
             // --- LOGIN TAB (Legacy Check) ---
             $sanitized['login_limit_enabled'] = !empty($input['login_limit_enabled']);
