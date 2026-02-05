@@ -105,15 +105,33 @@ Traditional security plugins rely on static rules that attackers can bypass. Spe
 - **Zero-Trust 2FA:** Enforce TOTP (Google Authenticator) for administrators
 - **Brute Force Protection:** Intelligent lockout with exponential backoff
 - **Header Hardening:** Removes `X-Powered-By`, WordPress version generators
-- **API Protection:** Blocks XML-RPC enumeration, restricts REST API access
+- **REST API Hardening:** Custom API prefix, endpoint whitelisting, authentication enforcement
 
-### 5. Immersive Admin Interface
+### 5. Self-Protection & Integrity System
+
+| Feature | Description |
+|---------|-------------|
+| **File Integrity Verification** | SHA-256 hashes of critical files verified against signed manifest |
+| **GitHub Actions Signing** | `integrity.json` automatically generated on each release |
+| **Tamper Detection** | Alerts when core plugin files are modified |
+| **Critical File Monitoring** | 14+ files marked as high-risk monitored in real-time |
+| **Auto-Update Verification** | Validates file hashes after plugin updates |
+
+### 6. Internationalization (i18n)
+
+- **Multi-Language Support:** Automatically adapts to WordPress language settings
+- **Included Translations:** Spanish (es_ES) fully translated
+- **Translation-Ready:** POT template file for community translations
+- **Text Domain:** `spectrus-guard` with proper escaping functions
+
+### 7. Immersive Admin Interface
 
 - **SPA-Like Experience:** Custom "Immersive Mode" UI overriding standard WordPress styling
 - **Dark Mode:** High-contrast Slate/Indigo theme optimized for SOC environments
 - **Real-Time Dashboard:** Threat analytics with Chart.js visualizations
 - **Activity Logs:** Traffic inspection with severity tagging
 - **Quick Actions:** Emergency hardening with one-click deployment
+- **Help & Documentation:** 10-section built-in documentation accessible from admin
 
 ---
 
@@ -261,6 +279,7 @@ update_option('spectrus_shield_settings', $settings);
 ```
 spectrus-guard/
 ├── spectrus-guard.php            # Main bootstrap file
+├── integrity.json                # SHA-256 file signatures (auto-generated)
 ├── composer.json                 # Dev dependencies & autoloading
 ├── mu-loader/
 │   └── spectrus-waf.php          # Drop-in WAF (executes before WP)
@@ -268,21 +287,38 @@ spectrus-guard/
 │   ├── css/admin.css             # Immersive Mode styles
 │   └── js/
 │       ├── admin.js              # Admin interactions
+│       ├── threat-chart.js       # Chart.js threat visualization
 │       └── admin/
 │           ├── scanner.js        # Malware scanner UI
 │           ├── quarantine.js     # Quarantine management
 │           └── whitelist.js      # Whitelist management
+├── languages/                    # Internationalization
+│   ├── spectrus-guard.pot        # Translation template
+│   ├── spectrus-guard-es_ES.po   # Spanish translation
+│   └── spectrus-guard-es_ES.mo   # Compiled Spanish
+├── scripts/
+│   └── generate-integrity.php    # Integrity manifest generator
 ├── templates/
 │   └── views/                    # Separated HTML templates (MVC)
 │       ├── block-page.php        # WAF block page
 │       └── rescue-ui.php         # Ghost Rescue UI
 ├── includes/
 │   ├── class-sg-loader.php       # Singleton orchestrator
-│   ├── class-sg-logger.php       # Centralized logging
-│   ├── admin/                    # Admin pages & AJAX handlers
-│   ├── auth/                     # 2FA / TOTP authentication
-│   ├── geo/                      # Geo-blocking engine
+│   ├── class-sg-logger.php       # PSR-3 compliant logging
+│   ├── traits/
+│   │   └── IpDetectionTrait.php  # Unified IP detection
+│   ├── admin/                    
+│   │   ├── class-sg-admin.php    # Admin controller
+│   │   ├── class-sg-ajax.php     # AJAX handlers
+│   │   ├── class-sg-log-parser.php # Log parser with generators
+│   │   └── pages/
+│   │       └── class-sg-page-help.php # Help & Documentation
+│   ├── security/
+│   │   └── class-sg-integrity.php # Self-protection & tamper detection
+│   ├── geo/
+│   │   └── class-sg-cloudflare-ips.php # CloudFlare IP auto-updater
 │   ├── hardening/                # Security hardening modules
+│   │   └── class-sg-api-guard.php # REST API hardening
 │   ├── scanner/                  # Malware scanner & signatures
 │   ├── waf/                      # Web Application Firewall
 │   ├── whitelist/                # File whitelist management
@@ -293,6 +329,9 @@ spectrus-guard/
 │       ├── class-sg-anomaly-detector.php
 │       ├── class-sg-risk-scorer.php
 │       └── class-sg-response-engine.php
+├── .github/
+│   └── workflows/
+│       └── integrity.yml         # Auto-sign releases
 ├── UEBA-README.md                # UEBA documentation
 ├── CHANGELOG.md                  # Version history
 └── README.md                     # This file
