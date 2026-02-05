@@ -368,6 +368,15 @@ class SG_Loader
             true
         );
 
+        // Threat chart visualization
+        wp_enqueue_script(
+            'spectrus-guard-chart',
+            SG_PLUGIN_URL . 'assets/js/threat-chart.js',
+            array('jquery', 'chart-js', 'spectrus-guard-admin'),
+            SG_VERSION,
+            true
+        );
+
         // Localize base script with common data
         wp_localize_script(
             'spectrus-guard-admin',
