@@ -1,0 +1,110 @@
+# SpectrusGuard Integrity Manifest Generator
+#
+# Automatically generates integrity.json with SHA-256 hashes
+# of all critical plugin files when a new release is published.
+#
+# This ensures that official releases always have a valid manifest
+# for integrity verification against tampered/modified versions.
+
+name: Generate Integrity Manifest
+
+on:
+  # Trigger on release publish
+  release:
+    types: [published]
+  
+  # Allow manual trigger for testing
+  workflow_dispatch:
+    inputs:
+      commit_changes:
+        description: 'Commit the generated manifest'
+        required: true
+        default: 'true'
+        type: boolean
+
+permissions:
+  contents: write
+
+jobs:
+  generate-manifest:
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.release.tag_name || github.ref_name }}
+          fetch-depth: 0
+      
+      - name: Setup PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.1'
+          coverage: none
+      
+      - name: Generate integrity manifest
+        run: |
+          echo "🔐 Generating integrity manifest..."
+          php scripts/generate-integrity.php
+          
+          echo ""
+          echo "📄 Generated manifest:"
+          cat integrity.json
+      
+      - name: Verify manifest validity
+        run: |
+          echo "✅ Validating JSON syntax..."
+          php -r 'json_decode(file_get_contents("integrity.json")) || exit(1);'
+          
+          echo "✅ Manifest is valid JSON"
+          
+          # Count files in manifest
+          FILE_COUNT=$(php -r 'echo count(json_decode(file_get_contents("integrity.json"), true)["files"]);')
+          echo "📊 Files in manifest: $FILE_COUNT"
+      
+      - name: Calculate release checksum
+        run: |
+          # Create checksum of the manifest itself for README reference
+          MANIFEST_HASH=$(sha256sum integrity.json | cut -d ' ' -f 1)
+          echo "MANIFEST_HASH=$MANIFEST_HASH" >> $GITHUB_ENV
+          echo "📝 Manifest SHA-256: $MANIFEST_HASH"
+      
+      - name: Commit and push manifest
+        if: ${{ github.event_name == 'release' || github.event.inputs.commit_changes == 'true' }}
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          
+          # Check if there are changes to commit
+          if git diff --quiet integrity.json; then
+            echo "No changes to integrity.json"
+          else
+            git add integrity.json
+            git commit -m "chore: update integrity manifest for ${{ github.event.release.tag_name || 'latest' }}
+
+            SHA-256: ${{ env.MANIFEST_HASH }}"
+            
+            git push origin HEAD:main
+            echo "✅ Manifest committed and pushed"
+          fi
+      
+      - name: Update release notes
+        if: ${{ github.event_name == 'release' }}
+        uses: softprops/action-gh-release@v1
+        with:
+          tag_name: ${{ github.event.release.tag_name }}
+          append_body: true
+          body: |
+            
+            ---
+            **🔐 Integrity Verification**
+            
+            To verify your download is authentic, run:
+            ```bash
+            sha256sum -c <<< "${{ env.MANIFEST_HASH }}  integrity.json"
+            ```
+            
+            Or compare the SHA-256 hash of `integrity.json`:
+            ```
+            ${{ env.MANIFEST_HASH }}
+            ```

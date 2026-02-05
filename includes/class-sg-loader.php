@@ -225,6 +225,12 @@ class SG_Loader
             }
         }
 
+        // Security - Integrity Checker (Self-Protection System)
+        $integrity_file = SG_PLUGIN_DIR . 'includes/security/class-sg-integrity.php';
+        if (file_exists($integrity_file)) {
+            require_once $integrity_file;
+        }
+
     }
 
     /**
@@ -267,6 +273,12 @@ class SG_Loader
         // Initialize Scanner (Sprint 3)
         if (class_exists('SG_Scanner')) {
             $this->scanner = new SG_Scanner();
+        }
+
+        // Initialize Integrity Checker (Self-Protection System)
+        if (class_exists('SG_Integrity')) {
+            $integrity = new SG_Integrity($this->logger);
+            $integrity->init();
         }
 
         // Initialize AJAX Handler (Core)

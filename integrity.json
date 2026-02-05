@@ -1,0 +1,8 @@
+{
+    "version": "3.0.7",
+    "generated": "2026-02-05T05:00:00Z",
+    "algorithm": "sha256",
+    "generator": "scripts/generate-integrity.php",
+    "note": "This is a placeholder manifest. Run 'php scripts/generate-integrity.php' to generate actual hashes.",
+    "files": {}
+}
