@@ -195,6 +195,68 @@ function sg_activate()
 register_activation_hook(__FILE__, 'sg_activate');
 
 /**
+ * Check and auto-update MU-Plugin if source version is newer
+ * 
+ * This runs on admin_init to ensure MU-Plugin stays in sync with the plugin.
+ * Uses file hash comparison to detect changes.
+ */
+function sg_maybe_update_mu_plugin()
+{
+    // Only run in admin context and not during AJAX or activation
+    if (!is_admin() || wp_doing_ajax() || (defined('DOING_CRON') && DOING_CRON)) {
+        return;
+    }
+
+    // Check if source file exists
+    if (!file_exists(SG_MU_SOURCE)) {
+        return;
+    }
+
+    // Get current source hash
+    $source_hash = md5_file(SG_MU_SOURCE);
+
+    // Get stored hash of last deployed version
+    $deployed_hash = get_option('sg_mu_plugin_hash', '');
+
+    // If destination doesn't exist, force update
+    $needs_update = !file_exists(SG_MU_DESTINATION);
+
+    // Check if hashes differ (source was updated)
+    if (!$needs_update && $source_hash !== $deployed_hash) {
+        $needs_update = true;
+    }
+
+    if ($needs_update) {
+        // Create mu-plugins directory if needed
+        $mu_plugins_dir = WP_CONTENT_DIR . '/mu-plugins';
+        if (!file_exists($mu_plugins_dir)) {
+            wp_mkdir_p($mu_plugins_dir);
+        }
+
+        // Remove old version
+        if (file_exists(SG_MU_DESTINATION)) {
+            @unlink(SG_MU_DESTINATION);
+        }
+
+        // Copy new version
+        $copied = @copy(SG_MU_SOURCE, SG_MU_DESTINATION);
+
+        if ($copied) {
+            // Store the new hash
+            update_option('sg_mu_plugin_hash', $source_hash);
+
+            // Log the update (optional admin notice)
+            add_action('admin_notices', function () {
+                echo '<div class="notice notice-success is-dismissible">';
+                echo '<p><strong>SpectrusGuard:</strong> ' . esc_html__('MU-Plugin was automatically updated to the latest version.', 'spectrus-guard') . '</p>';
+                echo '</div>';
+            });
+        }
+    }
+}
+add_action('admin_init', 'sg_maybe_update_mu_plugin');
+
+/**
  * Plugin deactivation hook
  */
 function sg_deactivate()
