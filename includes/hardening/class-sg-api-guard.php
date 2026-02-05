@@ -26,10 +26,39 @@ class SG_API_Guard
     use IpDetectionTrait;
 
     /**
+     * API hardening settings
+     *
+     * @var array
+     */
+    private array $apiSettings;
+
+    /**
+     * Default whitelist for public API routes
+     *
+     * @var array
+     */
+    private const DEFAULT_WHITELIST = [
+        '/wp/v2/posts',
+        '/wp/v2/pages',
+        '/wp/v2/categories',
+        '/wp/v2/tags',
+        '/wp/v2/media',
+        '/wp/v2/comments',
+        '/oembed/',
+        '/contact-form-7/',
+        '/wc/',
+        '/wc-blocks/',
+        '/jetpack/',
+    ];
+
+    /**
      * Constructor
      */
     public function __construct()
     {
+        // Load API hardening settings
+        $this->loadApiSettings();
+
         // 1. Protect user enumeration via REST API
         add_filter('rest_endpoints', array($this, 'restrict_user_endpoints'));
         add_filter('rest_pre_dispatch', array($this, 'check_api_permissions'), 10, 3);
@@ -50,8 +79,39 @@ class SG_API_Guard
         // 5. Remove author name from RSS feeds
         add_filter('the_author', array($this, 'hide_author_in_feed'));
 
-        // 6. Disable REST API for non-logged-in users (optional - configurable)
-        // add_filter( 'rest_authentication_errors', array( $this, 'require_auth_for_api' ) );
+        // 6. REST API Hardening (configurable)
+        if ($this->apiSettings['require_auth']) {
+            add_filter('rest_authentication_errors', array($this, 'require_auth_for_api'));
+        }
+
+        // 7. Hide API index/discovery
+        if ($this->apiSettings['hide_index']) {
+            add_filter('rest_index', array($this, 'hide_rest_index'));
+        }
+
+        // 8. Custom REST API prefix
+        if (!empty($this->apiSettings['custom_prefix'])) {
+            add_filter('rest_url_prefix', array($this, 'custom_rest_prefix'));
+        }
+    }
+
+    /**
+     * Load API hardening settings
+     */
+    private function loadApiSettings(): void
+    {
+        $settings = get_option('spectrus_shield_settings', []);
+        $apiDefaults = [
+            'require_auth' => false,
+            'hide_index' => true,
+            'custom_prefix' => '',
+            'whitelist' => [],
+        ];
+
+        $this->apiSettings = wp_parse_args(
+            $settings['api_hardening'] ?? [],
+            $apiDefaults
+        );
     }
 
     /**
@@ -361,27 +421,76 @@ class SG_API_Guard
             return $result;
         }
 
-        // Allow some public endpoints
-        $allowed_routes = array(
-            '/wp/v2/posts',
-            '/wp/v2/pages',
-            '/wp/v2/categories',
-            '/wp/v2/tags',
-            '/oembed/',
+        // Build whitelist from defaults + custom
+        $whitelist = array_merge(
+            self::DEFAULT_WHITELIST,
+            $this->apiSettings['whitelist'] ?? []
         );
 
-        $current_route = $_SERVER['REQUEST_URI'] ?? '';
-        foreach ($allowed_routes as $route) {
-            if (strpos($current_route, $route) !== false) {
+        // Check current route against whitelist
+        $currentRoute = $_SERVER['REQUEST_URI'] ?? '';
+        foreach ($whitelist as $route) {
+            if (strpos($currentRoute, $route) !== false) {
                 return $result;
             }
         }
 
+        // Block with informative error
         return new WP_Error(
-            'rest_not_logged_in',
-            __('You must be logged in to access the REST API.', 'spectrus-guard'),
-            array('status' => 401)
+            'rest_forbidden',
+            __('SpectrusGuard: REST API access requires authentication.', 'spectrus-guard'),
+            ['status' => 401]
         );
+    }
+
+    /**
+     * Hide REST API index/discovery for non-authenticated users
+     *
+     * @param WP_REST_Response $response Response object.
+     * @return WP_REST_Response Modified response.
+     */
+    public function hide_rest_index($response)
+    {
+        // Admins can see everything
+        if (is_user_logged_in() && current_user_can('manage_options')) {
+            return $response;
+        }
+
+        // For non-admins, return minimal info
+        $data = $response->get_data();
+
+        // Remove sensitive information
+        unset($data['routes']);
+        unset($data['namespaces']);
+        unset($data['authentication']);
+
+        // Keep only basic info
+        $data['name'] = get_bloginfo('name');
+        $data['description'] = get_bloginfo('description');
+        $data['url'] = home_url();
+        $data['_links'] = [];
+
+        $response->set_data($data);
+
+        return $response;
+    }
+
+    /**
+     * Custom REST API URL prefix
+     *
+     * @param string $prefix Default prefix (wp-json).
+     * @return string Custom prefix.
+     */
+    public function custom_rest_prefix(string $prefix): string
+    {
+        $customPrefix = $this->apiSettings['custom_prefix'] ?? '';
+
+        if (!empty($customPrefix)) {
+            // Sanitize prefix (alphanumeric, dashes, slashes only)
+            return preg_replace('/[^a-zA-Z0-9\-\/]/', '', $customPrefix);
+        }
+
+        return $prefix;
     }
 
     /**
