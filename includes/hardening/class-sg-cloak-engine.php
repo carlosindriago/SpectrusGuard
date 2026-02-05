@@ -139,8 +139,8 @@ class Spectrus_Cloak_Engine
 
         $content = file_get_contents($htaccess_path);
 
-        // insert_with_markers usa este formato
-        return strpos($content, '# BEGIN SpectrusGuard Cloak') !== false; // Fixed: Matches user provided string used in insert_with_markers (usually removes space?) - sticking to WP standard or previous
+        // insert_with_markers uses: # BEGIN SpectrusGuardCloak
+        return strpos($content, '# BEGIN SpectrusGuardCloak') !== false;
     }
 
     // Note: insert_with_markers uses # BEGIN $name ... so if name is SpectrusGuardCloak it works.

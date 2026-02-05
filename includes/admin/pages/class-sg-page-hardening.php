@@ -167,7 +167,8 @@ class SG_Page_Hardening
      */
     public function ajax_write_htaccess()
     {
-        check_ajax_referer('spectrus_shield_nonce', 'nonce');
+        // Use same nonce as rest of plugin
+        check_ajax_referer('spectrus_guard_nonce', 'nonce');
 
         if (!current_user_can('manage_options')) {
             wp_send_json_error(__('Insufficient permissions.', 'spectrus-guard'));
@@ -182,36 +183,51 @@ class SG_Page_Hardening
             }
         }
 
-        $rules = Spectrus_Cloak_Engine::generate_apache_rules();
         $htaccess_path = ABSPATH . '.htaccess';
 
+        // Check if .htaccess exists and is writable
         if (!file_exists($htaccess_path)) {
             // Attempt to create it
-            if (!file_put_contents($htaccess_path, '')) {
-                wp_send_json_error(__('Could not create .htaccess file.', 'spectrus-guard'));
+            if (@file_put_contents($htaccess_path, '') === false) {
+                wp_send_json_error(__('Could not create .htaccess file. Please check directory permissions.', 'spectrus-guard'));
             }
+        }
+
+        if (!is_writable($htaccess_path)) {
+            wp_send_json_error(__('The .htaccess file is not writable. Please set permissions to 644 or 664.', 'spectrus-guard'));
         }
 
         // Use WordPress core function to write safely
         require_once ABSPATH . 'wp-admin/includes/misc.php';
 
+        // Get dynamic mappings from engine
+        $engine = new Spectrus_Cloak_Engine();
+        $mappings = method_exists($engine, 'get_public_mappings')
+            ? $engine->get_public_mappings()
+            : [
+                'wp-content/themes' => 'content/skins',
+                'wp-content/plugins' => 'content/modules',
+                'wp-content/uploads' => 'content/media',
+                'wp-includes' => 'core/lib',
+            ];
+
+        // Build dynamic rules
         $lines = [];
         $lines[] = '<IfModule mod_rewrite.c>';
         $lines[] = 'RewriteEngine On';
-        $lines[] = 'RewriteRule ^content/skins/(.*) wp-content/themes/$1 [L,QSA]';
-        $lines[] = 'RewriteRule ^content/modules/(.*) wp-content/plugins/$1 [L,QSA]';
-        $lines[] = 'RewriteRule ^content/media/(.*) wp-content/uploads/$1 [L,QSA]';
-        $lines[] = 'RewriteRule ^core/lib/(.*) wp-includes/$1 [L,QSA]';
-        $lines[] = 'RewriteRule ^content/modules/ui-builder/(.*) wp-content/plugins/elementor/$1 [L,QSA]';
-        $lines[] = 'RewriteRule ^content/modules/shop-core/(.*) wp-content/plugins/woocommerce/$1 [L,QSA]';
-        $lines[] = 'RewriteRule ^content/modules/forms/(.*) wp-content/plugins/contact-form-7/$1 [L,QSA]';
-        $lines[] = 'RewriteRule ^content/modules/meta-engine/(.*) wp-content/plugins/yoast-seo/$1 [L,QSA]';
+
+        foreach ($mappings as $real => $fake) {
+            // When request comes as FAKE, serve REAL
+            $lines[] = "RewriteRule ^{$fake}/(.*) {$real}/\$1 [L,QSA]";
+        }
+
         $lines[] = '</IfModule>';
 
+        // Marker name must match what htaccess_has_rules() checks
         $result = insert_with_markers($htaccess_path, 'SpectrusGuardCloak', $lines);
 
         if ($result) {
-            wp_send_json_success();
+            wp_send_json_success(['message' => __('Rules successfully written to .htaccess', 'spectrus-guard')]);
         } else {
             wp_send_json_error(__('Could not write to .htaccess. Please check file permissions.', 'spectrus-guard'));
         }
