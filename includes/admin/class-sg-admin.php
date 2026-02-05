@@ -21,10 +21,9 @@ require_once SG_PLUGIN_DIR . 'includes/admin/pages/class-sg-page-scanner.php';
 require_once SG_PLUGIN_DIR . 'includes/admin/pages/class-sg-page-quarantine.php';
 require_once SG_PLUGIN_DIR . 'includes/admin/pages/class-sg-page-whitelist.php';
 require_once SG_PLUGIN_DIR . 'includes/admin/pages/class-sg-page-hardening.php';
-require_once SG_PLUGIN_DIR . 'includes/admin/pages/class-sg-page-hardening.php';
-require_once SG_PLUGIN_DIR . 'includes/admin/pages/class-sg-page-settings.php';
 require_once SG_PLUGIN_DIR . 'includes/admin/pages/class-sg-page-settings.php';
 require_once SG_PLUGIN_DIR . 'includes/admin/pages/class-sg-page-results.php';
+require_once SG_PLUGIN_DIR . 'includes/admin/pages/class-sg-page-help.php';
 require_once SG_PLUGIN_DIR . 'includes/admin/class-sg-ajax.php';
 
 /**
@@ -60,6 +59,7 @@ class SG_Admin
     private $page_hardening;
     private $page_settings;
     private $page_results;
+    private $page_help;
 
     /**
      * Constructor
@@ -79,6 +79,7 @@ class SG_Admin
         $this->page_hardening = new SG_Page_Hardening($loader);
         $this->page_settings = new SG_Page_Settings($loader);
         $this->page_results = new SG_Page_Results($loader);
+        $this->page_help = new SG_Page_Help($loader);
 
         // Initialize AJAX Handler
         $this->ajax = new SG_Ajax();
@@ -171,6 +172,16 @@ class SG_Admin
             'manage_options',
             'spectrus-guard-settings',
             array($this->page_settings, 'render') // Delegate to Settings Controller
+        );
+
+        // 6. Help & Documentation
+        add_submenu_page(
+            'spectrus-guard',
+            __('Help & Documentation', 'spectrus-guard'),
+            __('Help & Docs', 'spectrus-guard'),
+            'manage_options',
+            'spectrus-guard-help',
+            array($this->page_help, 'render') // Delegate to Help Controller
         );
 
         // 6. Results Page (Hidden from menu, linked from Scanner)

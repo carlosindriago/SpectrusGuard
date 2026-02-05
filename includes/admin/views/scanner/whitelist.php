@@ -30,13 +30,16 @@ if (!defined('ABSPATH')) {
         <div class="sg-content-column" style="grid-column: span 12;">
 
             <!-- Warning Banner -->
-            <div class="sg-card" style="margin-bottom: 24px; padding: 20px; background: linear-gradient(135deg, rgba(234, 179, 8, 0.1), rgba(161, 98, 7, 0.1)); border: 2px solid rgba(234, 179, 8, 0.4);">
+            <div class="sg-card"
+                style="margin-bottom: 24px; padding: 20px; background: linear-gradient(135deg, rgba(234, 179, 8, 0.1), rgba(161, 98, 7, 0.1)); border: 2px solid rgba(234, 179, 8, 0.4);">
                 <div style="display: flex; align-items: start;">
-                    <div style="background: rgba(234, 179, 8, 0.2); border-radius: 50%; width: 48px; height: 48px; display: flex; align-items: center; justify-content: center; margin-right: 16px; flex-shrink: 0;">
+                    <div
+                        style="background: rgba(234, 179, 8, 0.2); border-radius: 50%; width: 48px; height: 48px; display: flex; align-items: center; justify-content: center; margin-right: 16px; flex-shrink: 0;">
                         <span class="dashicons dashicons-warning" style="font-size: 24px; color: #eab308;"></span>
                     </div>
                     <div>
-                        <h3 style="margin: 0 0 8px 0; color: var(--sg-text-primary); font-size: 18px; font-weight: 700;">
+                        <h3
+                            style="margin: 0 0 8px 0; color: var(--sg-text-primary); font-size: 18px; font-weight: 700;">
                             <?php esc_html_e('⚠️ Use Whitelist with Extreme Caution', 'spectrus-guard'); ?>
                         </h3>
                         <p style="margin: 0; color: var(--sg-text-secondary); font-size: 14px; line-height: 1.6;">
@@ -111,4 +114,27 @@ if (!defined('ABSPATH')) {
 
         </div>
     </div>
+
+    <style>
+        /* Full dark mode background */
+        #wpcontent,
+        #wpfooter {
+            background: var(--sg-bg-primary, #0f172a) !important;
+        }
+
+        #wpbody-content {
+            padding-bottom: 0 !important;
+        }
+
+        #wpfooter {
+            color: var(--sg-text-muted, #64748b);
+            border-top: 1px solid var(--sg-border, #334155);
+            margin-left: 0;
+            padding: 20px;
+        }
+
+        #wpfooter a {
+            color: var(--sg-primary, #6366f1);
+        }
+    </style>
 </div>

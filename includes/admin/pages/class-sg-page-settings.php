@@ -232,14 +232,20 @@ class SG_Page_Settings
                             </div>
                             <div class="sg-settings-card-body">
                                 <div class="sg-control-group">
-                                    <label class="sg-control-label">Community Edition</label>
-                                    <p class="sg-control-desc">You are using the free version of SpectrusGuard. Upgrade to Pro for
-                                        advanced features.</p>
+                                    <label
+                                        class="sg-control-label"><?php esc_html_e('Community Edition', 'spectrus-guard'); ?></label>
+                                    <p class="sg-control-desc">
+                                        <?php esc_html_e('You are currently using the free Community Edition of SpectrusGuard. All core security features are fully functional.', 'spectrus-guard'); ?>
+                                    </p>
                                 </div>
-                                <div style="margin-top: 20px; text-align: center;">
-                                    <button class="sg-btn sg-btn-primary" disabled>
-                                        <?php esc_html_e('Manage License', 'spectrus-guard'); ?> (Pro Only)
-                                    </button>
+                                <div
+                                    style="margin-top: 24px; padding: 20px; background: linear-gradient(135deg, rgba(99, 102, 241, 0.1), rgba(139, 92, 246, 0.1)); border: 1px solid rgba(99, 102, 241, 0.3); border-radius: 12px; text-align: center;">
+                                    <span style="font-size: 32px; display: block; margin-bottom: 12px;">🚀</span>
+                                    <h3 style="margin: 0 0 8px 0; color: var(--sg-text-primary); font-size: 16px;">
+                                        <?php esc_html_e('Pro Features Coming Soon!', 'spectrus-guard'); ?></h3>
+                                    <p style="margin: 0; color: var(--sg-text-secondary); font-size: 13px;">
+                                        <?php esc_html_e('Advanced features and priority support will be available in a future update. Stay tuned!', 'spectrus-guard'); ?>
+                                    </p>
                                 </div>
                             </div>
                         </div>
