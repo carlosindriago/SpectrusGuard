@@ -2,12 +2,16 @@
 /**
  * SpectrusGuard Logger
  *
- * Handles logging of security events to files and database.
- * Creates protected log files that are not publicly accessible.
+ * PSR-3 compliant centralized audit logging system.
+ * Handles security events with structured JSON context,
+ * file rotation, and protected storage.
  *
  * @package SpectrusGuard
  * @since   1.0.0
+ * @since   3.1.0 PSR-3 compliance, JSON context, generators
  */
+
+declare(strict_types=1);
 
 // Prevent direct access
 if (!defined('ABSPATH')) {
@@ -17,75 +21,162 @@ if (!defined('ABSPATH')) {
 /**
  * Class SG_Logger
  *
- * Security event logger with file and database support.
+ * Security event logger with PSR-3 log levels and JSON structured context.
  */
 class SG_Logger
 {
+    /**
+     * PSR-3 Log Levels
+     */
+    public const EMERGENCY = 'emergency';
+    public const ALERT = 'alert';
+    public const CRITICAL = 'critical';
+    public const ERROR = 'error';
+    public const WARNING = 'warning';
+    public const NOTICE = 'notice';
+    public const INFO = 'info';
+    public const DEBUG = 'debug';
 
     /**
      * Log directory path
-     *
-     * @var string
      */
-    private $log_dir;
+    private string $logDir;
 
     /**
-     * Main attack log file path
-     *
-     * @var string
+     * Security log file path (dated)
      */
-    private $attack_log_file;
+    private string $securityLogFile;
+
+    /**
+     * Attack log file path (legacy compatibility)
+     */
+    private string $attackLogFile;
 
     /**
      * Debug log file path
-     *
-     * @var string
      */
-    private $debug_log_file;
+    private string $debugLogFile;
 
     /**
      * Maximum log file size in bytes (5MB)
-     *
-     * @var int
      */
-    private $max_log_size = 5242880;
+    private const MAX_LOG_SIZE = 5242880;
+
+    /**
+     * Maximum backup files to keep
+     */
+    private const MAX_BACKUPS = 5;
 
     /**
      * Constructor
+     *
+     * @param string $customPath Optional custom log directory path.
      */
-    public function __construct()
+    public function __construct(string $customPath = '')
     {
-        $this->log_dir = WP_CONTENT_DIR . '/spectrus-guard-logs';
-        $this->attack_log_file = $this->log_dir . '/attacks.log';
-        $this->debug_log_file = $this->log_dir . '/debug.log';
+        $this->logDir = $customPath ?: WP_CONTENT_DIR . '/spectrus-guard-logs';
+        $this->securityLogFile = $this->logDir . '/security-' . date('Y-m-d') . '.log';
+        $this->attackLogFile = $this->logDir . '/attacks.log';
+        $this->debugLogFile = $this->logDir . '/debug.log';
 
-        $this->ensure_log_directory();
+        $this->ensureLogDirectory();
     }
 
     /**
-     * Ensure log directory exists and is protected
+     * Log a message with PSR-3 level
+     *
+     * @param string $level   PSR-3 log level.
+     * @param string $message Log message.
+     * @param array  $context Additional context data (will be JSON encoded).
      */
-    private function ensure_log_directory()
+    public function log(string $level, string $message, array $context = []): void
     {
-        if (!file_exists($this->log_dir)) {
-            wp_mkdir_p($this->log_dir);
-        }
+        $timestamp = function_exists('current_time')
+            ? current_time('Y-m-d H:i:s')
+            : date('Y-m-d H:i:s');
 
-        // Protect with .htaccess
-        $htaccess_file = $this->log_dir . '/.htaccess';
-        if (!file_exists($htaccess_file)) {
-            file_put_contents($htaccess_file, "Order deny,allow\nDeny from all");
-        }
+        $contextJson = !empty($context) ? ' ' . json_encode($context, JSON_UNESCAPED_SLASHES) : '';
 
-        // Protect with index.php
-        $index_file = $this->log_dir . '/index.php';
-        if (!file_exists($index_file)) {
-            file_put_contents($index_file, '<?php // Silence is golden');
-        }
+        $entry = sprintf(
+            "[%s] [%s]: %s%s" . PHP_EOL,
+            $timestamp,
+            strtoupper($level),
+            $message,
+            $contextJson
+        );
+
+        $this->writeToFile($this->securityLogFile, $entry);
     }
 
     /**
-     * Log an attack event
+     * System is unusable
+     */
+    public function emergency(string $message, array $context = []): void
+    {
+        $this->log(self::EMERGENCY, $message, $context);
+    }
+
+    /**
+     * Action must be taken immediately
+     */
+    public function alert(string $message, array $context = []): void
+    {
+        $this->log(self::ALERT, $message, $context);
+    }
+
+    /**
+     * Critical conditions (security breaches, attacks)
+     */
+    public function critical(string $message, array $context = []): void
+    {
+        $this->log(self::CRITICAL, $message, $context);
+    }
+
+    /**
+     * Runtime errors
+     */
+    public function error(string $message, array $context = []): void
+    {
+        $this->log(self::ERROR, $message, $context);
+    }
+
+    /**
+     * Exceptional occurrences that are not errors
+     */
+    public function warning(string $message, array $context = []): void
+    {
+        $this->log(self::WARNING, $message, $context);
+    }
+
+    /**
+     * Normal but significant events
+     */
+    public function notice(string $message, array $context = []): void
+    {
+        $this->log(self::NOTICE, $message, $context);
+    }
+
+    /**
+     * Interesting events
+     */
+    public function info(string $message, array $context = []): void
+    {
+        $this->log(self::INFO, $message, $context);
+    }
+
+    /**
+     * Detailed debug information
+     */
+    public function debug(string $message, array $context = []): void
+    {
+        if (!defined('WP_DEBUG') || !WP_DEBUG) {
+            return;
+        }
+        $this->log(self::DEBUG, $message, $context);
+    }
+
+    /**
+     * Log an attack event (legacy compatibility + enhanced)
      *
      * @param string $type    Attack type (sqli, xss, traversal, rce, etc.).
      * @param string $payload The malicious payload detected.
@@ -93,168 +184,190 @@ class SG_Logger
      * @param string $uri     Request URI.
      * @param array  $extra   Additional data to log.
      */
-    public function log_attack($type, $payload, $ip, $uri, $extra = array())
+    public function log_attack(string $type, string $payload, string $ip, string $uri, array $extra = []): void
     {
-        $timestamp = current_time('Y-m-d H:i:s');
-
-        $log_entry = array(
-            'timestamp' => $timestamp,
+        $context = array_merge([
             'type' => strtoupper($type),
             'ip' => $ip,
             'uri' => $uri,
-            'payload' => $this->sanitize_payload($payload),
+            'payload' => $this->sanitizePayload($payload),
             'user_agent' => isset($_SERVER['HTTP_USER_AGENT']) ? substr($_SERVER['HTTP_USER_AGENT'], 0, 200) : '',
-            'method' => isset($_SERVER['REQUEST_METHOD']) ? $_SERVER['REQUEST_METHOD'] : 'UNKNOWN',
-        );
+            'method' => $_SERVER['REQUEST_METHOD'] ?? 'UNKNOWN',
+        ], $extra);
 
-        // Merge extra data
-        if (!empty($extra)) {
-            $log_entry = array_merge($log_entry, $extra);
-        }
+        // Log to new PSR-3 format
+        $this->critical('Attack blocked: ' . strtoupper($type), $context);
 
-        // Format log line
-        $log_line = sprintf(
-            "[%s] [%s] IP: %s | URI: %s | Payload: %s | UA: %s\n",
-            $log_entry['timestamp'],
-            $log_entry['type'],
-            $log_entry['ip'],
-            $log_entry['uri'],
-            $log_entry['payload'],
-            $log_entry['user_agent']
-        );
-
-        // Rotate log if needed
-        $this->maybe_rotate_log($this->attack_log_file);
-
-        // Write to file
-        file_put_contents($this->attack_log_file, $log_line, FILE_APPEND | LOCK_EX);
+        // Also write to legacy attacks.log for backward compatibility
+        $this->writeLegacyAttackLog($context);
 
         // Update statistics
-        $this->update_stats($type);
+        $this->updateStats($type);
 
-        // Fire action for observers (notifications, etc.)
-        do_action('spectrus_shield_attack_logged', $log_entry);
+        // Fire action for observers
+        do_action('spectrus_shield_attack_logged', $context);
     }
 
     /**
-     * Log a debug message
+     * Log debug message (legacy compatibility)
      *
      * @param string $message Debug message.
      * @param string $level   Log level (info, warning, error).
      */
-    public function log_debug($message, $level = 'info')
+    public function log_debug(string $message, string $level = 'info'): void
     {
         if (!defined('WP_DEBUG') || !WP_DEBUG) {
             return;
         }
 
-        $timestamp = current_time('Y-m-d H:i:s');
-        $log_line = sprintf("[%s] [%s] %s\n", $timestamp, strtoupper($level), $message);
+        $this->log($level, $message);
 
-        $this->maybe_rotate_log($this->debug_log_file);
-        file_put_contents($this->debug_log_file, $log_line, FILE_APPEND | LOCK_EX);
+        // Also write to legacy debug.log
+        $timestamp = function_exists('current_time')
+            ? current_time('Y-m-d H:i:s')
+            : date('Y-m-d H:i:s');
+
+        $logLine = sprintf("[%s] [%s] %s" . PHP_EOL, $timestamp, strtoupper($level), $message);
+        $this->writeToFile($this->debugLogFile, $logLine);
+    }
+
+    /**
+     * Write to legacy attacks.log format
+     */
+    private function writeLegacyAttackLog(array $context): void
+    {
+        $timestamp = function_exists('current_time')
+            ? current_time('Y-m-d H:i:s')
+            : date('Y-m-d H:i:s');
+
+        $logLine = sprintf(
+            "[%s] [%s] IP: %s | URI: %s | Payload: %s | UA: %s" . PHP_EOL,
+            $timestamp,
+            $context['type'],
+            $context['ip'],
+            $context['uri'],
+            $context['payload'],
+            $context['user_agent']
+        );
+
+        $this->writeToFile($this->attackLogFile, $logLine);
+    }
+
+    /**
+     * Write entry to log file with rotation
+     */
+    private function writeToFile(string $filePath, string $entry): void
+    {
+        $this->maybeRotateLog($filePath);
+        file_put_contents($filePath, $entry, FILE_APPEND | LOCK_EX);
+    }
+
+    /**
+     * Ensure log directory exists and is protected
+     */
+    private function ensureLogDirectory(): void
+    {
+        if (!file_exists($this->logDir)) {
+            if (function_exists('wp_mkdir_p')) {
+                wp_mkdir_p($this->logDir);
+            } else {
+                mkdir($this->logDir, 0755, true);
+            }
+        }
+
+        // Protect with .htaccess
+        $htaccessFile = $this->logDir . '/.htaccess';
+        if (!file_exists($htaccessFile)) {
+            file_put_contents($htaccessFile, "Order deny,allow\nDeny from all");
+        }
+
+        // Protect with index.php
+        $indexFile = $this->logDir . '/index.php';
+        if (!file_exists($indexFile)) {
+            file_put_contents($indexFile, '<?php // Silence is golden');
+        }
     }
 
     /**
      * Sanitize payload for safe logging
-     *
-     * @param string $payload Raw payload.
-     * @return string Sanitized payload.
      */
-    private function sanitize_payload($payload)
+    private function sanitizePayload(string $payload): string
     {
-        // Limit length
         $payload = substr($payload, 0, 500);
-
-        // Remove newlines and tabs
-        $payload = str_replace(array("\n", "\r", "\t"), ' ', $payload);
-
-        // Escape special characters
-        $payload = addslashes($payload);
-
-        return $payload;
+        $payload = str_replace(["\n", "\r", "\t"], ' ', $payload);
+        return addslashes($payload);
     }
 
     /**
      * Rotate log file if it exceeds maximum size
-     *
-     * @param string $log_file Log file path.
      */
-    private function maybe_rotate_log($log_file)
+    private function maybeRotateLog(string $logFile): void
     {
-        if (!file_exists($log_file)) {
+        if (!file_exists($logFile)) {
             return;
         }
 
-        if (filesize($log_file) >= $this->max_log_size) {
-            $backup_file = $log_file . '.' . date('Y-m-d-His') . '.bak';
-            rename($log_file, $backup_file);
-
-            // Keep only last 5 backup files
-            $this->cleanup_old_backups(dirname($log_file), basename($log_file));
+        if (filesize($logFile) >= self::MAX_LOG_SIZE) {
+            $backupFile = $logFile . '.' . date('Y-m-d-His') . '.bak';
+            rename($logFile, $backupFile);
+            $this->cleanupOldBackups(dirname($logFile), basename($logFile));
         }
     }
 
     /**
      * Clean up old backup log files
-     *
-     * @param string $dir      Directory path.
-     * @param string $basename Original log filename.
      */
-    private function cleanup_old_backups($dir, $basename)
+    private function cleanupOldBackups(string $dir, string $basename): void
     {
         $pattern = $dir . '/' . $basename . '.*.bak';
         $backups = glob($pattern);
 
-        if (count($backups) > 5) {
-            // Sort by modification time
-            usort($backups, function ($a, $b) {
-                return filemtime($a) - filemtime($b);
-            });
-
-            // Delete oldest backups
-            $to_delete = array_slice($backups, 0, count($backups) - 5);
-            foreach ($to_delete as $file) {
-                unlink($file);
+        if ($backups && count($backups) > self::MAX_BACKUPS) {
+            usort($backups, fn($a, $b) => filemtime($a) - filemtime($b));
+            $toDelete = array_slice($backups, 0, count($backups) - self::MAX_BACKUPS);
+            foreach ($toDelete as $file) {
+                @unlink($file);
             }
         }
     }
 
     /**
      * Update attack statistics
-     *
-     * @param string $type Attack type.
      */
-    private function update_stats($type)
+    private function updateStats(string $type): void
     {
-        $stats = get_option('spectrus_shield_attack_stats', array(
+        $stats = get_option('spectrus_shield_attack_stats', [
             'total_blocked' => 0,
             'sqli_blocked' => 0,
             'xss_blocked' => 0,
             'rce_blocked' => 0,
             'traversal_blocked' => 0,
             'last_attack' => null,
-            'daily_stats' => array(),
-        ));
+            'daily_stats' => [],
+        ]);
 
-        // Increment counters
         $stats['total_blocked']++;
 
-        $type_key = strtolower($type) . '_blocked';
-        if (isset($stats[$type_key])) {
-            $stats[$type_key]++;
+        $typeKey = strtolower($type) . '_blocked';
+        if (isset($stats[$typeKey])) {
+            $stats[$typeKey]++;
         }
 
-        $stats['last_attack'] = current_time('mysql');
+        $stats['last_attack'] = function_exists('current_time')
+            ? current_time('mysql')
+            : date('Y-m-d H:i:s');
 
-        // Update daily stats (keep last 30 days)
-        $today = current_time('Y-m-d');
+        // Update daily stats
+        $today = function_exists('current_time')
+            ? current_time('Y-m-d')
+            : date('Y-m-d');
+
         if (!isset($stats['daily_stats'][$today])) {
             $stats['daily_stats'][$today] = 0;
         }
         $stats['daily_stats'][$today]++;
 
-        // Prune old daily stats
+        // Prune old daily stats (keep 30 days)
         $cutoff = date('Y-m-d', strtotime('-30 days'));
         foreach ($stats['daily_stats'] as $date => $count) {
             if ($date < $cutoff) {
@@ -266,39 +379,36 @@ class SG_Logger
     }
 
     /**
-     * Get recent attack logs
+     * Get recent attack logs (legacy method)
      *
      * @param int $limit Maximum number of entries to return.
      * @return array Array of log entries.
      */
-    public function get_logs($limit = 100)
+    public function get_logs(int $limit = 100): array
     {
-        if (!file_exists($this->attack_log_file)) {
-            return array();
+        if (!file_exists($this->attackLogFile)) {
+            return [];
         }
 
-        $logs = array();
-        $lines = file($this->attack_log_file, FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES);
-
+        $lines = file($this->attackLogFile, FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES);
         if (empty($lines)) {
-            return array();
+            return [];
         }
 
-        // Get last $limit lines (most recent)
         $lines = array_slice($lines, -$limit);
         $lines = array_reverse($lines);
+        $logs = [];
 
         foreach ($lines as $line) {
-            // Parse log line
             if (preg_match('/\[([^\]]+)\] \[([^\]]+)\] IP: ([^\|]+) \| URI: ([^\|]+) \| Payload: ([^\|]+) \| UA: (.*)/', $line, $matches)) {
-                $logs[] = array(
+                $logs[] = [
                     'timestamp' => trim($matches[1]),
                     'type' => trim($matches[2]),
                     'ip' => trim($matches[3]),
                     'uri' => trim($matches[4]),
                     'payload' => trim($matches[5]),
                     'user_agent' => trim($matches[6]),
-                );
+                ];
             }
         }
 
@@ -307,21 +417,23 @@ class SG_Logger
 
     /**
      * Clear all logs
-     *
-     * @return bool True on success, false on failure.
      */
-    public function clear_logs()
+    public function clear_logs(): bool
     {
         $cleared = true;
 
-        if (file_exists($this->attack_log_file)) {
-            $cleared = unlink($this->attack_log_file);
-        }
+        foreach ([$this->attackLogFile, $this->securityLogFile] as $logFile) {
+            if (file_exists($logFile) && !@unlink($logFile)) {
+                $cleared = false;
+            }
 
-        // Also clear backup files
-        $backups = glob($this->attack_log_file . '.*.bak');
-        foreach ($backups as $backup) {
-            unlink($backup);
+            // Also clear backups
+            $backups = glob($logFile . '.*.bak');
+            if ($backups) {
+                foreach ($backups as $backup) {
+                    @unlink($backup);
+                }
+            }
         }
 
         return $cleared;
@@ -329,29 +441,41 @@ class SG_Logger
 
     /**
      * Get attack statistics
-     *
-     * @return array
      */
-    public function get_stats()
+    public function get_stats(): array
     {
-        return get_option('spectrus_shield_attack_stats', array(
+        return get_option('spectrus_shield_attack_stats', [
             'total_blocked' => 0,
             'sqli_blocked' => 0,
             'xss_blocked' => 0,
             'rce_blocked' => 0,
             'traversal_blocked' => 0,
             'last_attack' => null,
-            'daily_stats' => array(),
-        ));
+            'daily_stats' => [],
+        ]);
     }
 
     /**
-     * Get log file path
-     *
-     * @return string
+     * Get log file path (legacy)
      */
-    public function get_log_path()
+    public function get_log_path(): string
     {
-        return $this->attack_log_file;
+        return $this->attackLogFile;
+    }
+
+    /**
+     * Get security log path (new PSR-3 format)
+     */
+    public function getSecurityLogPath(): string
+    {
+        return $this->securityLogFile;
+    }
+
+    /**
+     * Get log directory path
+     */
+    public function getLogDirectory(): string
+    {
+        return $this->logDir;
     }
 }

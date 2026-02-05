@@ -25,6 +25,11 @@ class SG_Ajax
         add_action('wp_ajax_sg_list_quarantine', array($this, 'handle_list_quarantine'));
         add_action('wp_ajax_sg_restore_quarantine', array($this, 'handle_restore_quarantine'));
         add_action('wp_ajax_sg_delete_quarantine', array($this, 'handle_delete_quarantine'));
+
+        // Chart.js data endpoints
+        add_action('wp_ajax_sg_get_chart_data', array($this, 'handle_get_chart_data'));
+        add_action('wp_ajax_sg_get_threat_summary', array($this, 'handle_get_threat_summary'));
+        add_action('wp_ajax_sg_search_logs', array($this, 'handle_search_logs'));
     }
 
     /**
@@ -342,5 +347,89 @@ class SG_Ajax
         if ($modified) {
             update_option('spectrus_guard_scan_report', $report, false);
         }
+    }
+
+    /**
+     * Handle Chart.js data request
+     *
+     * Returns hourly threat data for visualization.
+     */
+    public function handle_get_chart_data()
+    {
+        check_ajax_referer('spectrus_guard_nonce', 'nonce');
+
+        if (!current_user_can('manage_options')) {
+            wp_send_json_error('Unauthorized');
+        }
+
+        $date = isset($_POST['date']) ? sanitize_text_field($_POST['date']) : date('Y-m-d');
+
+        // Load parser
+        require_once SG_PLUGIN_DIR . 'includes/admin/class-sg-log-parser.php';
+
+        $parser = new SG_Log_Parser();
+        $logger = new SG_Logger();
+        $logFile = $logger->getSecurityLogPath();
+
+        $data = $parser->getStatsForChart($logFile, $date);
+
+        wp_send_json_success($data);
+    }
+
+    /**
+     * Handle threat summary request
+     *
+     * Returns aggregated threat data across multiple days.
+     */
+    public function handle_get_threat_summary()
+    {
+        check_ajax_referer('spectrus_guard_nonce', 'nonce');
+
+        if (!current_user_can('manage_options')) {
+            wp_send_json_error('Unauthorized');
+        }
+
+        $days = isset($_POST['days']) ? absint($_POST['days']) : 7;
+        $days = min($days, 30); // Max 30 days
+
+        require_once SG_PLUGIN_DIR . 'includes/admin/class-sg-log-parser.php';
+
+        $parser = new SG_Log_Parser();
+        $logger = new SG_Logger();
+
+        $data = $parser->getThreatSummary($logger->getLogDirectory(), $days);
+
+        wp_send_json_success($data);
+    }
+
+    /**
+     * Handle log search request
+     */
+    public function handle_search_logs()
+    {
+        check_ajax_referer('spectrus_guard_nonce', 'nonce');
+
+        if (!current_user_can('manage_options')) {
+            wp_send_json_error('Unauthorized');
+        }
+
+        $query = isset($_POST['query']) ? sanitize_text_field($_POST['query']) : '';
+        $limit = isset($_POST['limit']) ? absint($_POST['limit']) : 50;
+
+        if (empty($query)) {
+            wp_send_json_error('Search query required');
+        }
+
+        require_once SG_PLUGIN_DIR . 'includes/admin/class-sg-log-parser.php';
+
+        $parser = new SG_Log_Parser();
+        $logger = new SG_Logger();
+
+        $results = $parser->search($logger->getSecurityLogPath(), $query, $limit);
+
+        wp_send_json_success([
+            'results' => $results,
+            'count' => count($results),
+        ]);
     }
 }
