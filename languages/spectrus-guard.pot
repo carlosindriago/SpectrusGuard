@@ -1,0 +1,433 @@
+# SpectrusGuard Security Suite POT File
+# Copyright (C) 2024 Carlos Indriago
+# This file is distributed under the GPL v2 or later.
+#
+msgid ""
+msgstr ""
+"Project-Id-Version: SpectrusGuard 3.0.7\n"
+"Report-Msgid-Bugs-To: https://github.com/carlosindriago/SpectrusGuard/issues\n"
+"POT-Creation-Date: 2024-02-05 00:00+0000\n"
+"PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
+"Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
+"Language-Team: LANGUAGE <LL@li.org>\n"
+"Language: \n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+
+#: spectrus-guard.php
+msgid "SpectrusGuard"
+msgstr ""
+
+#: includes/admin/pages/class-sg-page-dashboard.php
+msgid "Dashboard"
+msgstr ""
+
+#: includes/admin/pages/class-sg-page-firewall.php
+msgid "Firewall"
+msgstr ""
+
+#: includes/admin/pages/class-sg-page-scanner.php
+msgid "Scanner"
+msgstr ""
+
+#: includes/admin/pages/class-sg-page-quarantine.php
+msgid "Quarantine"
+msgstr ""
+
+#: includes/admin/pages/class-sg-page-whitelist.php
+msgid "Whitelist"
+msgstr ""
+
+#: includes/admin/pages/class-sg-page-hardening.php
+msgid "Hardening"
+msgstr ""
+
+#: includes/admin/pages/class-sg-page-settings.php
+msgid "Settings"
+msgstr ""
+
+#: includes/admin/pages/class-sg-page-help.php
+msgid "Help & Documentation"
+msgstr ""
+
+msgid "Help & Docs"
+msgstr ""
+
+msgid "Getting Started"
+msgstr ""
+
+msgid "Firewall (WAF)"
+msgstr ""
+
+msgid "Malware Scanner"
+msgstr ""
+
+msgid "Login Security"
+msgstr ""
+
+msgid "Geo-Blocking"
+msgstr ""
+
+msgid "API Protection"
+msgstr ""
+
+msgid "Troubleshooting"
+msgstr ""
+
+msgid "FAQ"
+msgstr ""
+
+msgid "Save Settings"
+msgstr ""
+
+msgid "Enable"
+msgstr ""
+
+msgid "Disable"
+msgstr ""
+
+msgid "Enabled"
+msgstr ""
+
+msgid "Disabled"
+msgstr ""
+
+msgid "Yes"
+msgstr ""
+
+msgid "No"
+msgstr ""
+
+msgid "Save"
+msgstr ""
+
+msgid "Cancel"
+msgstr ""
+
+msgid "Delete"
+msgstr ""
+
+msgid "Restore"
+msgstr ""
+
+msgid "Refresh"
+msgstr ""
+
+msgid "Back"
+msgstr ""
+
+msgid "Actions"
+msgstr ""
+
+msgid "Status"
+msgstr ""
+
+msgid "Date"
+msgstr ""
+
+msgid "File"
+msgstr ""
+
+msgid "Size"
+msgstr ""
+
+msgid "Loading..."
+msgstr ""
+
+msgid "Error"
+msgstr ""
+
+msgid "Success"
+msgstr ""
+
+msgid "Warning"
+msgstr ""
+
+msgid "Info"
+msgstr ""
+
+#: Security Status
+msgid "Security Status"
+msgstr ""
+
+msgid "WAF Active"
+msgstr ""
+
+msgid "WAF Inactive"
+msgstr ""
+
+msgid "Protected"
+msgstr ""
+
+msgid "At Risk"
+msgstr ""
+
+#: Attacks
+msgid "Attacks Blocked"
+msgstr ""
+
+msgid "SQL Injection"
+msgstr ""
+
+msgid "XSS"
+msgstr ""
+
+msgid "RCE"
+msgstr ""
+
+msgid "Path Traversal"
+msgstr ""
+
+msgid "Rate Limited"
+msgstr ""
+
+#: Scanner
+msgid "Start Scan"
+msgstr ""
+
+msgid "Quick Scan"
+msgstr ""
+
+msgid "Full Scan"
+msgstr ""
+
+msgid "Scanning..."
+msgstr ""
+
+msgid "Scan Complete"
+msgstr ""
+
+msgid "No threats found"
+msgstr ""
+
+msgid "Threats found"
+msgstr ""
+
+msgid "Critical"
+msgstr ""
+
+msgid "High"
+msgstr ""
+
+msgid "Medium"
+msgstr ""
+
+msgid "Low"
+msgstr ""
+
+#: Quarantine
+msgid "Quarantine Vault"
+msgstr ""
+
+msgid "Security Quarantine"
+msgstr ""
+
+msgid "Quarantined Files"
+msgstr ""
+
+msgid "No Files in Quarantine"
+msgstr ""
+
+msgid "Original Filename"
+msgstr ""
+
+msgid "Quarantine Date"
+msgstr ""
+
+msgid "File Size"
+msgstr ""
+
+msgid "Back to Scanner"
+msgstr ""
+
+#: Whitelist
+msgid "Whitelist Management"
+msgstr ""
+
+msgid "Whitelisted Files"
+msgstr ""
+
+msgid "No Whitelisted Files"
+msgstr ""
+
+msgid "File Path"
+msgstr ""
+
+msgid "SHA-256 Hash"
+msgstr ""
+
+msgid "Whitelisted By"
+msgstr ""
+
+msgid "Date Added"
+msgstr ""
+
+msgid "Run Scan"
+msgstr ""
+
+#: Hardening
+msgid "Hardening Options"
+msgstr ""
+
+msgid "Login Guard"
+msgstr ""
+
+msgid "Two-Factor Authentication"
+msgstr ""
+
+msgid "Brute Force Protection"
+msgstr ""
+
+msgid "Ghost Cloak"
+msgstr ""
+
+msgid "Stealth Mode"
+msgstr ""
+
+msgid "Custom Login URL"
+msgstr ""
+
+msgid "Hide WordPress Version"
+msgstr ""
+
+#: Settings
+msgid "General"
+msgstr ""
+
+msgid "License"
+msgstr ""
+
+msgid "Community Edition"
+msgstr ""
+
+msgid "Pro Features Coming Soon!"
+msgstr ""
+
+msgid "Advanced features and priority support will be available in a future update. Stay tuned!"
+msgstr ""
+
+msgid "You are currently using the free Community Edition of SpectrusGuard. All core security features are fully functional."
+msgstr ""
+
+msgid "Security Modules"
+msgstr ""
+
+msgid "System Environment"
+msgstr ""
+
+#: Help Page - Getting Started
+msgid "Welcome to SpectrusGuard"
+msgstr ""
+
+msgid "First Steps After Installation"
+msgstr ""
+
+msgid "Complete the Setup Wizard"
+msgstr ""
+
+msgid "Verify MU-Plugin Installation"
+msgstr ""
+
+msgid "Run Your First Scan"
+msgstr ""
+
+msgid "Configure Login Protection"
+msgstr ""
+
+msgid "Save Your Rescue Key"
+msgstr ""
+
+msgid "Security Level Recommendations"
+msgstr ""
+
+msgid "Site Type"
+msgstr ""
+
+msgid "Recommended Level"
+msgstr ""
+
+msgid "Notes"
+msgstr ""
+
+msgid "Personal Blog"
+msgstr ""
+
+msgid "Business Website"
+msgstr ""
+
+msgid "E-Commerce (WooCommerce)"
+msgstr ""
+
+msgid "High-Traffic / Enterprise"
+msgstr ""
+
+msgid "Balanced"
+msgstr ""
+
+msgid "Strict"
+msgstr ""
+
+msgid "Custom"
+msgstr ""
+
+#: Resources
+msgid "Resources"
+msgstr ""
+
+msgid "GitHub Repository"
+msgstr ""
+
+msgid "Report an Issue"
+msgstr ""
+
+msgid "Changelog"
+msgstr ""
+
+#: Geo-Blocking
+msgid "Country Blocking"
+msgstr ""
+
+msgid "Block Tor Network"
+msgstr ""
+
+msgid "Blocked Countries"
+msgstr ""
+
+#: API
+msgid "REST API Protection"
+msgstr ""
+
+msgid "Require Authentication"
+msgstr ""
+
+msgid "Custom API Prefix"
+msgstr ""
+
+msgid "Whitelisted Endpoints"
+msgstr ""
+
+#: Messages
+msgid "Settings saved successfully."
+msgstr ""
+
+msgid "An error occurred. Please try again."
+msgstr ""
+
+msgid "Are you sure you want to delete this file?"
+msgstr ""
+
+msgid "Are you sure you want to restore this file?"
+msgstr ""
+
+msgid "File deleted successfully."
+msgstr ""
+
+msgid "File restored successfully."
+msgstr ""
+
+msgid "Access denied."
+msgstr ""
+
+msgid "Invalid request."
+msgstr ""

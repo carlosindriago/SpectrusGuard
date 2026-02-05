@@ -1,0 +1,515 @@
+# SpectrusGuard Security Suite - Spanish Translation
+# Copyright (C) 2024 Carlos Indriago
+# This file is distributed under the GPL v2 or later.
+#
+msgid ""
+msgstr ""
+"Project-Id-Version: SpectrusGuard 3.0.7\n"
+"Report-Msgid-Bugs-To: https://github.com/carlosindriago/SpectrusGuard/issues\n"
+"POT-Creation-Date: 2024-02-05 00:00+0000\n"
+"PO-Revision-Date: 2024-02-05 00:00+0000\n"
+"Last-Translator: Carlos Indriago\n"
+"Language-Team: Spanish\n"
+"Language: es_ES\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Plural-Forms: nplurals=2; plural=(n != 1);\n"
+
+#: spectrus-guard.php
+msgid "SpectrusGuard"
+msgstr "SpectrusGuard"
+
+#: includes/admin/pages/class-sg-page-dashboard.php
+msgid "Dashboard"
+msgstr "Panel de Control"
+
+#: includes/admin/pages/class-sg-page-firewall.php
+msgid "Firewall"
+msgstr "Firewall"
+
+#: includes/admin/pages/class-sg-page-scanner.php
+msgid "Scanner"
+msgstr "Escáner"
+
+#: includes/admin/pages/class-sg-page-quarantine.php
+msgid "Quarantine"
+msgstr "Cuarentena"
+
+#: includes/admin/pages/class-sg-page-whitelist.php
+msgid "Whitelist"
+msgstr "Lista Blanca"
+
+#: includes/admin/pages/class-sg-page-hardening.php
+msgid "Hardening"
+msgstr "Endurecimiento"
+
+#: includes/admin/pages/class-sg-page-settings.php
+msgid "Settings"
+msgstr "Configuración"
+
+#: includes/admin/pages/class-sg-page-help.php
+msgid "Help & Documentation"
+msgstr "Ayuda y Documentación"
+
+msgid "Help & Docs"
+msgstr "Ayuda"
+
+msgid "Help"
+msgstr "Ayuda"
+
+msgid "Getting Started"
+msgstr "Primeros Pasos"
+
+msgid "Firewall (WAF)"
+msgstr "Firewall (WAF)"
+
+msgid "Malware Scanner"
+msgstr "Escáner de Malware"
+
+msgid "Login Security"
+msgstr "Seguridad de Inicio de Sesión"
+
+msgid "Geo-Blocking"
+msgstr "Bloqueo Geográfico"
+
+msgid "API Protection"
+msgstr "Protección de API"
+
+msgid "Troubleshooting"
+msgstr "Solución de Problemas"
+
+msgid "FAQ"
+msgstr "Preguntas Frecuentes"
+
+msgid "Save Settings"
+msgstr "Guardar Configuración"
+
+msgid "Enable"
+msgstr "Habilitar"
+
+msgid "Disable"
+msgstr "Deshabilitar"
+
+msgid "Enabled"
+msgstr "Habilitado"
+
+msgid "Disabled"
+msgstr "Deshabilitado"
+
+msgid "Yes"
+msgstr "Sí"
+
+msgid "No"
+msgstr "No"
+
+msgid "Save"
+msgstr "Guardar"
+
+msgid "Cancel"
+msgstr "Cancelar"
+
+msgid "Delete"
+msgstr "Eliminar"
+
+msgid "Restore"
+msgstr "Restaurar"
+
+msgid "Refresh"
+msgstr "Actualizar"
+
+msgid "Back"
+msgstr "Volver"
+
+msgid "Actions"
+msgstr "Acciones"
+
+msgid "Status"
+msgstr "Estado"
+
+msgid "Date"
+msgstr "Fecha"
+
+msgid "File"
+msgstr "Archivo"
+
+msgid "Size"
+msgstr "Tamaño"
+
+msgid "Loading..."
+msgstr "Cargando..."
+
+msgid "Error"
+msgstr "Error"
+
+msgid "Success"
+msgstr "Éxito"
+
+msgid "Warning"
+msgstr "Advertencia"
+
+msgid "Info"
+msgstr "Información"
+
+#: Security Status
+msgid "Security Status"
+msgstr "Estado de Seguridad"
+
+msgid "WAF Active"
+msgstr "WAF Activo"
+
+msgid "WAF Inactive"
+msgstr "WAF Inactivo"
+
+msgid "Protected"
+msgstr "Protegido"
+
+msgid "At Risk"
+msgstr "En Riesgo"
+
+#: Attacks
+msgid "Attacks Blocked"
+msgstr "Ataques Bloqueados"
+
+msgid "SQL Injection"
+msgstr "Inyección SQL"
+
+msgid "XSS"
+msgstr "XSS"
+
+msgid "RCE"
+msgstr "RCE"
+
+msgid "Path Traversal"
+msgstr "Travesía de Rutas"
+
+msgid "Rate Limited"
+msgstr "Límite de Tasa"
+
+#: Scanner
+msgid "Start Scan"
+msgstr "Iniciar Escaneo"
+
+msgid "Quick Scan"
+msgstr "Escaneo Rápido"
+
+msgid "Full Scan"
+msgstr "Escaneo Completo"
+
+msgid "Scanning..."
+msgstr "Escaneando..."
+
+msgid "Scan Complete"
+msgstr "Escaneo Completado"
+
+msgid "No threats found"
+msgstr "No se encontraron amenazas"
+
+msgid "Threats found"
+msgstr "Amenazas encontradas"
+
+msgid "Critical"
+msgstr "Crítico"
+
+msgid "High"
+msgstr "Alto"
+
+msgid "Medium"
+msgstr "Medio"
+
+msgid "Low"
+msgstr "Bajo"
+
+#: Quarantine
+msgid "Quarantine Vault"
+msgstr "Bóveda de Cuarentena"
+
+msgid "Security Quarantine"
+msgstr "Cuarentena de Seguridad"
+
+msgid "Quarantined Files"
+msgstr "Archivos en Cuarentena"
+
+msgid "No Files in Quarantine"
+msgstr "No hay Archivos en Cuarentena"
+
+msgid "Suspicious files are moved here to prevent them from executing. You can review files, restore false positives, or permanently delete confirmed threats."
+msgstr "Los archivos sospechosos se mueven aquí para evitar que se ejecuten. Puede revisar archivos, restaurar falsos positivos o eliminar permanentemente las amenazas confirmadas."
+
+msgid "Original Filename"
+msgstr "Nombre de Archivo Original"
+
+msgid "Quarantine Date"
+msgstr "Fecha de Cuarentena"
+
+msgid "File Size"
+msgstr "Tamaño del Archivo"
+
+msgid "Back to Scanner"
+msgstr "Volver al Escáner"
+
+msgid "Loading quarantined files..."
+msgstr "Cargando archivos en cuarentena..."
+
+msgid "Great! There are no suspicious files currently quarantined. Your site is clean."
+msgstr "¡Excelente! No hay archivos sospechosos en cuarentena actualmente. Su sitio está limpio."
+
+#: Whitelist
+msgid "Whitelist Management"
+msgstr "Gestión de Lista Blanca"
+
+msgid "Whitelisted Files"
+msgstr "Archivos en Lista Blanca"
+
+msgid "No Whitelisted Files"
+msgstr "No hay Archivos en Lista Blanca"
+
+msgid "File Path"
+msgstr "Ruta del Archivo"
+
+msgid "SHA-256 Hash"
+msgstr "Hash SHA-256"
+
+msgid "Whitelisted By"
+msgstr "Agregado por"
+
+msgid "Date Added"
+msgstr "Fecha de Adición"
+
+msgid "Run Scan"
+msgstr "Ejecutar Escaneo"
+
+msgid "Use Whitelist with Extreme Caution"
+msgstr "Usar la Lista Blanca con Extrema Precaución"
+
+msgid "Files in this list will be PERMANENTLY ignored by the scanner. Only whitelist files you have personally verified are 100% safe. You are fully responsible for any security consequences."
+msgstr "Los archivos en esta lista serán PERMANENTEMENTE ignorados por el escáner. Solo agregue a la lista blanca archivos que haya verificado personalmente que son 100% seguros. Usted es totalmente responsable de cualquier consecuencia de seguridad."
+
+msgid "Loading whitelisted files..."
+msgstr "Cargando archivos de lista blanca..."
+
+msgid "No files are currently whitelisted. The scanner will flag all suspicious files."
+msgstr "No hay archivos en la lista blanca actualmente. El escáner marcará todos los archivos sospechosos."
+
+#: Hardening
+msgid "Hardening Options"
+msgstr "Opciones de Endurecimiento"
+
+msgid "Login Guard"
+msgstr "Guardia de Inicio de Sesión"
+
+msgid "Two-Factor Authentication"
+msgstr "Autenticación de Dos Factores"
+
+msgid "Brute Force Protection"
+msgstr "Protección contra Fuerza Bruta"
+
+msgid "Ghost Cloak"
+msgstr "Manto Fantasma"
+
+msgid "Stealth Mode"
+msgstr "Modo Sigiloso"
+
+msgid "Custom Login URL"
+msgstr "URL de Inicio de Sesión Personalizada"
+
+msgid "Hide WordPress Version"
+msgstr "Ocultar Versión de WordPress"
+
+#: Settings
+msgid "General"
+msgstr "General"
+
+msgid "License"
+msgstr "Licencia"
+
+msgid "Community Edition"
+msgstr "Edición Comunitaria"
+
+msgid "Pro Features Coming Soon!"
+msgstr "¡Funciones Pro Próximamente!"
+
+msgid "Advanced features and priority support will be available in a future update. Stay tuned!"
+msgstr "Las funciones avanzadas y el soporte prioritario estarán disponibles en una futura actualización. ¡Manténgase atento!"
+
+msgid "You are currently using the free Community Edition of SpectrusGuard. All core security features are fully functional."
+msgstr "Actualmente está usando la Edición Comunitaria gratuita de SpectrusGuard. Todas las funciones de seguridad principales están completamente funcionales."
+
+msgid "Security Modules"
+msgstr "Módulos de Seguridad"
+
+msgid "System Environment"
+msgstr "Entorno del Sistema"
+
+msgid "SpectrusGuard Settings"
+msgstr "Configuración de SpectrusGuard"
+
+msgid "Save Security"
+msgstr "Guardar Seguridad"
+
+msgid "SpectrusGuard is Active"
+msgstr "SpectrusGuard está Activo"
+
+msgid "Your site is currently protected against malicious traffic."
+msgstr "Su sitio está actualmente protegido contra tráfico malicioso."
+
+msgid "Quickly access and configure your security policies."
+msgstr "Acceda rápidamente y configure sus políticas de seguridad."
+
+msgid "Firewall & Geo-Defense"
+msgstr "Firewall y Geo-Defensa"
+
+msgid "Configure WAF rules and Country Blocking"
+msgstr "Configure reglas WAF y Bloqueo de Países"
+
+msgid "Login Guard, Ghost Cloak, Stealth Mode"
+msgstr "Guardia de Login, Manto Fantasma, Modo Sigiloso"
+
+msgid "Security Scanner"
+msgstr "Escáner de Seguridad"
+
+msgid "Run malware scans and file integrity checks"
+msgstr "Ejecute escaneos de malware y verificaciones de integridad de archivos"
+
+msgid "View License Details"
+msgstr "Ver Detalles de Licencia"
+
+#: Help Page
+msgid "Welcome to SpectrusGuard"
+msgstr "Bienvenido a SpectrusGuard"
+
+msgid "SpectrusGuard is an enterprise-grade WordPress security suite that provides comprehensive protection for your website."
+msgstr "SpectrusGuard es una suite de seguridad de WordPress de nivel empresarial que proporciona protección integral para su sitio web."
+
+msgid "First Steps After Installation"
+msgstr "Primeros Pasos Después de la Instalación"
+
+msgid "Complete the Setup Wizard"
+msgstr "Complete el Asistente de Configuración"
+
+msgid "Verify MU-Plugin Installation"
+msgstr "Verifique la Instalación del MU-Plugin"
+
+msgid "Run Your First Scan"
+msgstr "Ejecute Su Primer Escaneo"
+
+msgid "Configure Login Protection"
+msgstr "Configure la Protección de Inicio de Sesión"
+
+msgid "Save Your Rescue Key"
+msgstr "Guarde Su Clave de Rescate"
+
+msgid "Security Level Recommendations"
+msgstr "Recomendaciones de Nivel de Seguridad"
+
+msgid "Site Type"
+msgstr "Tipo de Sitio"
+
+msgid "Recommended Level"
+msgstr "Nivel Recomendado"
+
+msgid "Notes"
+msgstr "Notas"
+
+msgid "Personal Blog"
+msgstr "Blog Personal"
+
+msgid "Business Website"
+msgstr "Sitio Web Empresarial"
+
+msgid "E-Commerce (WooCommerce)"
+msgstr "E-Commerce (WooCommerce)"
+
+msgid "High-Traffic / Enterprise"
+msgstr "Alto Tráfico / Empresarial"
+
+msgid "Balanced"
+msgstr "Equilibrado"
+
+msgid "Strict"
+msgstr "Estricto"
+
+msgid "Custom"
+msgstr "Personalizado"
+
+msgid "Basic protection with minimal false positives"
+msgstr "Protección básica con mínimos falsos positivos"
+
+msgid "Recommended for most sites"
+msgstr "Recomendado para la mayoría de los sitios"
+
+msgid "Enhanced logging and payment protection"
+msgstr "Registro mejorado y protección de pagos"
+
+msgid "Configure per environment"
+msgstr "Configure según el entorno"
+
+#: Resources
+msgid "Resources"
+msgstr "Recursos"
+
+msgid "GitHub Repository"
+msgstr "Repositorio GitHub"
+
+msgid "Report an Issue"
+msgstr "Reportar un Problema"
+
+msgid "Changelog"
+msgstr "Registro de Cambios"
+
+msgid "Version"
+msgstr "Versión"
+
+#: Geo-Blocking
+msgid "Country Blocking"
+msgstr "Bloqueo de Países"
+
+msgid "Block Tor Network"
+msgstr "Bloquear Red Tor"
+
+msgid "Blocked Countries"
+msgstr "Países Bloqueados"
+
+#: API
+msgid "REST API Protection"
+msgstr "Protección de API REST"
+
+msgid "Require Authentication"
+msgstr "Requerir Autenticación"
+
+msgid "Custom API Prefix"
+msgstr "Prefijo de API Personalizado"
+
+msgid "Whitelisted Endpoints"
+msgstr "Endpoints en Lista Blanca"
+
+#: Messages
+msgid "Settings saved successfully."
+msgstr "Configuración guardada exitosamente."
+
+msgid "An error occurred. Please try again."
+msgstr "Ocurrió un error. Por favor, inténtelo de nuevo."
+
+msgid "Are you sure you want to delete this file?"
+msgstr "¿Está seguro de que desea eliminar este archivo?"
+
+msgid "Are you sure you want to restore this file?"
+msgstr "¿Está seguro de que desea restaurar este archivo?"
+
+msgid "File deleted successfully."
+msgstr "Archivo eliminado exitosamente."
+
+msgid "File restored successfully."
+msgstr "Archivo restaurado exitosamente."
+
+msgid "Access denied."
+msgstr "Acceso denegado."
+
+msgid "Invalid request."
+msgstr "Solicitud inválida."
+
+msgid "Invalid verification code. Please scan the QR code and try again."
+msgstr "Código de verificación inválido. Por favor, escanee el código QR e inténtelo de nuevo."
+
+msgid "Please enter the verification code from your authenticator app."
+msgstr "Por favor, ingrese el código de verificación de su aplicación autenticadora."
