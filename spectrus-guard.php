@@ -245,11 +245,49 @@ function sg_maybe_update_mu_plugin()
             // Store the new hash
             update_option('sg_mu_plugin_hash', $source_hash);
 
-            // Log the update (optional admin notice)
+            // Show SpectrusGuard-styled notification
             add_action('admin_notices', function () {
-                echo '<div class="notice notice-success is-dismissible">';
-                echo '<p><strong>SpectrusGuard:</strong> ' . esc_html__('MU-Plugin was automatically updated to the latest version.', 'spectrus-guard') . '</p>';
-                echo '</div>';
+                // Only show on SpectrusGuard pages for consistent experience
+                $screen = get_current_screen();
+                $is_sg_page = $screen && strpos($screen->id, 'spectrus-guard') !== false;
+
+                if ($is_sg_page) {
+                    // SpectrusGuard styled alert (matches dashboard alerts)
+                    ?>
+                    <div class="sg-alert sg-alert-success" style="background: linear-gradient(135deg, #059669 0%, #10b981 100%); 
+                                display: flex; align-items: center; gap: 20px; 
+                                padding: 15px 32px; margin: -1px -20px 20px -20px; 
+                                border-radius: 0; color: white;">
+                        <div style="background: rgba(255,255,255,0.2); width: 32px; height: 32px; 
+                                    display: flex; align-items: center; justify-content: center; 
+                                    border-radius: 6px; flex-shrink: 0; font-size: 16px;">
+                            ⚡
+                        </div>
+                        <div style="flex: 1; display: flex; align-items: center; gap: 15px; flex-wrap: wrap;">
+                            <strong style="font-size: 15px;">
+                                <?php esc_html_e('MU-Plugin Updated', 'spectrus-guard'); ?>
+                            </strong>
+                            <span style="opacity: 0.9; font-size: 14px;">
+                                <?php esc_html_e('The security module was automatically synced to the latest version.', 'spectrus-guard'); ?>
+                            </span>
+                        </div>
+                        <span style="background: rgba(255,255,255,0.2); padding: 4px 10px; 
+                                     border-radius: 4px; font-size: 12px; font-weight: 600;">
+                            ✓ <?php esc_html_e('Synced', 'spectrus-guard'); ?>
+                        </span>
+                    </div>
+                    <?php
+                } else {
+                    // Standard WordPress notice for other admin pages
+                    ?>
+                    <div class="notice notice-success is-dismissible" style="border-left-color: #10b981;">
+                        <p>
+                            <strong style="color: #059669;">🛡️ SpectrusGuard:</strong>
+                            <?php esc_html_e('MU-Plugin was automatically updated to the latest version.', 'spectrus-guard'); ?>
+                        </p>
+                    </div>
+                    <?php
+                }
             });
         }
     }
