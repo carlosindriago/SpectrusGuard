@@ -70,16 +70,21 @@ class SG_Heuristics
                     continue;
                 }
 
+                $pathname = $file->getPathname();
+                if (SG_Trusted_Paths::is_vendor_path($pathname)) {
+                    continue;
+                }
+
                 $extension = strtolower(pathinfo($file->getFilename(), PATHINFO_EXTENSION));
 
                 // Check for PHP extensions (including disguised ones)
                 if (in_array($extension, array('php', 'php3', 'php4', 'php5', 'php7', 'phtml', 'phar', 'phps'), true)) {
-                    $php_files[] = str_replace(ABSPATH, '', $file->getPathname());
+                    $php_files[] = str_replace(ABSPATH, '', $pathname);
                 }
 
                 // Check for double extensions (image.jpg.php)
                 if (preg_match('/\.(jpg|jpeg|png|gif|bmp|svg|ico)\.(php|phtml|phar)/i', $file->getFilename())) {
-                    $php_files[] = str_replace(ABSPATH, '', $file->getPathname());
+                    $php_files[] = str_replace(ABSPATH, '', $pathname);
                 }
             }
         } catch (Exception $e) {
@@ -130,6 +135,11 @@ class SG_Heuristics
                         break;
                     }
 
+                    $pathname = $file->getPathname();
+                    if (SG_Trusted_Paths::is_vendor_path($pathname)) {
+                        continue;
+                    }
+
                     $filename = $file->getFilename();
 
                     // Check if starts with dot and is not whitelisted
@@ -143,7 +153,7 @@ class SG_Heuristics
                         }
 
                         if (!$is_whitelisted && $file->isFile()) {
-                            $hidden_files[] = str_replace(ABSPATH, '', $file->getPathname());
+                            $hidden_files[] = str_replace(ABSPATH, '', $pathname);
                         }
                     }
                 }
@@ -191,13 +201,18 @@ class SG_Heuristics
                         continue;
                     }
 
-                    $perms = fileperms($file->getPathname());
+                    $pathname = $file->getPathname();
+                    if (SG_Trusted_Paths::is_vendor_path($pathname)) {
+                        continue;
+                    }
+
+                    $perms = fileperms($pathname);
                     $perms_octal = substr(sprintf('%o', $perms), -3);
 
                     // Check for world-writable (x7x, xx7)
                     if ($perms_octal === '777' || $perms_octal === '776' || $perms_octal === '767') {
                         $dangerous[] = array(
-                            'file' => str_replace(ABSPATH, '', $file->getPathname()),
+                            'file' => str_replace(ABSPATH, '', $pathname),
                             'permissions' => $perms_octal,
                         );
                     }
@@ -206,7 +221,7 @@ class SG_Heuristics
                     $ext = strtolower(pathinfo($file->getFilename(), PATHINFO_EXTENSION));
                     if ($ext === 'php' && ($perms & 0x0002)) {
                         $dangerous[] = array(
-                            'file' => str_replace(ABSPATH, '', $file->getPathname()),
+                            'file' => str_replace(ABSPATH, '', $pathname),
                             'permissions' => $perms_octal,
                         );
                     }
@@ -235,33 +250,20 @@ class SG_Heuristics
         }
 
         try {
-            $iterator = new RecursiveIteratorIterator(
-                new RecursiveDirectoryIterator($directory, RecursiveDirectoryIterator::SKIP_DOTS),
-                RecursiveIteratorIterator::SELF_FIRST
-            );
+            $php_files = SG_Trusted_Paths::get_php_files_in_directory($directory, self::MAX_FILES_PER_DIR);
 
-            $count = 0;
-            foreach ($iterator as $file) {
-                if (++$count > self::MAX_FILES_PER_DIR) {
-                    break;
-                }
-
-                if (!$file->isFile()) {
-                    continue;
-                }
-
-                // Only scan PHP files
-                $ext = strtolower(pathinfo($file->getFilename(), PATHINFO_EXTENSION));
-                if (!in_array($ext, array('php', 'phtml', 'php5', 'php7'), true)) {
+            foreach ($php_files as $file_path) {
+                // Skip vendor path
+                if (SG_Trusted_Paths::is_vendor_path($file_path)) {
                     continue;
                 }
 
                 // Skip large files
-                if ($file->getSize() > self::MAX_FILE_SIZE) {
+                if (@filesize($file_path) > self::MAX_FILE_SIZE) {
                     continue;
                 }
 
-                $file_matches = $this->scan_file_for_signatures($file->getPathname(), $signatures);
+                $file_matches = $this->scan_file_for_signatures($file_path, $signatures);
                 $matches = array_merge($matches, $file_matches);
             }
         } catch (Exception $e) {

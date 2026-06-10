@@ -88,11 +88,11 @@ class SG_Scanner
     /**
      * Severity levels
      */
-    const SEVERITY_CRITICAL = 'critical';
-    const SEVERITY_HIGH = 'high';
-    const SEVERITY_MEDIUM = 'medium';
-    const SEVERITY_LOW = 'low';
-    const SEVERITY_INFO = 'info';
+    const SEVERITY_CRITICAL = SG_SEV_CRITICAL;
+    const SEVERITY_HIGH = SG_SEV_HIGH;
+    const SEVERITY_MEDIUM = SG_SEV_MEDIUM;
+    const SEVERITY_LOW = SG_SEV_LOW;
+    const SEVERITY_INFO = SG_SEV_INFO;
 
     /**
      * Constructor
@@ -112,6 +112,7 @@ class SG_Scanner
      */
     private function load_dependencies()
     {
+        require_once SG_PLUGIN_DIR . 'includes/scanner/class-sg-trusted-paths.php';
         require_once SG_PLUGIN_DIR . 'includes/scanner/class-sg-checksum.php';
         require_once SG_PLUGIN_DIR . 'includes/scanner/class-sg-heuristics.php';
         require_once SG_PLUGIN_DIR . 'includes/scanner/class-sg-advanced-detector.php';
@@ -391,8 +392,8 @@ class SG_Scanner
                 continue;
             }
 
-            // Get all PHP files in directory
-            $php_files = $this->scan_directory_for_php($dir);
+            // Get all PHP files in directory using SG_Trusted_Paths
+            $php_files = SG_Trusted_Paths::get_php_files_in_directory($dir);
 
             $this->update_progress(86 + (($current_dir - 1) * 4) + 1, sprintf(__('Analyzing %d files in %s...', 'spectrus-guard'), count($php_files), $dir_name));
 
@@ -402,6 +403,11 @@ class SG_Scanner
 
                 // Skip this plugin's files
                 if ($this->is_plugin_file($file_path)) {
+                    continue;
+                }
+
+                // Skip vendor path
+                if (SG_Trusted_Paths::is_vendor_path($file_path)) {
                     continue;
                 }
 
@@ -575,7 +581,7 @@ class SG_Scanner
                 continue;
             }
 
-            $php_files = array_merge($php_files, $this->scan_directory_for_php($dir));
+            $php_files = array_merge($php_files, SG_Trusted_Paths::get_php_files_in_directory($dir));
         }
 
         return $php_files;
@@ -589,33 +595,7 @@ class SG_Scanner
      */
     private function scan_directory_for_php($directory)
     {
-        $php_files = array();
-        $iterator = new RecursiveIteratorIterator(
-            new RecursiveDirectoryIterator($directory, RecursiveDirectoryIterator::SKIP_DOTS),
-            RecursiveIteratorIterator::SELF_FIRST
-        );
-
-        $count = 0;
-        foreach ($iterator as $file) {
-            if (++$count > self::MAX_FILES_PER_DIR) {
-                break;
-            }
-
-            if (!$file->isFile()) {
-                continue;
-            }
-
-            $extension = strtolower(pathinfo($file->getFilename(), PATHINFO_EXTENSION));
-
-            // Solo archivos PHP y variantes ofuscadas
-            if (!in_array($extension, array('php', 'phtml', 'php5', 'php7', 'phps'), true)) {
-                continue;
-            }
-
-            $php_files[] = $file->getPathname();
-        }
-
-        return $php_files;
+        return SG_Trusted_Paths::get_php_files_in_directory($directory, self::MAX_FILES_PER_DIR);
     }
 
     /**

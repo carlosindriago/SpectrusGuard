@@ -33,6 +33,13 @@ define('SG_PLUGIN_BASENAME', plugin_basename(__FILE__));
 define('SG_MIN_PHP_VERSION', '8.1');
 define('SG_MIN_WP_VERSION', '6.4');
 
+// Severity constants
+define('SG_SEV_CRITICAL', 'critical');
+define('SG_SEV_HIGH', 'high');
+define('SG_SEV_MEDIUM', 'medium');
+define('SG_SEV_LOW', 'low');
+define('SG_SEV_INFO', 'info');
+
 /**
  * MU-Plugin paths
  */
