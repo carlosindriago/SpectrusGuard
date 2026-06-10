@@ -245,14 +245,39 @@ class SG_Advanced_Detector
             if ($id === T_STRING && in_array(strtolower($text), $this->dangerous_functions, true)) {
                 // Check if it's actually a function call (next non-whitespace token should be '(')
                 if ($this->is_function_call($tokens, $i)) {
-                    $threats[] = array(
-                        'file' => str_replace(ABSPATH, '', $file_path),
-                        'type' => 'dangerous_function',
-                        'severity' => 'CRITICAL',
-                        'description' => sprintf('Dangerous function call: %s()', $text),
-                        'line' => $line,
-                        'function' => $text,
-                    );
+                    // Ignore when prefixed by object operator (->, ?->), double colon (::), or preceded by T_FUNCTION
+                    $is_method_or_def = false;
+                    for ($k = $i - 1; $k >= 0; $k--) {
+                        $prev_token = $tokens[$k];
+                        if (is_array($prev_token)) {
+                            $prev_id = $prev_token[0];
+                            if ($prev_id === T_WHITESPACE || $prev_id === T_COMMENT || $prev_id === T_DOC_COMMENT) {
+                                continue;
+                            }
+                            if ($prev_id === T_OBJECT_OPERATOR || $prev_id === T_DOUBLE_COLON || $prev_id === T_FUNCTION) {
+                                $is_method_or_def = true;
+                            }
+                            if (defined('T_NULLSAFE_OBJECT_OPERATOR') && $prev_id === T_NULLSAFE_OBJECT_OPERATOR) {
+                                $is_method_or_def = true;
+                            }
+                            break;
+                        } else {
+                            break;
+                        }
+                    }
+
+                    if (!$is_method_or_def) {
+                        $snippet = $this->get_argument_snippet($tokens, $i);
+                        $severity = $this->contains_user_input($snippet) ? SG_SEV_CRITICAL : SG_SEV_MEDIUM;
+                        $threats[] = array(
+                            'file' => str_replace(ABSPATH, '', $file_path),
+                            'type' => 'dangerous_function',
+                            'severity' => $severity,
+                            'description' => sprintf('Dangerous function call: %s()', $text),
+                            'line' => $line,
+                            'function' => $text,
+                        );
+                    }
                 }
             }
 
@@ -260,14 +285,30 @@ class SG_Advanced_Detector
             if ($id === T_VARIABLE) {
                 // Check if next non-whitespace token is '('
                 if ($this->is_function_call($tokens, $i)) {
-                    $threats[] = array(
-                        'file' => str_replace(ABSPATH, '', $file_path),
-                        'type' => 'variable_function',
-                        'severity' => 'HIGH',
-                        'description' => sprintf('Variable function call (common obfuscation): %s()', $text),
-                        'line' => $line,
-                        'variable' => $text,
-                    );
+                    // Check if preceded by user input tokens in a search window of 50 tokens
+                    $has_user_input_precursor = false;
+                    $start_lookback = max(0, $i - 50);
+                    for ($k = $i - 1; $k >= $start_lookback; $k--) {
+                        $prev_token = $tokens[$k];
+                        if (is_array($prev_token)) {
+                            $prev_text = $prev_token[1];
+                            if (in_array($prev_text, array('$_GET', '$_POST', '$_REQUEST', '$_COOKIE', '$_SERVER'), true)) {
+                                $has_user_input_precursor = true;
+                                break;
+                            }
+                        }
+                    }
+
+                    if ($has_user_input_precursor) {
+                        $threats[] = array(
+                            'file' => str_replace(ABSPATH, '', $file_path),
+                            'type' => 'variable_function',
+                            'severity' => SG_SEV_HIGH,
+                            'description' => sprintf('Variable function call (common obfuscation): %s()', $text),
+                            'line' => $line,
+                            'variable' => $text,
+                        );
+                    }
                 }
             }
 
@@ -276,7 +317,7 @@ class SG_Advanced_Detector
                 $threats[] = array(
                     'file' => str_replace(ABSPATH, '', $file_path),
                     'type' => 'user_manipulation',
-                    'severity' => 'HIGH',
+                    'severity' => SG_SEV_HIGH,
                     'description' => sprintf('User creation/modification function: %s()', $text),
                     'line' => $line,
                     'function' => $text,
@@ -318,6 +359,154 @@ class SG_Advanced_Detector
     }
 
     /**
+     * Get the argument snippet from tokens starting after a function call parenthesis.
+     *
+     * @param array $tokens All tokens.
+     * @param int   $index Index of function name token.
+     * @return string Argument snippet.
+     */
+    private function get_argument_snippet($tokens, $index)
+    {
+        $snippet = '';
+        $tokens_count = count($tokens);
+        $paren_index = -1;
+
+        // Find the opening parenthesis
+        for ($j = $index + 1; $j < $tokens_count; $j++) {
+            $token = $tokens[$j];
+            if (is_array($token) && $token[0] === T_WHITESPACE) {
+                continue;
+            }
+            if ($token === '(' || (is_array($token) && $token[0] === '(')) {
+                $paren_index = $j;
+                break;
+            }
+            break; // Not a function call if anything else comes first
+        }
+
+        if ($paren_index === -1) {
+            return $snippet;
+        }
+
+        $open_braces = 0;
+        for ($j = $paren_index; $j < $tokens_count; $j++) {
+            $token = $tokens[$j];
+            if ($token === '(' || (is_array($token) && $token[0] === '(')) {
+                $open_braces++;
+            } elseif ($token === ')' || (is_array($token) && $token[0] === ')')) {
+                $open_braces--;
+            }
+
+            // Append token text
+            if (is_array($token)) {
+                $snippet .= $token[1];
+            } else {
+                $snippet .= $token;
+            }
+
+            if ($open_braces === 0) {
+                break;
+            }
+        }
+
+        // Return everything inside the outer parentheses
+        if (strlen($snippet) >= 2 && $snippet[0] === '(' && substr($snippet, -1) === ')') {
+            $snippet = substr($snippet, 1, -1);
+        }
+
+        return trim($snippet);
+    }
+
+    /**
+     * Check if a snippet contains user input superglobals.
+     *
+     * @param string $snippet Snippet code.
+     * @return bool True if user input is present.
+     */
+    private function contains_user_input($snippet)
+    {
+        if (empty($snippet)) {
+            return false;
+        }
+
+        $user_inputs = array('$_GET', '$_POST', '$_REQUEST', '$_COOKIE', '$_SERVER');
+        foreach ($user_inputs as $input) {
+            if (stripos($snippet, $input) !== false) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    /**
+     * Check if a variable is tainted by verifying user input in the context
+     *
+     * @param string $var_name Variable name (e.g. '$sql').
+     * @param string $snippet Proximity context.
+     * @return bool True if tainted.
+     */
+    private function is_variable_tainted($var_name, $snippet)
+    {
+        $user_inputs = array('$_GET', '$_POST', '$_REQUEST', '$_COOKIE', '$_SERVER');
+
+        // 1. If there's no user input anywhere in the snippet, it's not tainted
+        $has_any_user_input = false;
+        foreach ($user_inputs as $input) {
+            if (stripos($snippet, $input) !== false) {
+                $has_any_user_input = true;
+                break;
+            }
+        }
+        if (!$has_any_user_input) {
+            return false;
+        }
+
+        // 2. Look for assignments to this variable in the snippet
+        $escaped_var = preg_quote($var_name, '/');
+        if (preg_match_all('/' . $escaped_var . '\s*(?:\.=|=>|=)\s*([^;]+)/i', $snippet, $matches)) {
+            foreach ($matches[1] as $assignment_expr) {
+                // If assignment has user input directly, it's tainted
+                foreach ($user_inputs as $input) {
+                    if (stripos($assignment_expr, $input) !== false) {
+                        return true;
+                    }
+                }
+
+                // If assignment references other variables, check if they are assigned user input
+                if (preg_match_all('/\$([a-zA-Z0-9_]+)/', $assignment_expr, $var_matches)) {
+                    foreach ($var_matches[1] as $other_var) {
+                        if ('$' . $other_var === $var_name) {
+                            continue;
+                        }
+                        $escaped_other = preg_quote('$' . $other_var, '/');
+                        // Find assignment to $other_var in the snippet
+                        if (preg_match('/' . $escaped_other . '\s*(?:\.=|=>|=)\s*([^;]+)/i', $snippet, $other_matches)) {
+                            foreach ($user_inputs as $input) {
+                                if (stripos($other_matches[1], $input) !== false) {
+                                    return true;
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        // 3. Fallback: If variable's assignment is NOT found in the snippet, but user input exists,
+        // assume it could be tainted (returns true) if there is assignment to any other variable
+        // which might be tainted, or if we cannot determine.
+        $has_assignment = false;
+        if (preg_match('/' . $escaped_var . '\s*(?:\.=|=>|=)/i', $snippet)) {
+            $has_assignment = true;
+        }
+        if (!$has_assignment) {
+            return true;
+        }
+
+        return false;
+    }
+
+    /**
      * Detect obfuscation patterns
      *
      * @param string $file_path File path.
@@ -334,7 +523,7 @@ class SG_Advanced_Detector
             $threats[] = array(
                 'file' => str_replace(ABSPATH, '', $file_path),
                 'type' => 'obfuscation',
-                'severity' => 'CRITICAL',
+                'severity' => SG_SEV_CRITICAL,
                 'description' => 'Base64 + eval obfuscation detected',
                 'line' => $line,
             );
@@ -346,7 +535,7 @@ class SG_Advanced_Detector
             $threats[] = array(
                 'file' => str_replace(ABSPATH, '', $file_path),
                 'type' => 'obfuscation',
-                'severity' => 'CRITICAL',
+                'severity' => SG_SEV_CRITICAL,
                 'description' => 'ROT13 obfuscation with eval detected',
                 'line' => $line,
             );
@@ -358,7 +547,7 @@ class SG_Advanced_Detector
             $threats[] = array(
                 'file' => str_replace(ABSPATH, '', $file_path),
                 'type' => 'obfuscation',
-                'severity' => 'MEDIUM',
+                'severity' => SG_SEV_MEDIUM,
                 'description' => 'Extremely long base64 string detected (possible encoded payload)',
                 'line' => $line,
             );
@@ -370,7 +559,7 @@ class SG_Advanced_Detector
             $threats[] = array(
                 'file' => str_replace(ABSPATH, '', $file_path),
                 'type' => 'obfuscation',
-                'severity' => 'HIGH',
+                'severity' => SG_SEV_HIGH,
                 'description' => 'Hex-encoded string obfuscation detected',
                 'line' => $line,
             );
@@ -398,7 +587,7 @@ class SG_Advanced_Detector
                 $threats[] = array(
                     'file' => str_replace(ABSPATH, '', $file_path),
                     'type' => 'dangerous_hook',
-                    'severity' => 'CRITICAL',
+                    'severity' => SG_SEV_CRITICAL,
                     'description' => sprintf('Dangerous hook usage: %s (query manipulation)', $hook),
                     'line' => $line,
                 );
@@ -411,7 +600,7 @@ class SG_Advanced_Detector
             $threats[] = array(
                 'file' => str_replace(ABSPATH, '', $file_path),
                 'type' => 'spam_injection',
-                'severity' => 'HIGH',
+                'severity' => SG_SEV_HIGH,
                 'description' => 'Potential spam injection in wp_head/wp_footer with base64',
                 'line' => $line,
             );
@@ -423,7 +612,7 @@ class SG_Advanced_Detector
             $threats[] = array(
                 'file' => str_replace(ABSPATH, '', $file_path),
                 'type' => 'conditional_spam',
-                'severity' => 'HIGH',
+                'severity' => SG_SEV_HIGH,
                 'description' => 'Content hidden from logged-in admins (common spam tactic)',
                 'line' => $line,
             );
@@ -461,7 +650,7 @@ class SG_Advanced_Detector
                     $threats[] = array(
                         'file' => defined('ABSPATH') ? str_replace(ABSPATH, '', $file_path) : $file_path,
                         'type' => 'xss_vulnerability',
-                        'severity' => 'HIGH',
+                        'severity' => SG_SEV_HIGH,
                         'description' => 'XSS: Unescaped user input in output',
                         'line' => $line,
                     );
@@ -501,7 +690,7 @@ class SG_Advanced_Detector
                         $threats[] = array(
                             'file' => str_replace(ABSPATH, '', $file_path),
                             'type' => 'hidden_spam',
-                            'severity' => 'HIGH',
+                            'severity' => SG_SEV_HIGH,
                             'description' => sprintf('Hidden spam links detected (keyword: %s)', $keyword),
                             'line' => $line,
                         );
@@ -518,7 +707,7 @@ class SG_Advanced_Detector
                 $threats[] = array(
                     'file' => str_replace(ABSPATH, '', $file_path),
                     'type' => 'suspicious_link',
-                    'severity' => 'MEDIUM',
+                    'severity' => SG_SEV_MEDIUM,
                     'description' => sprintf('Suspicious link keyword found: %s', $keyword),
                     'line' => $line,
                 );
@@ -552,7 +741,7 @@ class SG_Advanced_Detector
                 $threats[] = array(
                     'file' => str_replace(ABSPATH, '', $file_path),
                     'type' => 'input_execution_flow',
-                    'severity' => 'CRITICAL',
+                    'severity' => SG_SEV_CRITICAL,
                     'description' => 'User input directly flows to code execution (backdoor pattern)',
                     'line' => $line,
                 );
@@ -565,7 +754,7 @@ class SG_Advanced_Detector
             $threats[] = array(
                 'file' => str_replace(ABSPATH, '', $file_path),
                 'type' => 'deprecated_dangerous',
-                'severity' => 'CRITICAL',
+                'severity' => SG_SEV_CRITICAL,
                 'description' => 'create_function (deprecated) used with user input',
                 'line' => $line,
             );
@@ -586,53 +775,95 @@ class SG_Advanced_Detector
     {
         $threats = array();
 
-        // Pattern 1: $wpdb->query() with variable (not using prepare)
-        if (preg_match('/\$wpdb->query\s*\(\s*\$/s', $content, $match, PREG_OFFSET_CAPTURE)) {
-            // Check for prepare() in a reasonable proximity
-            $start = max(0, $match[0][1] - 800);
-            $snippet = substr($content, $start, 1600);
+        // Pattern 1: $wpdb->query() (and other methods) with variable (not using prepare)
+        if (preg_match_all('/\$wpdb->(query|get_results|get_var|get_row|get_col)\s*\(\s*(\$[a-zA-Z0-9_]+)\s*\)/i', $content, $matches, PREG_SET_ORDER | PREG_OFFSET_CAPTURE)) {
+            foreach ($matches as $match) {
+                $method_name = $match[1][0];
+                $var_name = $match[2][0];
+                $offset = $match[0][1];
 
-            if (!preg_match('/\$wpdb->prepare\s*\(/', $snippet)) {
-                $line = substr_count(substr($content, 0, $match[0][1]), "\n") + 1;
-                $threats[] = array(
-                    'file' => defined('ABSPATH') ? str_replace(ABSPATH, '', $file_path) : $file_path,
-                    'type' => 'sql_injection',
-                    'severity' => 'CRITICAL',
-                    'description' => 'SQL Injection: Direct variable in query without prepare()',
-                    'line' => $line,
-                );
+                // Check for prepare() in a proximity (lookback window ±3000 chars, total 6000)
+                $start = max(0, $offset - 3000);
+                $snippet = substr($content, $start, 6000);
+
+                if (!preg_match('/\$wpdb->prepare\s*\(/i', $snippet)) {
+                    // Check if variable is tainted by verifying user input in the context
+                    if (!$this->is_variable_tainted($var_name, $snippet)) {
+                        continue;
+                    }
+
+                    // Find variable definition: $var_name = ...
+                    $is_safe_static = false;
+                    if (preg_match('/' . preg_quote($var_name, '/') . '\s*=\s*(["\'])(.*?)\1\s*;/s', $snippet, $def_match)) {
+                        $def_val = $def_match[2];
+                        // Check if the definition has variable interpolation or concatenation
+                        $has_concat = (strpos($def_match[0], '.') !== false);
+                        $has_var = preg_match('/\$[a-zA-Z_]/', $def_val);
+                        if (!$has_concat && !$has_var) {
+                            $is_safe_static = true;
+                        }
+                    }
+
+                    if (!$is_safe_static) {
+                        // Check for sanitization functions in the snippet
+                        $has_sanitization = preg_match('/(?:absint|intval|esc_sql|sanitize_key|sanitize_text_field|floatval|doubleval)\s*\(/i', $snippet);
+                        if (!$has_sanitization) {
+                            $line = substr_count(substr($content, 0, $offset), "\n") + 1;
+                            $threats[] = array(
+                                'file' => defined('ABSPATH') ? str_replace(ABSPATH, '', $file_path) : $file_path,
+                                'type' => 'sql_injection',
+                                'severity' => SG_SEV_CRITICAL,
+                                'description' => sprintf('SQL Injection: Direct variable in query method %s() without prepare() or sanitization', $method_name),
+                                'line' => $line,
+                            );
+                        }
+                    }
+                }
             }
         }
 
         // Pattern 1b: SQL string concatenation with variables
         if (preg_match('/\$sql\s*=\s*["\'][^"\']*(INSERT|SELECT|UPDATE|DELETE)[^"\']*.\s*\$/is', $content, $match, PREG_OFFSET_CAPTURE)) {
-            $line = substr_count(substr($content, 0, $match[0][1]), "\n") + 1;
-            $threats[] = array(
-                'file' => defined('ABSPATH') ? str_replace(ABSPATH, '', $file_path) : $file_path,
-                'type' => 'sql_injection',
-                'severity' => 'CRITICAL',
-                'description' => 'SQL Injection: Variable concatenation in SQL query',
-                'line' => $line,
-            );
+            // Check for sanitization functions in the surrounding context
+            $start = max(0, $match[0][1] - 400);
+            $snippet = substr($content, $start, 800);
+            $has_sanitization = preg_match('/(?:absint|intval|esc_sql|sanitize_key|sanitize_text_field|floatval|doubleval)\s*\(/i', $snippet);
+
+            if (!$has_sanitization) {
+                $line = substr_count(substr($content, 0, $match[0][1]), "\n") + 1;
+                $threats[] = array(
+                    'file' => defined('ABSPATH') ? str_replace(ABSPATH, '', $file_path) : $file_path,
+                    'type' => 'sql_injection',
+                    'severity' => SG_SEV_CRITICAL,
+                    'description' => 'SQL Injection: Variable concatenation in SQL query without sanitization',
+                    'line' => $line,
+                );
+            }
         }
 
         // Pattern 2: Direct $_GET/$_POST in SQL queries
         $sql_patterns = array(
-            '/\$wpdb->query\s*\([^)]*\$_(GET|POST|REQUEST)\[/is',
+            '/\$wpdb->(query|get_results|get_var|get_row|get_col)\s*\([^)]*\$_(GET|POST|REQUEST)\[/is',
             '/mysqli_query\s*\([^)]*\$_(GET|POST|REQUEST)\[/is',
             '/mysql_query\s*\([^)]*\$_(GET|POST|REQUEST)\[/is',
         );
 
         foreach ($sql_patterns as $pattern) {
             if (preg_match($pattern, $content, $match, PREG_OFFSET_CAPTURE)) {
-                $line = substr_count(substr($content, 0, $match[0][1]), "\n") + 1;
-                $threats[] = array(
-                    'file' => defined('ABSPATH') ? str_replace(ABSPATH, '', $file_path) : $file_path,
-                    'type' => 'sql_injection',
-                    'severity' => 'CRITICAL',
-                    'description' => 'SQL Injection: User input directly in SQL query',
-                    'line' => $line,
-                );
+                $start = max(0, $match[0][1] - 400);
+                $snippet = substr($content, $start, 800);
+                $has_sanitization = preg_match('/(?:absint|intval|esc_sql|sanitize_key|sanitize_text_field|floatval|doubleval)\s*\(/i', $snippet);
+
+                if (!$has_sanitization) {
+                    $line = substr_count(substr($content, 0, $match[0][1]), "\n") + 1;
+                    $threats[] = array(
+                        'file' => defined('ABSPATH') ? str_replace(ABSPATH, '', $file_path) : $file_path,
+                        'type' => 'sql_injection',
+                        'severity' => SG_SEV_CRITICAL,
+                        'description' => 'SQL Injection: User input directly in SQL query without sanitization',
+                        'line' => $line,
+                    );
+                }
             }
         }
 
@@ -650,21 +881,47 @@ class SG_Advanced_Detector
     {
         $threats = array();
 
+        // Search entire content for nonces or protective hooks. If present, do not flag.
+        $nonces_and_hooks = array(
+            'wp_verify_nonce',
+            'check_ajax_referer',
+            'wc_verify_nonce',
+            'check_admin_referer',
+            'woocommerce_checkout_process',
+            'wc_nocache_headers',
+            'rest_api_init',
+            'WC_REST'
+        );
+
+        foreach ($nonces_and_hooks as $item) {
+            if (stripos($content, $item) !== false) {
+                return array();
+            }
+        }
+
         // Pattern: $_POST processing without wp_verify_nonce()
         if (preg_match('/if\s*\(\s*isset\s*\(\s*\$_POST\[/', $content, $match, PREG_OFFSET_CAPTURE)) {
             // Check for nonce verification in proximity
             $start = max(0, $match[0][1] - 200);
             $snippet = substr($content, $start, 800);
 
-            if (!preg_match('/wp_verify_nonce\s*\(|check_ajax_referer\s*\(/i', $snippet)) {
-                $line = substr_count(substr($content, 0, $match[0][1]), "\n") + 1;
-                $threats[] = array(
-                    'file' => defined('ABSPATH') ? str_replace(ABSPATH, '', $file_path) : $file_path,
-                    'type' => 'csrf',
-                    'severity' => 'HIGH',
-                    'description' => 'CSRF: Form processing without nonce verification',
-                    'line' => $line,
+            if (!preg_match('/wp_verify_nonce\s*\(|check_ajax_referer\s*\(|wc_verify_nonce\s*\(|check_admin_referer\s*\(/i', $snippet)) {
+                // Check for explicit state changes to reduce noise on read-only form elements
+                $has_state_change = preg_match(
+                    '/(?:wp_insert_post|wp_update_post|wp_delete_post|update_option|add_option|delete_option|wp_insert_comment|wp_delete_comment|wp_create_user|wp_insert_user|wp_update_user|wp_delete_user|\$wpdb->(?:insert|update|delete|query)|update_user_meta|add_user_meta|delete_user_meta|update_post_meta|add_post_meta|delete_post_meta)/i',
+                    $snippet
                 );
+
+                if ($has_state_change) {
+                    $line = substr_count(substr($content, 0, $match[0][1]), "\n") + 1;
+                    $threats[] = array(
+                        'file' => defined('ABSPATH') ? str_replace(ABSPATH, '', $file_path) : $file_path,
+                        'type' => 'csrf',
+                        'severity' => SG_SEV_HIGH,
+                        'description' => 'CSRF: Form processing without nonce verification on state-changing operation',
+                        'line' => $line,
+                    );
+                }
             }
         }
 
@@ -695,7 +952,7 @@ class SG_Advanced_Detector
                 $threats[] = array(
                     'file' => defined('ABSPATH') ? str_replace(ABSPATH, '', $file_path) : $file_path,
                     'type' => 'unsafe_file_upload',
-                    'severity' => 'CRITICAL',
+                    'severity' => SG_SEV_CRITICAL,
                     'description' => 'Unsafe File Upload: No extension/type validation detected',
                     'line' => $line,
                 );
@@ -745,7 +1002,7 @@ class SG_Advanced_Detector
             $threats[] = array(
                 'file' => defined('ABSPATH') ? str_replace(ABSPATH, '', $file_path) : $file_path,
                 'type' => 'crypto_mining',
-                'severity' => 'CRITICAL',
+                'severity' => SG_SEV_CRITICAL,
                 'description' => sprintf('Cryptocurrency mining script detected (keywords: %s)', implode(', ', $found_keywords)),
                 'line' => 1,
             );
@@ -783,7 +1040,7 @@ class SG_Advanced_Detector
                 $threats[] = array(
                     'file' => defined('ABSPATH') ? str_replace(ABSPATH, '', $file_path) : $file_path,
                     'type' => 'information_disclosure',
-                    'severity' => 'CRITICAL',
+                    'severity' => SG_SEV_CRITICAL,
                     'description' => sprintf('Info Disclosure: DB credentials exposed (%s)', $constant),
                     'line' => $line,
                 );
@@ -812,27 +1069,51 @@ class SG_Advanced_Detector
 
         foreach ($lfi_patterns as $pattern) {
             if (preg_match($pattern, $content, $match, PREG_OFFSET_CAPTURE)) {
-                $line = substr_count(substr($content, 0, $match[0][1]), "\n") + 1;
-                $threats[] = array(
-                    'file' => defined('ABSPATH') ? str_replace(ABSPATH, '', $file_path) : $file_path,
-                    'type' => 'lfi',
-                    'severity' => 'CRITICAL',
-                    'description' => 'LFI: User input in include/require',
-                    'line' => $line,
+                $start = max(0, $match[0][1] - 400);
+                $snippet = substr($content, $start, 800);
+
+                $is_safe = preg_match(
+                    '/(?:plugin_basename|sanitize_key|basename|switch|in_array|array_key_exists|\$class_map|\$whitelist|\$allowed_files|\$allowed)\s*\(/i',
+                    $snippet
                 );
+
+                if (!$is_safe) {
+                    $line = substr_count(substr($content, 0, $match[0][1]), "\n") + 1;
+                    $threats[] = array(
+                        'file' => defined('ABSPATH') ? str_replace(ABSPATH, '', $file_path) : $file_path,
+                        'type' => 'lfi',
+                        'severity' => SG_SEV_CRITICAL,
+                        'description' => 'LFI: User input in include/require',
+                        'line' => $line,
+                    );
+                }
             }
         }
 
         // Pattern 2: include with concatenation
-        if (preg_match('/(?:include|require)(?:_once)?\s*\([^)]*\.\s*["\'][^"\']*.php/i', $content, $match, PREG_OFFSET_CAPTURE)) {
-            $line = substr_count(substr($content, 0, $match[0][1]), "\n") + 1;
-            $threats[] = array(
-                'file' => defined('ABSPATH') ? str_replace(ABSPATH, '', $file_path) : $file_path,
-                'type' => 'lfi',
-                'severity' => 'HIGH',
-                'description' => 'LFI: Dynamic file inclusion with concatenation',
-                'line' => $line,
-            );
+        if (preg_match('/(?:include|require)(?:_once)?\s*\(([^)]+\.\s*["\'][^"\']*\.php[^)]*)\)/i', $content, $match, PREG_OFFSET_CAPTURE)) {
+            $expr = $match[1][0];
+            // Permit LFI inclusions containing safe constants and path functions without variables
+            if (strpos($expr, '$') !== false) {
+                $start = max(0, $match[0][1] - 400);
+                $snippet = substr($content, $start, 800);
+
+                $is_safe = preg_match(
+                    '/(?:plugin_basename|sanitize_key|basename|switch|in_array|array_key_exists|\$class_map|\$whitelist|\$allowed_files|\$allowed)\s*\(/i',
+                    $snippet
+                );
+
+                if (!$is_safe) {
+                    $line = substr_count(substr($content, 0, $match[0][1]), "\n") + 1;
+                    $threats[] = array(
+                        'file' => defined('ABSPATH') ? str_replace(ABSPATH, '', $file_path) : $file_path,
+                        'type' => 'lfi',
+                        'severity' => SG_SEV_HIGH,
+                        'description' => 'LFI: Dynamic file inclusion with concatenation',
+                        'line' => $line,
+                    );
+                }
+            }
         }
 
         return $threats;
@@ -866,7 +1147,7 @@ class SG_Advanced_Detector
                     $threats[] = array(
                         'file' => defined('ABSPATH') ? str_replace(ABSPATH, '', $file_path) : $file_path,
                         'type' => 'path_traversal',
-                        'severity' => 'CRITICAL',
+                        'severity' => SG_SEV_CRITICAL,
                         'description' => "Path Traversal: User input in {$func}() without sanitization",
                         'line' => $line,
                     );
@@ -896,7 +1177,7 @@ class SG_Advanced_Detector
                 $threats[] = array(
                     'file' => defined('ABSPATH') ? str_replace(ABSPATH, '', $file_path) : $file_path,
                     'type' => 'arbitrary_file_write',
-                    'severity' => 'CRITICAL',
+                    'severity' => SG_SEV_CRITICAL,
                     'description' => 'Arbitrary File Write: file_put_contents with user input',
                     'line' => $line,
                 );
@@ -910,7 +1191,7 @@ class SG_Advanced_Detector
                 $threats[] = array(
                     'file' => defined('ABSPATH') ? str_replace(ABSPATH, '', $file_path) : $file_path,
                     'type' => 'arbitrary_file_write',
-                    'severity' => 'CRITICAL',
+                    'severity' => SG_SEV_CRITICAL,
                     'description' => 'Arbitrary File Write: fwrite with user input',
                     'line' => $line,
                 );
@@ -939,7 +1220,7 @@ class SG_Advanced_Detector
                 $threats[] = array(
                     'file' => defined('ABSPATH') ? str_replace(ABSPATH, '', $file_path) : $file_path,
                     'type' => 'arbitrary_file_delete',
-                    'severity' => 'CRITICAL',
+                    'severity' => SG_SEV_CRITICAL,
                     'description' => 'Arbitrary File Delete: unlink with user input',
                     'line' => $line,
                 );
@@ -953,7 +1234,7 @@ class SG_Advanced_Detector
                 $threats[] = array(
                     'file' => defined('ABSPATH') ? str_replace(ABSPATH, '', $file_path) : $file_path,
                     'type' => 'arbitrary_file_delete',
-                    'severity' => 'CRITICAL',
+                    'severity' => SG_SEV_CRITICAL,
                     'description' => 'Arbitrary File Delete: User-controlled path',
                     'line' => $line,
                 );
@@ -989,7 +1270,7 @@ class SG_Advanced_Detector
                 $threats[] = array(
                     'file' => defined('ABSPATH') ? str_replace(ABSPATH, '', $file_path) : $file_path,
                     'type' => 'email_injection',
-                    'severity' => 'HIGH',
+                    'severity' => SG_SEV_HIGH,
                     'description' => 'Email Header Injection: Unsanitized user input in wp_mail()',
                     'line' => $line,
                 );
@@ -1018,7 +1299,7 @@ class SG_Advanced_Detector
                 $threats[] = array(
                     'file' => defined('ABSPATH') ? str_replace(ABSPATH, '', $file_path) : $file_path,
                     'type' => 'ssrf',
-                    'severity' => 'CRITICAL',
+                    'severity' => SG_SEV_CRITICAL,
                     'description' => 'SSRF: User-controlled URL in wp_remote request',
                     'line' => $line,
                 );
@@ -1033,7 +1314,7 @@ class SG_Advanced_Detector
                 $threats[] = array(
                     'file' => defined('ABSPATH') ? str_replace(ABSPATH, '', $file_path) : $file_path,
                     'type' => 'ssrf',
-                    'severity' => 'CRITICAL',
+                    'severity' => SG_SEV_CRITICAL,
                     'description' => 'SSRF: User-controlled URL in cURL',
                     'line' => $line,
                 );
@@ -1077,7 +1358,7 @@ class SG_Advanced_Detector
                     $threats[] = array(
                         'file' => defined('ABSPATH') ? str_replace(ABSPATH, '', $file_path) : $file_path,
                         'type' => 'command_injection',
-                        'severity' => 'CRITICAL',
+                        'severity' => SG_SEV_CRITICAL,
                         'description' => 'Command Injection: User input in system command',
                         'line' => $line,
                     );
@@ -1107,7 +1388,7 @@ class SG_Advanced_Detector
                 $threats[] = array(
                     'file' => defined('ABSPATH') ? str_replace(ABSPATH, '', $file_path) : $file_path,
                     'type' => 'object_injection',
-                    'severity' => 'CRITICAL',
+                    'severity' => SG_SEV_CRITICAL,
                     'description' => 'Object Injection: unserialize() with user input',
                     'line' => $line,
                 );
@@ -1139,6 +1420,7 @@ class SG_Advanced_Detector
      */
     public function get_severity_color($severity)
     {
+        $severity_upper = strtoupper($severity);
         $colors = array(
             'CRITICAL' => '#dc3545',
             'HIGH' => '#fd7e14',
@@ -1146,6 +1428,6 @@ class SG_Advanced_Detector
             'LOW' => '#28a745',
         );
 
-        return isset($colors[$severity]) ? $colors[$severity] : '#6c757d';
+        return isset($colors[$severity_upper]) ? $colors[$severity_upper] : '#6c757d';
     }
 }
