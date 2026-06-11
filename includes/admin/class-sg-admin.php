@@ -25,6 +25,7 @@ require_once SG_PLUGIN_DIR . 'includes/admin/pages/class-sg-page-settings.php';
 require_once SG_PLUGIN_DIR . 'includes/admin/pages/class-sg-page-results.php';
 require_once SG_PLUGIN_DIR . 'includes/admin/pages/class-sg-page-help.php';
 require_once SG_PLUGIN_DIR . 'includes/admin/class-sg-ajax.php';
+require_once SG_PLUGIN_DIR . 'includes/admin/class-sg-dashboard-widget.php';
 
 /**
  * Class SG_Admin
@@ -80,6 +81,8 @@ class SG_Admin
         $this->page_settings = new SG_Page_Settings($loader);
         $this->page_results = new SG_Page_Results($loader);
         $this->page_help = new SG_Page_Help($loader);
+
+        new SG_Dashboard_Widget($loader);
 
         // Initialize AJAX Handler
         $this->ajax = new SG_Ajax();
