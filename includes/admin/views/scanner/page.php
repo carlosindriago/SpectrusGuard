@@ -64,11 +64,11 @@ $badge_counts = array(
     </div>
 
     <div class="sg-scanner-summary">
-        <span class="sg-badge sg-badge-critical"><?php echo esc_html('CRITICAL: ' . (string) $badge_counts['critical']); ?></span>
-        <span class="sg-badge sg-badge-high"><?php echo esc_html('HIGH: ' . (string) $badge_counts['high']); ?></span>
-        <span class="sg-badge sg-badge-medium"><?php echo esc_html('MEDIUM: ' . (string) $badge_counts['medium']); ?></span>
-        <span class="sg-badge sg-badge-low"><?php echo esc_html('LOW: ' . (string) $badge_counts['low']); ?></span>
-        <span class="sg-badge sg-badge-info"><?php echo esc_html('INFO: ' . (string) $badge_counts['info']); ?></span>
+        <span class="sg-badge sg-badge-critical" id="sg-badge-critical"><?php echo esc_html('CRITICAL: ' . (string) $badge_counts['critical']); ?></span>
+        <span class="sg-badge sg-badge-high" id="sg-badge-high"><?php echo esc_html('HIGH: ' . (string) $badge_counts['high']); ?></span>
+        <span class="sg-badge sg-badge-medium" id="sg-badge-medium"><?php echo esc_html('MEDIUM: ' . (string) $badge_counts['medium']); ?></span>
+        <span class="sg-badge sg-badge-low" id="sg-badge-low"><?php echo esc_html('LOW: ' . (string) $badge_counts['low']); ?></span>
+        <span class="sg-badge sg-badge-info" id="sg-badge-info"><?php echo esc_html('INFO: ' . (string) $badge_counts['info']); ?></span>
     </div>
 
     <div class="sg-scanner-filters">

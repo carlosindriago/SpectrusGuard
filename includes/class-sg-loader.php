@@ -410,8 +410,9 @@ class SG_Loader
             )
         );
 
-        // Scanner-specific assets
-        if (strpos($hook, 'spectrus-guard') !== false) {
+        // Scanner-specific assets (legacy scanner UI). Skip the new scanner page UI.
+        $is_new_scanner_page = ($hook === 'spectrus-guard_page_spectrus-guard-scanner');
+        if (strpos($hook, 'spectrus-guard') !== false && !$is_new_scanner_page) {
 
             wp_enqueue_script(
                 'spectrus-guard-scanner',

@@ -29,6 +29,7 @@ class SG_Page_Scanner
     {
         $this->loader = $loader;
         $this->register_ajax_handlers();
+        add_action('admin_enqueue_scripts', array($this, 'enqueue_assets'));
     }
 
     /**
@@ -62,6 +63,8 @@ class SG_Page_Scanner
         $saved_threats = isset($saved['threats']) && is_array($saved['threats']) ? $saved['threats'] : array();
         $prepared_threats = $this->prepare_threats_for_display($saved_threats, $suppressed_hashes);
 
+        $this->localize_scanner_data($saved, $prepared_threats);
+
         $data = array(
             'scan' => $saved,
             'threats' => $prepared_threats,
@@ -70,6 +73,59 @@ class SG_Page_Scanner
 
         // Load view template
         $this->render_view('scanner/page.php', $data);
+    }
+
+    /**
+     * Enqueue scanner UI assets only on scanner page.
+     *
+     * @param string $hook Current admin page hook.
+     * @return void
+     */
+    public function enqueue_assets(string $hook): void
+    {
+        if ($hook !== 'spectrus-guard_page_spectrus-guard-scanner') {
+            return;
+        }
+
+        wp_enqueue_script(
+            'sg-scanner',
+            SG_PLUGIN_URL . 'assets/js/sg-scanner.js',
+            array(),
+            SG_VERSION,
+            true
+        );
+    }
+
+    /**
+     * Localize scanner data for JavaScript.
+     *
+     * @param array $scan Saved scan data.
+     * @param array $threats Prepared threats.
+     * @return void
+     */
+    private function localize_scanner_data(array $scan, array $threats): void
+    {
+        $timestamp = isset($scan['timestamp']) ? (int) $scan['timestamp'] : 0;
+        if ($timestamp) {
+            $scan['formatted_timestamp'] = wp_date('d/m/Y H:i', $timestamp);
+        }
+
+        wp_localize_script(
+            'sg-scanner',
+            'sgScanner',
+            array(
+                'ajaxUrl' => admin_url('admin-ajax.php'),
+                'runScanNonce' => wp_create_nonce('sg_run_scan_nonce'),
+                'suppressNonce' => wp_create_nonce('sg_suppress_threat_nonce'),
+                'scan' => $scan,
+                'threats' => array_values($threats),
+                'labels' => array(
+                    'suppress' => __('Suprimir', 'spectrus-guard'),
+                    'restore' => __('Restaurar', 'spectrus-guard'),
+                    'page' => __('Página', 'spectrus-guard'),
+                ),
+            )
+        );
     }
 
     /**
