@@ -70,3 +70,7 @@ wp-config.php
 .Jules/
 .agent/
 *.log
+engram-export.json
+temp_export.json
+temp_tasks.md
+sdd/fix-scanner-false-positives/apply-progress.md
