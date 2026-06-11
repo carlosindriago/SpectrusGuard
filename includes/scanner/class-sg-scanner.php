@@ -192,7 +192,9 @@ class SG_Scanner
         update_option('spectrus_shield_last_scan', current_time('mysql'));
 
         // Save detailed results and update history for UI
-        $this->save_scan_results($this->results);
+        $timestamp = (int) current_time('timestamp');
+        $this->save_scan_results($this->results, $timestamp);
+        $this->save_scan_report_and_history($this->results);
 
         return $this->results;
     }
@@ -383,6 +385,7 @@ class SG_Scanner
         $plugin_dir = $this->get_plugin_dir();
         $total_dirs = count($directories);
         $current_dir = 0;
+        $scanned_files = 0;
 
         foreach ($directories as $dir => $dir_name) {
             $current_dir++;
@@ -417,6 +420,8 @@ class SG_Scanner
                     continue;
                 }
 
+                $scanned_files++;
+
                 // Update progress every 20 files
                 if ($checked % 20 === 0) {
                     $this->update_progress(
@@ -433,6 +438,8 @@ class SG_Scanner
                 }
             }
         }
+
+        $this->results['advanced_total_files'] = $scanned_files;
     }
 
     /**
@@ -812,11 +819,12 @@ class SG_Scanner
         return isset($order[$severity]) ? $order[$severity] : 99;
     }
     /**
-     * Save scan results and update history
-     * 
-     * @param array $results Scan results
+     * Save latest scan report and update scan history (legacy UI support).
+     *
+     * @param array $results Scan results.
+     * @return void
      */
-    private function save_scan_results($results)
+    private function save_scan_report_and_history(array $results): void
     {
         // Save latest report for the Results Page
         update_option('spectrus_guard_scan_report', $results, false); // Autoload=false to avoid performance hit
@@ -836,6 +844,287 @@ class SG_Scanner
         );
 
         update_option('spectrus_guard_scan_history', $history);
+    }
+
+    /**
+     * Persist the last scan results for Phase 3-A endpoints.
+     *
+     * @param array $results Scan results (full scan array or list containing advanced threats).
+     * @param int   $timestamp Unix timestamp.
+     * @return void
+     */
+    public function save_scan_results(array $results, int $timestamp): void
+    {
+        $threats = $this->extract_advanced_threats($results);
+        $threats = $this->sort_and_truncate_threats($threats, 500);
+        $threats = $this->sanitize_threat_contexts($threats);
+
+        $data = array(
+            'timestamp' => $timestamp,
+            'total_files' => $this->extract_total_files($results),
+            'total_threats' => count($threats),
+            'threats' => $threats,
+            'summary' => $this->build_severity_summary($threats),
+        );
+
+        update_option('sg_last_scan_results', $data, false);
+    }
+
+    /**
+     * Get persisted scan results.
+     *
+     * @return array Saved scan results or empty array.
+     */
+    public function get_scan_results(): array
+    {
+        $data = get_option('sg_last_scan_results', array());
+        return is_array($data) ? $data : array();
+    }
+
+    /**
+     * Get suppressed threat hashes.
+     *
+     * @return array Array of suppressed hashes.
+     */
+    public function get_suppressed_hashes(): array
+    {
+        $hashes = get_option('sg_suppressed_threats', array());
+        return is_array($hashes) ? array_values($hashes) : array();
+    }
+
+    /**
+     * AJAX handler: run full scan and persist results.
+     *
+     * @return void
+     */
+    public function handle_ajax_run_scan(): void
+    {
+        if (!check_ajax_referer('sg_run_scan_nonce', 'nonce', false)) {
+            return;
+        }
+
+        if (!current_user_can('manage_options')) {
+            wp_send_json_error(array('message' => __('Unauthorized', 'spectrus-guard')), 403);
+        }
+
+        $results = $this->run_full_scan(true);
+        if (!is_array($results)) {
+            wp_send_json_error(array('message' => __('Scan failed.', 'spectrus-guard')));
+        }
+
+        $timestamp = (int) current_time('timestamp');
+        $this->save_scan_results($results, $timestamp);
+        $saved = $this->get_scan_results();
+
+        wp_send_json_success(array(
+            'total_files' => isset($saved['total_files']) ? (int) $saved['total_files'] : 0,
+            'total_threats' => isset($saved['total_threats']) ? (int) $saved['total_threats'] : 0,
+            'summary' => isset($saved['summary']) && is_array($saved['summary']) ? $saved['summary'] : array(),
+        ));
+    }
+
+    /**
+     * AJAX handler: suppress a threat by hash.
+     *
+     * @return void
+     */
+    public function handle_ajax_suppress_threat(): void
+    {
+        check_ajax_referer('sg_suppress_threat_nonce', 'nonce');
+
+        if (!current_user_can('manage_options')) {
+            wp_send_json_error(array('message' => __('Unauthorized', 'spectrus-guard')), 403);
+        }
+
+        $threat = $this->get_threat_from_request();
+        $hash = $this->compute_threat_hash($threat);
+        $this->add_suppressed_hash($hash);
+
+        wp_send_json_success(array('hash' => $hash));
+    }
+
+    /**
+     * AJAX handler: unsuppress a threat by hash.
+     *
+     * @return void
+     */
+    public function handle_ajax_unsuppress_threat(): void
+    {
+        check_ajax_referer('sg_suppress_threat_nonce', 'nonce');
+
+        if (!current_user_can('manage_options')) {
+            wp_send_json_error(array('message' => __('Unauthorized', 'spectrus-guard')), 403);
+        }
+
+        $threat = $this->get_threat_from_request();
+        $hash = $this->compute_threat_hash($threat);
+        $this->remove_suppressed_hash($hash);
+
+        wp_send_json_success(array('hash' => $hash));
+    }
+
+    /**
+     * Extract advanced threats from a full scan result.
+     *
+     * @param array $results Scan results.
+     * @return array Threats list.
+     */
+    private function extract_advanced_threats(array $results): array
+    {
+        if (isset($results['advanced_threats']) && is_array($results['advanced_threats'])) {
+            return $results['advanced_threats'];
+        }
+
+        return isset($results['threats']) && is_array($results['threats']) ? $results['threats'] : array();
+    }
+
+    /**
+     * Extract total files count from results when available.
+     *
+     * @param array $results Scan results.
+     * @return int Total files count.
+     */
+    private function extract_total_files(array $results): int
+    {
+        if (isset($results['advanced_total_files'])) {
+            return (int) $results['advanced_total_files'];
+        }
+
+        return isset($results['total_files']) ? (int) $results['total_files'] : 0;
+    }
+
+    /**
+     * Sort threats by score descending and truncate to max.
+     *
+     * @param array $threats Threat list.
+     * @param int   $max Maximum number of threats.
+     * @return array Sorted threats list.
+     */
+    private function sort_and_truncate_threats(array $threats, int $max): array
+    {
+        usort($threats, function ($a, $b) {
+            $a_score = isset($a['score']) ? (int) $a['score'] : 0;
+            $b_score = isset($b['score']) ? (int) $b['score'] : 0;
+            return $b_score <=> $a_score;
+        });
+
+        if (count($threats) > $max) {
+            $threats = array_slice($threats, 0, $max);
+        }
+
+        return $threats;
+    }
+
+    /**
+     * Sanitize threat contexts before persisting.
+     *
+     * @param array $threats Threat list.
+     * @return array Sanitized threats.
+     */
+    private function sanitize_threat_contexts(array $threats): array
+    {
+        foreach ($threats as &$threat) {
+            if (isset($threat['context']) && is_string($threat['context'])) {
+                $threat['context'] = sanitize_textarea_field($threat['context']);
+            }
+        }
+
+        return $threats;
+    }
+
+    /**
+     * Build severity summary counts for threats.
+     *
+     * @param array $threats Threat list.
+     * @return array Summary counts.
+     */
+    private function build_severity_summary(array $threats): array
+    {
+        $summary = array(
+            'critical' => 0,
+            'high' => 0,
+            'medium' => 0,
+            'low' => 0,
+            'info' => 0,
+        );
+
+        foreach ($threats as $threat) {
+            $sev = isset($threat['severity']) ? strtolower((string) $threat['severity']) : '';
+            if (isset($summary[$sev])) {
+                $summary[$sev]++;
+            }
+        }
+
+        return $summary;
+    }
+
+    /**
+     * Read threat identity from AJAX request payload.
+     *
+     * @return array Threat identity data.
+     */
+    private function get_threat_from_request(): array
+    {
+        $file = isset($_POST['file']) ? sanitize_text_field(wp_unslash($_POST['file'])) : '';
+        $type = isset($_POST['type']) ? sanitize_text_field(wp_unslash($_POST['type'])) : '';
+        $line = isset($_POST['line']) ? absint($_POST['line']) : 0;
+
+        return array(
+            'file' => $file,
+            'type' => $type,
+            'line' => $line,
+        );
+    }
+
+    /**
+     * Compute deterministic threat hash.
+     *
+     * @param array $threat Threat identity data.
+     * @return string Hash string.
+     */
+    private function compute_threat_hash(array $threat): string
+    {
+        $file = isset($threat['file']) ? (string) $threat['file'] : '';
+        $type = isset($threat['type']) ? (string) $threat['type'] : '';
+        $line = isset($threat['line']) ? (int) $threat['line'] : 0;
+
+        return md5($file . '|' . $type . '|' . $line);
+    }
+
+    /**
+     * Add a hash to the suppressed list (max 200, FIFO).
+     *
+     * @param string $hash Threat hash.
+     * @return void
+     */
+    private function add_suppressed_hash(string $hash): void
+    {
+        $hashes = $this->get_suppressed_hashes();
+        if (in_array($hash, $hashes, true)) {
+            return;
+        }
+
+        $hashes[] = $hash;
+        if (count($hashes) > 200) {
+            $hashes = array_slice($hashes, -200);
+        }
+
+        update_option('sg_suppressed_threats', $hashes, false);
+    }
+
+    /**
+     * Remove a hash from the suppressed list.
+     *
+     * @param string $hash Threat hash.
+     * @return void
+     */
+    private function remove_suppressed_hash(string $hash): void
+    {
+        $hashes = array_values(array_filter($this->get_suppressed_hashes(), function ($item) use ($hash) {
+            return $item !== $hash;
+        }));
+
+        update_option('sg_suppressed_threats', $hashes, false);
     }
 
 }

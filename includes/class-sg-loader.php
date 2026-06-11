@@ -301,6 +301,12 @@ class SG_Loader
         // Register REST API endpoints
         add_action('rest_api_init', array($this, 'register_rest_routes'));
 
+        if ($this->scanner && method_exists($this->scanner, 'handle_ajax_run_scan')) {
+            add_action('wp_ajax_sg_run_scan', array($this->scanner, 'handle_ajax_run_scan'));
+            add_action('wp_ajax_sg_suppress_threat', array($this->scanner, 'handle_ajax_suppress_threat'));
+            add_action('wp_ajax_sg_unsuppress_threat', array($this->scanner, 'handle_ajax_unsuppress_threat'));
+        }
+
         // Admin assets
         if (is_admin()) {
             add_action('admin_enqueue_scripts', array($this, 'enqueue_admin_assets'));
