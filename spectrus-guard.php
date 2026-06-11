@@ -311,6 +311,9 @@ function sg_deactivate()
         unlink(SG_MU_DESTINATION);
     }
 
+    delete_option('sg_last_scan_results');
+    delete_option('sg_suppressed_threats');
+
     // Clear scheduled events if any
     wp_clear_scheduled_hook('spectrus_shield_daily_scan');
 
