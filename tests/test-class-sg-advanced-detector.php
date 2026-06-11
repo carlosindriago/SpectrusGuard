@@ -10,6 +10,9 @@ class Test_SG_Advanced_Detector extends TestCase
         if (!defined('ABSPATH')) {
             define('ABSPATH', sys_get_temp_dir() . '/');
         }
+        if (!defined('WP_CONTENT_DIR')) {
+            define('WP_CONTENT_DIR', ABSPATH . 'wp-content');
+        }
         if (!defined('SG_PLUGIN_DIR')) {
             define('SG_PLUGIN_DIR', dirname(__DIR__) . '/');
         }
@@ -124,19 +127,17 @@ class Test_SG_Advanced_Detector extends TestCase
         $method = $reflection->getMethod('detect_csrf');
         $method->setAccessible(true);
 
-        // CSRF with protective hook rest_api_init anywhere in the file
+        // CSRF with a real nonce guard elsewhere in the file.
         $content = '<?php
-        // Trigger action
         if (isset($_POST["submit"])) {
             update_option("my_option", $_POST["val"]);
         }
-        
-        // Somewhere else in the file, we have a protective hook or nonce
-        add_action("rest_api_init", "my_register_route");
+        ' . str_repeat("\n", 20) . '
+        check_ajax_referer("spectrus", "nonce");
         ';
 
         $threats = $method->invoke($this->detector, 'csrf_hook.php', $content);
-        $this->assertEmpty($threats, 'Should not flag CSRF if rest_api_init is present in the file.');
+        $this->assertEmpty($threats, 'Should not flag CSRF if a valid nonce guard exists elsewhere in the file.');
     }
 
     public function test_detect_sql_injection_prepare_large_window_and_safe_variables()
