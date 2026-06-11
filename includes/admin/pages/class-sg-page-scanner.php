@@ -419,7 +419,7 @@ class SG_Page_Scanner
         }
 
         // Get and validate file path
-        $file_path = isset($_POST['file_path']) ? sanitize_text_field($_POST['file_path']) : '';
+        $file_path = isset($_POST['file_path']) ? sanitize_text_field(wp_unslash($_POST['file_path'])) : ''; // Phase 4: hardened
         if (empty($file_path)) {
             wp_send_json_error(array('message' => __('File path is required', 'spectrus-guard')));
         }
@@ -472,7 +472,7 @@ class SG_Page_Scanner
         }
 
         // Get and validate file path
-        $file_path = isset($_POST['file_path']) ? sanitize_text_field($_POST['file_path']) : '';
+        $file_path = isset($_POST['file_path']) ? sanitize_text_field(wp_unslash($_POST['file_path'])) : ''; // Phase 4: hardened
         if (empty($file_path)) {
             wp_send_json_error(array('message' => __('File path is required', 'spectrus-guard')));
         }
@@ -614,7 +614,7 @@ class SG_Page_Scanner
         }
 
         // Get quarantine filename
-        $quarantine_name = isset($_POST['quarantine_name']) ? sanitize_text_field($_POST['quarantine_name']) : '';
+        $quarantine_name = isset($_POST['quarantine_name']) ? sanitize_text_field(wp_unslash($_POST['quarantine_name'])) : ''; // Phase 4: hardened
         if (empty($quarantine_name)) {
             wp_send_json_error(array('message' => __('Quarantine name is required', 'spectrus-guard')));
         }
@@ -694,7 +694,7 @@ class SG_Page_Scanner
         }
 
         // Get quarantine filename
-        $quarantine_name = isset($_POST['quarantine_name']) ? sanitize_text_field($_POST['quarantine_name']) : '';
+        $quarantine_name = isset($_POST['quarantine_name']) ? sanitize_text_field(wp_unslash($_POST['quarantine_name'])) : ''; // Phase 4: hardened
         if (empty($quarantine_name)) {
             wp_send_json_error(array('message' => __('Quarantine name is required', 'spectrus-guard')));
         }
@@ -745,13 +745,13 @@ class SG_Page_Scanner
         }
 
         // Get and validate file path
-        $file_path = isset($_POST['file_path']) ? sanitize_text_field($_POST['file_path']) : '';
+        $file_path = isset($_POST['file_path']) ? sanitize_text_field(wp_unslash($_POST['file_path'])) : ''; // Phase 4: hardened
         if (empty($file_path)) {
             wp_send_json_error(array('message' => __('File path is required', 'spectrus-guard')));
         }
 
         // Get notes
-        $notes = isset($_POST['notes']) ? sanitize_textarea_field($_POST['notes']) : '';
+        $notes = isset($_POST['notes']) ? sanitize_textarea_field(wp_unslash($_POST['notes'])) : ''; // Phase 4: hardened
 
         // Construct full path
         $full_path = ABSPATH . ltrim($file_path, '/');
@@ -814,7 +814,7 @@ class SG_Page_Scanner
         }
 
         // Get whitelist ID
-        $whitelist_id = isset($_POST['whitelist_id']) ? intval($_POST['whitelist_id']) : 0;
+        $whitelist_id = isset($_POST['whitelist_id']) ? absint(wp_unslash($_POST['whitelist_id'])) : 0; // Phase 4: hardened
         if ($whitelist_id <= 0) {
             wp_send_json_error(array('message' => __('Invalid whitelist ID', 'spectrus-guard')));
         }
