@@ -912,8 +912,6 @@ class SG_Scanner
             wp_send_json_error(array('message' => __('Scan failed.', 'spectrus-guard')));
         }
 
-        $timestamp = (int) current_time('timestamp');
-        $this->save_scan_results($results, $timestamp);
         $saved = $this->get_scan_results();
 
         wp_send_json_success(array(
