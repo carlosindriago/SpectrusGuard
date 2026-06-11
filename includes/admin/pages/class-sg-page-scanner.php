@@ -36,7 +36,7 @@ class SG_Page_Scanner
      */
     private function register_ajax_handlers()
     {
-        add_action('wp_ajax_sg_run_scan', array($this, 'ajax_run_scan'));
+        add_action('wp_ajax_sg_get_scan_results', array($this, 'ajax_get_scan_results'));
         add_action('wp_ajax_sg_get_scan_progress', array($this, 'ajax_get_scan_progress'));
         add_action('wp_ajax_sg_delete_threat', array($this, 'ajax_delete_threat'));
         add_action('wp_ajax_sg_quarantine_threat', array($this, 'ajax_quarantine_threat'));
@@ -56,20 +56,168 @@ class SG_Page_Scanner
     public function render()
     {
         $scanner = $this->loader->get_scanner();
-        $results = $scanner ? $scanner->get_display_results() : null;
-        $last_scan = $scanner ? $scanner->get_last_scan_time() : null;
-        $history = get_option('spectrus_guard_scan_history', array());
+        $saved = $scanner && method_exists($scanner, 'get_scan_results') ? $scanner->get_scan_results() : array();
+        $suppressed_hashes = $scanner && method_exists($scanner, 'get_suppressed_hashes') ? $scanner->get_suppressed_hashes() : array();
 
-        // Prepare data for view
+        $saved_threats = isset($saved['threats']) && is_array($saved['threats']) ? $saved['threats'] : array();
+        $prepared_threats = $this->prepare_threats_for_display($saved_threats, $suppressed_hashes);
+
         $data = array(
-            'results' => $results,
-            'results' => $results,
-            'last_scan' => $last_scan,
-            'history' => $history,
+            'scan' => $saved,
+            'threats' => $prepared_threats,
+            'suppressed_hashes' => $suppressed_hashes,
         );
 
         // Load view template
         $this->render_view('scanner/page.php', $data);
+    }
+
+    /**
+     * AJAX: Get latest scan results and suppressed hashes.
+     *
+     * @return void
+     */
+    public function ajax_get_scan_results(): void
+    {
+        check_ajax_referer('sg_run_scan_nonce', 'nonce');
+
+        if (!current_user_can('manage_options')) {
+            wp_send_json_error(array('message' => __('Unauthorized', 'spectrus-guard')), 403);
+        }
+
+        $scanner = $this->loader->get_scanner();
+        if (!$scanner || !method_exists($scanner, 'get_scan_results')) {
+            wp_send_json_error(array('message' => __('Scanner not available.', 'spectrus-guard')));
+        }
+
+        $saved = $scanner->get_scan_results();
+        $suppressed_hashes = method_exists($scanner, 'get_suppressed_hashes') ? $scanner->get_suppressed_hashes() : array();
+        $saved_threats = isset($saved['threats']) && is_array($saved['threats']) ? $saved['threats'] : array();
+
+        wp_send_json_success(array(
+            'scan' => $saved,
+            'threats' => $this->prepare_threats_for_display($saved_threats, $suppressed_hashes),
+            'suppressed_hashes' => is_array($suppressed_hashes) ? array_values($suppressed_hashes) : array(),
+        ));
+    }
+
+    /**
+     * Prepare threats for safe display and sorting.
+     *
+     * @param array $threats Threat list.
+     * @param array $suppressed_hashes Suppressed hashes.
+     * @return array Prepared threats list.
+     */
+    private function prepare_threats_for_display(array $threats, array $suppressed_hashes): array
+    {
+        $suppressed_lookup = array_fill_keys(array_values($suppressed_hashes), true);
+        $prepared = array();
+
+        foreach ($threats as $threat) {
+            if (!is_array($threat)) {
+                continue;
+            }
+
+            $hash = $this->compute_threat_hash($threat);
+            $severity = isset($threat['severity']) ? (string) $threat['severity'] : '';
+            $type = isset($threat['type']) ? (string) $threat['type'] : '';
+
+            $threat['hash'] = $hash;
+            $threat['suppressed'] = isset($suppressed_lookup[$hash]);
+            $threat['type_label'] = $this->threat_type_to_label($type);
+            $threat['severity_weight'] = $this->get_severity_weight($severity);
+
+            $prepared[] = $threat;
+        }
+
+        usort($prepared, array($this, 'compare_threats'));
+
+        return $prepared;
+    }
+
+    /**
+     * Compare threats for sorting (severity desc, score desc).
+     *
+     * @param array $a Threat A.
+     * @param array $b Threat B.
+     * @return int Comparison result.
+     */
+    private function compare_threats(array $a, array $b): int
+    {
+        $a_weight = isset($a['severity_weight']) ? (int) $a['severity_weight'] : 0;
+        $b_weight = isset($b['severity_weight']) ? (int) $b['severity_weight'] : 0;
+
+        if ($a_weight !== $b_weight) {
+            return $b_weight <=> $a_weight;
+        }
+
+        $a_score = isset($a['score']) ? (int) $a['score'] : 0;
+        $b_score = isset($b['score']) ? (int) $b['score'] : 0;
+
+        return $b_score <=> $a_score;
+    }
+
+    /**
+     * Compute deterministic threat hash (file|type|line).
+     *
+     * @param array $threat Threat data.
+     * @return string Hash.
+     */
+    private function compute_threat_hash(array $threat): string
+    {
+        $file = isset($threat['file']) ? (string) $threat['file'] : '';
+        $type = isset($threat['type']) ? (string) $threat['type'] : '';
+        $line = isset($threat['line']) ? (int) $threat['line'] : 0;
+
+        return md5($file . '|' . $type . '|' . $line);
+    }
+
+    /**
+     * Convert internal threat type to a readable label.
+     *
+     * @param string $type Internal type.
+     * @return string Readable label.
+     */
+    private function threat_type_to_label(string $type): string
+    {
+        $map = array(
+            'sql_injection' => __('SQL Injection', 'spectrus-guard'),
+            'csrf' => __('CSRF', 'spectrus-guard'),
+            'lfi' => __('LFI', 'spectrus-guard'),
+            'obfuscation' => __('Ofuscación', 'spectrus-guard'),
+            'dangerous_function' => __('Dangerous Function', 'spectrus-guard'),
+            'variable_function' => __('Variable Function', 'spectrus-guard'),
+            'input_execution_flow' => __('Input Execution Flow', 'spectrus-guard'),
+            'command_injection' => __('Command Injection', 'spectrus-guard'),
+        );
+
+        if (isset($map[$type])) {
+            return $map[$type];
+        }
+
+        $label = str_replace('_', ' ', $type);
+        return ucwords($label);
+    }
+
+    /**
+     * Convert severity constant to a sorting weight.
+     *
+     * @param string $severity Severity value.
+     * @return int Weight.
+     */
+    private function get_severity_weight(string $severity): int
+    {
+        $severity = strtolower($severity);
+
+        $map = array(
+            'critical' => 50,
+            'high' => 40,
+            'medium' => 30,
+            'low' => 20,
+            'info' => 10,
+        );
+
+        return isset($map[$severity]) ? (int) $map[$severity] : 0;
     }
 
     /**
