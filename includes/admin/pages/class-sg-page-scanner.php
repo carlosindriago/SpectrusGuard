@@ -87,6 +87,13 @@ class SG_Page_Scanner
             return;
         }
 
+        wp_enqueue_style(
+            'sg-scanner',
+            SG_PLUGIN_URL . 'assets/css/sg-scanner.css',
+            array(),
+            SG_VERSION
+        );
+
         wp_enqueue_script(
             'sg-scanner',
             SG_PLUGIN_URL . 'assets/js/sg-scanner.js',
