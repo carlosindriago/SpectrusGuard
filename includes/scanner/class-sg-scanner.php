@@ -893,6 +893,17 @@ class SG_Scanner
     }
 
     /**
+     * Get transient key for per-user scan cooldown.
+     *
+     * @param int $user_id User ID.
+     * @return string Transient key.
+     */
+    private function get_scan_cooldown_key(int $user_id): string
+    {
+        return 'sg_scan_cooldown_' . $user_id;
+    }
+
+    /**
      * AJAX handler: run full scan and persist results.
      *
      * @return void
@@ -908,8 +919,31 @@ class SG_Scanner
             return;
         }
 
-        $results = $this->run_full_scan(true);
+        $user_id = (int) get_current_user_id();
+        $cooldown_key = $this->get_scan_cooldown_key($user_id);
+        if (get_transient($cooldown_key)) {
+            wp_send_json_error(
+                array(
+                    'message' => __('Please wait before running another scan.', 'spectrus-guard'),
+                    'retry_after' => 60,
+                ),
+                429
+            );
+            return;
+        }
+
+        set_transient($cooldown_key, 1, 60);
+
+        try {
+            $results = $this->run_full_scan(true);
+        } catch (Exception $e) {
+            delete_transient($cooldown_key);
+            wp_send_json_error(array('message' => __('Scan failed.', 'spectrus-guard')));
+            return;
+        }
+
         if (!is_array($results)) {
+            delete_transient($cooldown_key);
             wp_send_json_error(array('message' => __('Scan failed.', 'spectrus-guard')));
             return;
         }
