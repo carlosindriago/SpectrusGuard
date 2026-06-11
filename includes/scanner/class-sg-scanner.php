@@ -973,6 +973,9 @@ class SG_Scanner
         }
 
         $threat = $this->get_threat_from_request();
+        if (empty($threat)) {
+            return;
+        }
         $hash = $this->compute_threat_hash($threat);
         $this->add_suppressed_hash($hash);
 
@@ -995,6 +998,9 @@ class SG_Scanner
         }
 
         $threat = $this->get_threat_from_request();
+        if (empty($threat)) {
+            return;
+        }
         $hash = $this->compute_threat_hash($threat);
         $this->remove_suppressed_hash($hash);
 
@@ -1098,6 +1104,43 @@ class SG_Scanner
     }
 
     /**
+     * Get the allowlist of threat types that can be suppressed.
+     *
+     * @return array Allowed threat types.
+     */
+    private function get_allowed_threat_types(): array
+    {
+        return array(
+            'sql_injection',
+            'csrf',
+            'lfi',
+            'obfuscation',
+            'dangerous_function',
+            'variable_function',
+            'xss_vulnerability',
+            'hidden_spam',
+            'input_execution_flow',
+            'command_injection',
+            'object_injection',
+            'ssrf',
+            'arbitrary_file_write',
+            'arbitrary_file_delete',
+            'path_traversal',
+            'unsafe_file_upload',
+            'crypto_mining',
+            'information_disclosure',
+            'email_injection',
+            'deprecated_dangerous',
+            'dangerous_hook',
+            'spam_injection',
+            'conditional_spam',
+            'suspicious_link',
+            'user_manipulation',
+            'sql_taint_unknown',
+        );
+    }
+
+    /**
      * Read threat identity from AJAX request payload.
      *
      * @return array Threat identity data.
@@ -1107,6 +1150,11 @@ class SG_Scanner
         $file = isset($_POST['file']) ? sanitize_text_field(wp_unslash($_POST['file'])) : '';
         $type = isset($_POST['type']) ? sanitize_text_field(wp_unslash($_POST['type'])) : '';
         $line = isset($_POST['line']) ? absint($_POST['line']) : 0;
+
+        if (!in_array($type, $this->get_allowed_threat_types(), true)) {
+            wp_send_json_error(array('message' => __('Invalid threat type.', 'spectrus-guard')), 400);
+            return array();
+        }
 
         return array(
             'file' => $file,
