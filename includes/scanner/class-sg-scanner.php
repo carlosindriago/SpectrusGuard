@@ -905,11 +905,13 @@ class SG_Scanner
 
         if (!current_user_can('manage_options')) {
             wp_send_json_error(array('message' => __('Unauthorized', 'spectrus-guard')), 403);
+            return;
         }
 
         $results = $this->run_full_scan(true);
         if (!is_array($results)) {
             wp_send_json_error(array('message' => __('Scan failed.', 'spectrus-guard')));
+            return;
         }
 
         $saved = $this->get_scan_results();
@@ -919,6 +921,7 @@ class SG_Scanner
             'total_threats' => isset($saved['total_threats']) ? (int) $saved['total_threats'] : 0,
             'summary' => isset($saved['summary']) && is_array($saved['summary']) ? $saved['summary'] : array(),
         ));
+        return;
     }
 
     /**
@@ -932,6 +935,7 @@ class SG_Scanner
 
         if (!current_user_can('manage_options')) {
             wp_send_json_error(array('message' => __('Unauthorized', 'spectrus-guard')), 403);
+            return;
         }
 
         $threat = $this->get_threat_from_request();
@@ -939,6 +943,7 @@ class SG_Scanner
         $this->add_suppressed_hash($hash);
 
         wp_send_json_success(array('hash' => $hash));
+        return;
     }
 
     /**
@@ -952,6 +957,7 @@ class SG_Scanner
 
         if (!current_user_can('manage_options')) {
             wp_send_json_error(array('message' => __('Unauthorized', 'spectrus-guard')), 403);
+            return;
         }
 
         $threat = $this->get_threat_from_request();
@@ -959,6 +965,7 @@ class SG_Scanner
         $this->remove_suppressed_hash($hash);
 
         wp_send_json_success(array('hash' => $hash));
+        return;
     }
 
     /**
