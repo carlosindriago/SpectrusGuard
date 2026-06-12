@@ -4,7 +4,7 @@
  * Plugin URI:        https://github.com/carlosindriago/SpectrusGuard/
  * Description:       Enterprise-grade security with WAF, Geo-Blocking, and AI-powered User and Entity Behavior Analytics (UEBA). Detects threats that traditional security misses.
  * Version:           3.0.6
- * Requires at least: 6.4
+ * Requires at least: 5.1
  * Requires PHP:      8.1
  * Author:            Carlos Indriago
  * Author URI:        https://github.com/carlosindriago/
@@ -31,7 +31,7 @@ define('SG_PLUGIN_DIR', plugin_dir_path(__FILE__));
 define('SG_PLUGIN_URL', plugin_dir_url(__FILE__));
 define('SG_PLUGIN_BASENAME', plugin_basename(__FILE__));
 define('SG_MIN_PHP_VERSION', '8.1');
-define('SG_MIN_WP_VERSION', '6.4');
+define('SG_MIN_WP_VERSION', '5.1');
 
 // Severity constants
 define('SG_SEV_CRITICAL', 'critical');
