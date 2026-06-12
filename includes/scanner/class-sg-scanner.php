@@ -185,6 +185,10 @@ class SG_Scanner
         $this->update_progress(98, __('Finalizing scan...', 'spectrus-guard'));
         $this->results['duration'] = round(microtime(true) - $start_time, 2);
 
+        if (!empty($this->results['advanced_threats'])) {
+            $this->results['advanced_threats'] = $this->sanitize_threat_contexts($this->results['advanced_threats']);
+        }
+
         // Cache results
         set_transient(self::RESULTS_TRANSIENT, $this->results, self::CACHE_EXPIRATION);
 
@@ -238,6 +242,10 @@ class SG_Scanner
             $checked++;
             if ($checked % 5 === 0) {
                 $this->update_progress(40 + min(10, ($checked / max(1, count($php_files))) * 10), sprintf(__('Analyzing uploads... (%d/%d)', 'spectrus-guard'), $checked, count($php_files)));
+            }
+
+            if (!$this->is_path_within_dir($file, WP_CONTENT_DIR . '/uploads')) {
+                continue;
             }
 
             // Check if file is whitelisted
@@ -414,6 +422,10 @@ class SG_Scanner
                     continue;
                 }
 
+                if (!$this->is_path_within_dir($file_path, WP_CONTENT_DIR)) {
+                    continue;
+                }
+
                 // Check if whitelisted
                 $file_hash = file_exists($file_path) ? hash_file('sha256', $file_path) : null;
                 if ($this->whitelist && $this->whitelist->check($file_path, $file_hash)) {
@@ -566,6 +578,29 @@ class SG_Scanner
 
         // Check if file path starts with plugin directory
         return strpos($file_path, $plugin_dir) === 0;
+    }
+
+    /**
+     * Assert that a file path is within an expected base directory.
+     *
+     * @param string $file_path Absolute path to validate.
+     * @param string $base_dir  Expected base directory.
+     * @return bool True when the path is within the base directory.
+     */
+    private function is_path_within_dir(string $file_path, string $base_dir): bool
+    {
+        $real_file = realpath($file_path);
+        $real_base = realpath($base_dir);
+
+        if (!$real_file || !$real_base) {
+            return false;
+        }
+
+        $normalized_file = normalize_file_path($real_file);
+        $normalized_base = trailingslashit(normalize_file_path($real_base));
+
+        return strpos($normalized_file, $normalized_base) === 0
+            || $normalized_file === rtrim($normalized_base, '/');
     }
 
     /**
@@ -826,6 +861,11 @@ class SG_Scanner
      */
     private function save_scan_report_and_history(array $results): void
     {
+        // Sanitize advanced threats contexts before persisting legacy report.
+        if (!empty($results['advanced_threats'])) {
+            $results['advanced_threats'] = $this->sanitize_threat_contexts($results['advanced_threats']);
+        }
+
         // Save latest report for the Results Page
         update_option('spectrus_guard_scan_report', $results, false); // Autoload=false to avoid performance hit
 
@@ -837,6 +877,12 @@ class SG_Scanner
             array_shift($history);
         }
 
+        /**
+         * History entry structure:
+         * 'date'      => string (MySQL datetime)
+         * 'timestamp' => int    (Unix timestamp)
+         * 'stats'     => array  (integer counters only: total_issues, critical, high, medium, low)
+         */
         $history[] = array(
             'date' => current_time('mysql'),
             'timestamp' => current_time('timestamp'),
@@ -920,6 +966,11 @@ class SG_Scanner
         }
 
         $user_id = (int) get_current_user_id();
+        if ($user_id === 0) {
+            wp_send_json_error(array('message' => __('Unauthorized', 'spectrus-guard')), 403);
+            return;
+        }
+
         $cooldown_key = $this->get_scan_cooldown_key($user_id);
         if (get_transient($cooldown_key)) {
             wp_send_json_error(
@@ -1150,11 +1201,27 @@ class SG_Scanner
         $file = isset($_POST['file']) ? sanitize_text_field(wp_unslash($_POST['file'])) : '';
         $type = isset($_POST['type']) ? sanitize_text_field(wp_unslash($_POST['type'])) : '';
         $line = isset($_POST['line']) ? absint($_POST['line']) : 0;
+        $real_abspath = realpath(ABSPATH);
+        $real_file = realpath(ABSPATH . ltrim($file, '/\'));
 
         if (!in_array($type, $this->get_allowed_threat_types(), true)) {
             wp_send_json_error(array('message' => __('Invalid threat type.', 'spectrus-guard')), 400);
             return array();
         }
+
+        if (!$real_abspath || !$real_file) {
+            wp_send_json_error(array('message' => __('Invalid file path.', 'spectrus-guard')), 400);
+            return array();
+        }
+
+        $normalized_abspath = trailingslashit(normalize_file_path($real_abspath));
+        $normalized_file = normalize_file_path($real_file);
+        if (strpos($normalized_file, $normalized_abspath) !== 0) {
+            wp_send_json_error(array('message' => __('Invalid file path.', 'spectrus-guard')), 400);
+            return array();
+        }
+
+        $file = ltrim(substr($normalized_file, strlen($normalized_abspath)), '/');
 
         return array(
             'file' => $file,
